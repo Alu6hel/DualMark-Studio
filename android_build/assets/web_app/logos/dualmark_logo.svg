@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A0F1D"/>
+      <stop offset="100%" stop-color="#050811"/>
+    </linearGradient>
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#00F0FF"/>
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Deep Obsidian Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Outer Tactical Border -->
+  <rect x="24" y="24" width="464" height="464" rx="96" fill="none" stroke="#1E293B" stroke-width="6"/>
+
+  <!-- Left: 1D Barcode Stylized Vertical Bars (Laser Cyan) -->
+  <g transform="translate(68, 120)">
+    <!-- Barcode stripes with varying weights -->
+    <rect x="0" y="0" width="10" height="272" rx="5" fill="url(#cyanGrad)"/>
+    <rect x="18" y="0" width="6" height="272" rx="3" fill="#38BDF8" opacity="0.9"/>
+    <rect x="32" y="0" width="18" height="272" rx="6" fill="url(#cyanGrad)"/>
+    <rect x="58" y="0" width="8" height="272" rx="4" fill="#38BDF8" opacity="0.8"/>
+    <rect x="74" y="0" width="22" height="272" rx="7" fill="url(#cyanGrad)"/>
+    <rect x="104" y="0" width="12" height="272" rx="5" fill="#38BDF8"/>
+    <rect x="124" y="0" width="8" height="272" rx="4" fill="url(#cyanGrad)"/>
+    <rect x="140" y="0" width="16" height="272" rx="5" fill="#38BDF8"/>
+
+    <!-- Bottom UPC Human-Readable numbers aesthetic -->
+    <text x="8" y="304" font-family="'JetBrains Mono', monospace, sans-serif" font-size="22" font-weight="900" fill="#38BDF8" letter-spacing="3">1D UPC</text>
+  </g>
+
+  <!-- Center: 50mm Spacing Caliper & Reticle Marker -->
+  <g transform="translate(242, 140)">
+    <!-- Vertical Dimension Line -->
+    <line x1="14" y1="20" x2="14" y2="232" stroke="#64748B" stroke-width="4" stroke-dasharray="6,6"/>
+    <circle cx="14" cy="20" r="5" fill="#38BDF8"/>
+    <circle cx="14" cy="232" r="5" fill="#10B981"/>
+    
+    <!-- 50mm Caliper Badge -->
+    <rect x="-16" y="104" width="60" height="44" rx="10" fill="#0F172A" stroke="#00F0FF" stroke-width="2.5"/>
+    <text x="14" y="126" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="900" fill="#00F0FF">50</text>
+    <text x="14" y="141" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#94A3B8">mm</text>
+  </g>
+
+  <!-- Right: 2D GS1 Digital Link QR / DataMatrix Matrix (Emerald) -->
+  <g transform="translate(294, 120)">
+    <!-- Outer 2D QR finder pattern 1 -->
+    <rect x="0" y="0" width="76" height="76" rx="14" fill="none" stroke="url(#emeraldGrad)" stroke-width="10"/>
+    <rect x="18" y="18" width="40" height="40" rx="8" fill="url(#emeraldGrad)"/>
+
+    <!-- Outer 2D QR finder pattern 2 (Top Right) -->
+    <rect x="100" y="0" width="50" height="50" rx="10" fill="none" stroke="url(#emeraldGrad)" stroke-width="8"/>
+    <rect x="114" y="14" width="22" height="22" rx="4" fill="url(#emeraldGrad)"/>
+
+    <!-- Data matrix pixel blocks -->
+    <rect x="88" y="60" width="16" height="16" rx="4" fill="#34D399"/>
+    <rect x="114" y="60" width="16" height="16" rx="4" fill="#10B981"/>
+    <rect x="138" y="60" width="14" height="16" rx="4" fill="#34D399"/>
+
+    <rect x="0" y="88" width="16" height="16" rx="4" fill="#10B981"/>
+    <rect x="24" y="88" width="16" height="16" rx="4" fill="#34D399"/>
+    <rect x="48" y="88" width="16" height="16" rx="4" fill="#10B981"/>
+    <rect x="72" y="88" width="16" height="16" rx="4" fill="#34D399"/>
+
+    <!-- Center QR Finder / Core -->
+    <rect x="24" y="116" width="64" height="64" rx="12" fill="none" stroke="url(#emeraldGrad)" stroke-width="8"/>
+    <rect x="38" y="130" width="36" height="36" rx="6" fill="url(#emeraldGrad)"/>
+
+    <rect x="100" y="116" width="22" height="22" rx="5" fill="#34D399"/>
+    <rect x="130" y="116" width="22" height="22" rx="5" fill="#10B981"/>
+    <rect x="100" y="146" width="22" height="22" rx="5" fill="#10B981"/>
+    <rect x="130" y="146" width="22" height="22" rx="5" fill="#34D399"/>
+
+    <!-- Bottom 2D Finder Pattern -->
+    <rect x="0" y="196" width="76" height="76" rx="14" fill="none" stroke="url(#emeraldGrad)" stroke-width="10"/>
+    <rect x="18" y="214" width="40" height="40" rx="8" fill="url(#emeraldGrad)"/>
+
+    <rect x="92" y="196" width="20" height="20" rx="4" fill="#34D399"/>
+    <rect x="120" y="196" width="24" height="24" rx="5" fill="#10B981"/>
+    <rect x="92" y="226" width="52" height="46" rx="8" fill="#10B981" opacity="0.85"/>
+
+    <text x="8" y="304" font-family="'JetBrains Mono', monospace, sans-serif" font-size="22" font-weight="900" fill="#10B981" letter-spacing="3">2D GS1</text>
+  </g>
+
+  <!-- Top Status Banner: SUNRISE 2027 COMPLIANT -->
+  <g transform="translate(100, 56)">
+    <rect x="0" y="0" width="312" height="38" rx="19" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+    <circle cx="22" cy="19" r="6" fill="#10B981"/>
+    <text x="38" y="25" font-family="sans-serif" font-size="13" font-weight="800" fill="#F8FAFC" letter-spacing="1.5">SUNRISE 2027 READY</text>
+  </g>
+
+  <!-- Bottom Brand Title -->
+  <text x="256" y="472" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-size="28" font-weight="900" fill="#F8FAFC" letter-spacing="4">DUALMARK STUDIO</text>
+</svg>

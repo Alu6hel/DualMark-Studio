@@ -1,0 +1,324 @@
+package com.dualmark.studio;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintManager;
+import android.util.Base64;
+import android.util.Log;
+import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
+import android.webkit.RenderProcessGoneDetail;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+import java.io.File;
+import java.io.FileOutputStream;
+
+public class MainActivity extends Activity {
+    private static final String TAG = "DUALMARK_STUDIO";
+    private WebView webView;
+    private ValueCallback<Uri[]> filePathCallback;
+    private static final int FILE_CHOOSER_REQUEST_CODE = 3001;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        // Crash prevention
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            Log.e(TAG, "Uncaught exception in " + thread.getName(), throwable);
+            finishAffinity();
+        });
+
+        // Immersive UI
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        );
+
+        webView = new WebView(this);
+        setContentView(webView);
+
+        configureWebView();
+        checkPermissions();
+
+        if (savedInstanceState != null) {
+            webView.restoreState(savedInstanceState);
+        } else {
+            webView.loadUrl("file:///android_asset/web_app/index.html");
+        }
+    }
+
+    private void configureWebView() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.addJavascriptInterface(new DualMarkBridge(), "DualMarkBridge");
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                if (view != null) {
+                    try { view.destroy(); } catch (Exception ignored) {}
+                }
+                recreate();
+                return true;
+            }
+        });
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onPermissionRequest(final PermissionRequest request) {
+                runOnUiThread(() -> {
+                    try {
+                        request.grant(request.getResources());
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error granting web permissions", e);
+                    }
+                });
+            }
+
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                if (MainActivity.this.filePathCallback != null) {
+                    MainActivity.this.filePathCallback.onReceiveValue(null);
+                }
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("image/*");
+
+                try {
+                    startActivityForResult(Intent.createChooser(intent, "Select Packaging Document / Photo"), FILE_CHOOSER_REQUEST_CODE);
+                } catch (Exception e) {
+                    MainActivity.this.filePathCallback = null;
+                    Toast.makeText(MainActivity.this, "File picker unavailable", Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                return true;
+            }
+        });
+    }
+
+    public class DualMarkBridge {
+        @JavascriptInterface
+        public boolean isNativeApp() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void showToast(final String msg) {
+            runOnUiThread(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show());
+        }
+
+        @JavascriptInterface
+        public void vibrate(long ms) {
+            try {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
+                    } else {
+                        v.vibrate(ms);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        @JavascriptInterface
+        public String getGpsCoordinates() {
+            try {
+                LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                if (lm != null) {
+                    Location loc = null;
+                    if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                        loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        if (loc == null) {
+                            loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                        }
+                    }
+                    if (loc != null) {
+                        return String.format("%.4f° N, %.4f° W", loc.getLatitude(), loc.getLongitude());
+                    }
+                }
+            } catch (Exception ignored) {}
+            return "37.7749° N, 122.4194° W";
+        }
+
+        @JavascriptInterface
+        public boolean savePdfToStorage(final String base64Data, final String filename) {
+            try {
+                byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                String safeName = (filename != null && !filename.isEmpty()) ? filename : "FSMA_Dossier.pdf";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    android.content.ContentValues values = new android.content.ContentValues();
+                    values.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, safeName);
+                    values.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "application/pdf");
+                    values.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) {
+                        try (java.io.OutputStream os = getContentResolver().openOutputStream(uri)) {
+                            if (os != null) os.write(bytes);
+                        }
+                    }
+                } else {
+                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!dir.exists()) dir.mkdirs();
+                    File target = new File(dir, safeName);
+                    try (FileOutputStream fos = new FileOutputStream(target)) {
+                        fos.write(bytes);
+                    }
+                }
+
+                File appDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (appDir != null) {
+                    File backup = new File(appDir, safeName);
+                    try (FileOutputStream fos = new FileOutputStream(backup)) {
+                        fos.write(bytes);
+                    }
+                }
+
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "📄 FSMA PDF Saved to Downloads: " + safeName, Toast.LENGTH_LONG).show());
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving PDF", e);
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean sharePdf(final String base64Data, final String filename) {
+            try {
+                byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                String safeName = (filename != null && !filename.isEmpty()) ? filename : "FSMA_Dossier.pdf";
+                File cacheFile = new File(getCacheDir(), safeName);
+                FileOutputStream fos = new FileOutputStream(cacheFile);
+                fos.write(bytes);
+                fos.flush();
+                fos.close();
+
+                Uri contentUri = DualMarkFileProvider.getUriForFile(cacheFile);
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("application/pdf");
+                intent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(intent, "Share FSMA Compliance Dossier"));
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "Error sharing PDF", e);
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void printDocument(final String title) {
+            runOnUiThread(() -> {
+                try {
+                    PrintManager printManager = (PrintManager) getSystemService(Context.PRINT_SERVICE);
+                    if (printManager != null) {
+                        String docName = (title != null && !title.isEmpty()) ? title : "DualMark_Proof_Sheet";
+                        PrintDocumentAdapter adapter = webView.createPrintDocumentAdapter(docName);
+                        printManager.print(docName, adapter, new PrintAttributes.Builder().build());
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error printing document", e);
+                }
+            });
+        }
+    }
+
+    private void checkPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] perms = {
+                android.Manifest.permission.CAMERA,
+                android.Manifest.permission.ACCESS_FINE_LOCATION
+            };
+            boolean needsRequest = false;
+            for (String p : perms) {
+                if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) {
+                    needsRequest = true;
+                    break;
+                }
+            }
+            if (needsRequest) {
+                requestPermissions(perms, 100);
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            if (filePathCallback == null) return;
+            Uri[] results = null;
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                String dataString = data.getDataString();
+                if (dataString != null) {
+                    results = new Uri[]{Uri.parse(dataString)};
+                }
+            }
+            filePathCallback.onReceiveValue(results);
+            filePathCallback = null;
+        } else {
+            super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(null);
+            filePathCallback = null;
+            return;
+        }
+        if (webView != null && webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            new AlertDialog.Builder(this)
+                .setTitle("DualMark Studio")
+                .setMessage("Exit Packaging Pre-Flight & Field Auditor?")
+                .setPositiveButton("Exit", (dialog, which) -> finishAffinity())
+                .setNegativeButton("Stay", (dialog, which) -> dialog.dismiss())
+                .show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (webView != null) {
+            webView.loadUrl("about:blank");
+            webView.stopLoading();
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
+    }
+}

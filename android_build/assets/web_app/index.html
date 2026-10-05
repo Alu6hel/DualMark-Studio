@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>DualMark Studio — Packaging Pre-Flight & Field Traceability</title>
+  <meta name="description" content="Air-gapped workstation for 1D UPC-A barcode generation, dynamic 2D GS1 Digital Link routing, 50mm clearance validation, and FSMA Rule 204 traceability documentation.">
+  <link rel="icon" type="image/svg+xml" href="logos/dualmark_logo.svg">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="brand-wrap">
+      <img src="logos/dualmark_logo_512.png" alt="DualMark Emblem" class="brand-icon">
+      <div class="brand-title">
+        DualMark Studio
+        <span class="brand-badge">SUNRISE 2027</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-sound" class="icon-btn" title="Toggle Tactile Audio" aria-label="Toggle Sound">🔊</button>
+      <button id="btn-theme" class="icon-btn" title="Toggle Clean Room Theme" aria-label="Toggle Theme">🌓</button>
+    </div>
+  </header>
+
+  <!-- Navigation Scroll Tabs -->
+  <nav class="nav-scroll" id="nav-tabs">
+    <button class="nav-tab active" data-tab="tab-synth">📐 1. Dual-Code Synth</button>
+    <button class="nav-tab" data-tab="tab-clearance">📏 2. 50mm Die-Line Inspector</button>
+    <button class="nav-tab" data-tab="tab-resolver">🔀 3. Dynamic Resolver (Zero-SaaS)</button>
+    <button class="nav-tab" data-tab="tab-scanner">📷 4. Optical Scanner & Dewarp</button>
+    <button class="nav-tab" data-tab="tab-fsma">📜 5. FSMA Rule 204 Traceability</button>
+    <button class="nav-tab" data-tab="tab-exports">💾 6. Prepress Export Center</button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-content">
+
+    <!-- TAB 1: DUAL-CODE SYNTH -->
+    <section id="tab-synth" class="tab-pane active">
+      <div class="grid-2">
+        <!-- 1D Barcode Form -->
+        <div class="card">
+          <div class="card-title">
+            <span>1D Barcode Generator (Legacy Retail POS)</span>
+            <span class="badge badge-cyan" id="barcode-type-badge">UPC-A 12</span>
+          </div>
+
+          <div class="form-group">
+            <label>Symbology Standard</label>
+            <select id="synth-1d-type">
+              <option value="UPC-A" selected>UPC-A (12-Digit Retail Item)</option>
+              <option value="EAN-13">EAN-13 (13-Digit International)</option>
+              <option value="Code-128">Code 128 (Alphanumeric Supply Chain)</option>
+              <option value="ITF-14">ITF-14 (14-Digit Shipping Corrugated Box)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Barcode Digits / Payload</label>
+            <input type="text" id="synth-1d-input" class="mono-input" value="081234567890" maxlength="14" placeholder="Enter barcode number">
+            <small id="synth-1d-prefix-info" style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">GS1 Region: United States & Canada (GS1 US)</small>
+          </div>
+
+          <div class="barcode-preview-box">
+            <canvas id="canvas-1d"></canvas>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-secondary" id="btn-1d-svg">Download 1D Vector SVG</button>
+            <button class="btn btn-secondary" id="btn-1d-png">Save PNG Image</button>
+          </div>
+        </div>
+
+        <!-- 2D GS1 Digital Link Form -->
+        <div class="card">
+          <div class="card-title">
+            <span>2D GS1 Digital Link Builder (Sunrise 2027)</span>
+            <span class="badge badge-green">ISO/IEC 18004</span>
+          </div>
+
+          <div class="form-group">
+            <label>Brand Resolver Domain</label>
+            <input type="text" id="synth-2d-domain" class="mono-input" value="https://id.brand.com" placeholder="https://id.brand.com">
+          </div>
+
+          <div class="form-group">
+            <label>GTIN-14 (AI 01)</label>
+            <input type="text" id="synth-2d-gtin" class="mono-input" value="00812345678901" maxlength="14">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label>Batch / Lot (AI 10)</label>
+              <input type="text" id="synth-2d-lot" class="mono-input" value="LOT-2026-X" maxlength="20">
+            </div>
+            <div class="form-group">
+              <label>Serial Number (AI 21)</label>
+              <input type="text" id="synth-2d-serial" class="mono-input" value="SN-94021" maxlength="20">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Expiration Date (AI 17 - YYMMDD)</label>
+            <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD (e.g. 271231)">
+          </div>
+
+          <div class="form-group">
+            <label>Synthesized Standard GS1 Digital Link URI</label>
+            <div class="code-block" id="synth-2d-uri-preview">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231</div>
+          </div>
+
+          <div class="barcode-preview-box">
+            <canvas id="canvas-2d"></canvas>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-emerald" id="btn-2d-svg">Download 2D Vector SVG</button>
+            <button class="btn btn-secondary" id="btn-2d-copy">Copy Digital Link URI</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 50MM DIE-LINE INSPECTOR -->
+    <section id="tab-clearance" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>50mm Physical Clearance Die-Line Inspector</span>
+          <span class="badge badge-cyan">SUNRISE 2027 AUDITOR</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 14px;">
+          During the Sunrise 2027 transition, consumer goods must carry <strong>both</strong> a legacy 1D UPC and a 2D GS1 Digital Link QR code. They must maintain strictly <strong>≥50 mm clearance</strong> to prevent cashier scanner cross-talk at 40–70 items/minute.
+        </p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">
+          <div style="flex: 1; min-width: 220px;">
+            <label>Packaging Die-Line Preset</label>
+            <select id="clearance-preset">
+              <option value="snack" selected>Snack Bar / Flow-Wrap (150 x 55 mm)</option>
+              <option value="blister">Blister Pack (Cosmetics / Lip Balm) (110 x 75 mm)</option>
+              <option value="bottle">Beverage Bottle Label (180 x 85 mm)</option>
+              <option value="pharma">Pharmaceutical Carton (90 x 50 mm)</option>
+              <option value="retail_box">Retail Folding Carton Box (220 x 160 mm)</option>
+            </select>
+          </div>
+          <div style="margin-top: 18px;">
+            <button class="btn btn-primary" id="btn-snap-50mm">⚡ Snap to 50mm Safe Spacing</button>
+          </div>
+        </div>
+
+        <!-- Interactive Die-Line Canvas Stage -->
+        <div class="die-line-stage">
+          <canvas id="canvas-clearance"></canvas>
+        </div>
+
+        <!-- Real-time Status Meter -->
+        <div class="status-meter pass" id="clearance-status-box">
+          <div>
+            <div class="status-headline" id="clearance-status-text">
+              <span id="clearance-status-icon">✓</span>
+              <span>COMPLIANT (≥ 50.0 mm)</span>
+            </div>
+            <div class="status-detail" id="clearance-status-sub">
+              Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements.
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
+            <small style="color: var(--text-muted);">Threshold: 50.0 mm</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: DYNAMIC LINK RESOLVER -->
+    <section id="tab-resolver" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>Zero-SaaS Dynamic Link Resolver</span>
+          <span class="badge badge-emerald">STANDALONE EDGE ROUTING</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 14px;">
+          A 2D barcode is a dynamic URI router. Configure Geo-Targeted redirects and Instant Recall Kill-Switches without recurring per-link SaaS fees. Export to SQLite, JSON, Cloudflare Workers, or Nginx.
+        </p>
+
+        <!-- Rules Table -->
+        <div style="overflow-x: auto;">
+          <table class="data-table" id="resolver-rules-table">
+            <thead>
+              <tr>
+                <th>Item / SKU</th>
+                <th>GTIN-14</th>
+                <th>Batch / Lot</th>
+                <th>Recall Kill-Switch</th>
+                <th>Geo-Rules</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="resolver-rules-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Resolution Live Tester -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-top: 18px;">
+          <h4 style="margin-bottom: 12px; font-size: 14px;">⚡ Real-Time Resolution Simulator</h4>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
+            <div>
+              <label>Test GTIN</label>
+              <input type="text" id="test-resolve-gtin" class="mono-input" value="00812345678901">
+            </div>
+            <div>
+              <label>Client Country Header</label>
+              <select id="test-resolve-country">
+                <option value="US" selected>United States (US)</option>
+                <option value="FR">France (FR - Tri-Recyclage)</option>
+                <option value="DE">Germany (DE - Pfand System)</option>
+                <option value="JP">Japan (JP - Consumer Affairs)</option>
+                <option value="UK">United Kingdom (UK)</option>
+              </select>
+            </div>
+            <div style="margin-top: 24px;">
+              <button class="btn btn-primary" id="btn-test-resolve" style="width: 100%;">Test Route Resolution</button>
+            </div>
+          </div>
+          <div class="code-block" id="test-resolve-output">Target URL: https://brand.com/us/nutrition/almond-milk (Status: GEO_MATCH US)</div>
+        </div>
+
+        <div class="btn-row" style="margin-top: 18px;">
+          <button class="btn btn-secondary" id="btn-export-sql">Download SQLite Database (.sql)</button>
+          <button class="btn btn-secondary" id="btn-export-json">Export JSON Rules</button>
+          <button class="btn btn-secondary" id="btn-export-cf">Export Cloudflare Worker</button>
+          <button class="btn btn-secondary" id="btn-export-nginx">Export Nginx Map</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: OPTICAL SCANNER & DEWARP -->
+    <section id="tab-scanner" class="tab-pane">
+      <div class="grid-2">
+        <!-- Dual Scanner -->
+        <div class="card">
+          <div class="card-title">
+            <span>Dual Optical Camera Decoder</span>
+            <span class="badge badge-cyan" id="scanner-state-badge">CAMERA OFFLINE</span>
+          </div>
+
+          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
+            Simultaneously reads 1D barcodes and 2D GS1 Digital Links in sub-second passes.
+          </p>
+
+          <div class="video-scanner-wrap">
+            <video id="scanner-video" style="display:none;"></video>
+            <canvas id="scanner-canvas"></canvas>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-start-camera">Start Live Camera</button>
+            <button class="btn btn-danger" id="btn-stop-camera" style="display:none;">Stop Camera</button>
+            <label class="btn btn-secondary" style="cursor: pointer;">
+              Upload Photo File <input type="file" id="input-scan-file" accept="image/*" style="display:none;">
+            </label>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <label>Decoded Barcode Result</label>
+            <div class="code-block" id="scan-decoded-result">Awaiting barcode optical acquisition...</div>
+          </div>
+        </div>
+
+        <!-- Document Scanner & Dewarping -->
+        <div class="card">
+          <div class="card-title">
+            <span>Paperwork Perspective Dewarping & OCR</span>
+            <span class="badge badge-emerald">FSMA AUDIT ARCHIVE</span>
+          </div>
+          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
+            Dewarp and binarize physical Bills of Lading, Farm Origin Certificates, and Packing Run Sheets.
+          </p>
+
+          <div style="text-align: center; margin: 12px 0;">
+            <canvas id="canvas-dewarp" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);"></canvas>
+          </div>
+
+          <div class="btn-row">
+            <label class="btn btn-secondary" style="cursor: pointer;">
+              Load Document Photo <input type="file" id="input-dewarp-file" accept="image/*" style="display:none;">
+            </label>
+            <button class="btn btn-emerald" id="btn-flatten-dewarp">Flatten & Binarize Document</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: FSMA RULE 204 TRACEABILITY -->
+    <section id="tab-fsma" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>FDA FSMA Rule 204 Critical Tracking Events (CTEs)</span>
+          <span class="badge badge-cyan">21 CFR PART 1 SUBPART S</span>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 14px;">
+          Log auditable food traceability events, record Key Data Elements (KDEs), capture device GPS coordinates, and compile tamper-evident PDF/A chain-of-custody dossiers with cryptographic SHA-256 signatures.
+        </p>
+
+        <!-- New CTE Form -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; margin-bottom: 20px;">
+          <h4 style="margin-bottom: 14px; font-size: 14px;">+ Record Critical Tracking Event (CTE)</h4>
+          <div class="grid-2">
+            <div>
+              <div class="form-group">
+                <label>CTE Event Type</label>
+                <select id="fsma-event-type">
+                  <option value="RECEIVING CTE" selected>Receiving CTE (Received from Prior Facility)</option>
+                  <option value="TRANSFORMATION CTE">Transformation CTE (Manufacturing / Repackaging)</option>
+                  <option value="SHIPPING CTE">Shipping CTE (Dispatched to Retail / Distribution)</option>
+                  <option value="INITIAL PACKING CTE">Initial Packing CTE (First packing of raw farm produce)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Traceability Lot Code (TLC)</label>
+                <input type="text" id="fsma-tlc" class="mono-input" value="TLC-9924-ALM">
+              </div>
+              <div class="form-group">
+                <label>Global Trade Item Number (GTIN-14)</label>
+                <input type="text" id="fsma-gtin" class="mono-input" value="00812345678901">
+              </div>
+            </div>
+            <div>
+              <div class="form-group">
+                <label>Commodity Description</label>
+                <input type="text" id="fsma-commodity" value="Organic Cold-Pressed Almond Milk (Raw Almond Base)">
+              </div>
+              <div class="form-group">
+                <label>Quantity & Unit of Measure</label>
+                <input type="text" id="fsma-quantity" value="480 Cases / 12 units per case">
+              </div>
+              <div class="form-group">
+                <label>Facility GLN / Physical Location</label>
+                <input type="text" id="fsma-gln" value="GLN 0812345000012 — Central Hub Dock #4">
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center; margin-top: 10px;">
+            <div style="flex: 1;">
+              <label>GPS Geotag Origin</label>
+              <input type="text" id="fsma-gps" class="mono-input" value="37.7749° N, 122.4194° W [Live Field GPS]" readonly>
+            </div>
+            <div style="margin-top: 20px;">
+              <button class="btn btn-secondary" id="btn-refresh-gps">📍 Acquire GPS</button>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top: 18px;">
+            <button class="btn btn-emerald" id="btn-commit-cte">Commit CTE & Generate PDF Dossier</button>
+          </div>
+        </div>
+
+        <!-- Logged CTEs Table -->
+        <h4 style="margin-bottom: 12px; font-size: 14px;">Archived Chain-of-Custody Records</h4>
+        <div style="overflow-x: auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Event ID</th>
+                <th>Type</th>
+                <th>TLC Lot</th>
+                <th>GTIN</th>
+                <th>Recorded Timestamp</th>
+                <th>SHA-256 Hash</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fsma-records-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: PREPRESS EXPORT CENTER -->
+    <section id="tab-exports" class="tab-pane">
+      <div class="card">
+        <div class="card-title">
+          <span>Prepress Packaging Export Station</span>
+          <span class="badge badge-cyan">AIR-GAPPED WORKSTATION</span>
+        </div>
+
+        <div class="grid-2">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+            <h4 style="margin-bottom: 8px;">Vector Packaging Labels (SVG)</h4>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
+              Export resolution-independent vectors for prepress packaging die-line integration in Adobe Illustrator, Esko, and CAD.
+            </p>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="btn-export-combined-svg">Download Dual-Code Die-Line SVG</button>
+              <button class="btn btn-secondary" id="btn-print-labels">Print Packaging Proof Sheet</button>
+            </div>
+          </div>
+
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+            <h4 style="margin-bottom: 8px;">Zero-SaaS SQLite & Edge Code</h4>
+            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
+              Package all active routing tables into zero-telemetry self-hosted files.
+            </p>
+            <div class="btn-row">
+              <button class="btn btn-emerald" id="btn-export-all-rules">Download Routing Bundle (.zip/.json)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/audio.js"></script>
+  <script src="js/qrcode_embedded.js"></script>
+  <script src="js/barcode1d.js"></script>
+  <script src="js/gs1_digitallink.js"></script>
+  <script src="js/clearance_inspector.js"></script>
+  <script src="js/dynamic_resolver.js"></script>
+  <script src="js/scanner_dewarp.js"></script>
+  <script src="js/fsma_logger.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,293 @@
+/**
+ * DualMark Studio — Self-Hosted Dynamic Link Resolver (Zero-SaaS Engine)
+ * Compiles routing tables, geo-targeted content switches, and instant recall kill-switches.
+ * Generates standalone SQLite databases, JSON rules, Cloudflare Workers, and Nginx edge maps.
+ */
+(function(window) {
+  'use strict';
+
+  var DEFAULT_RULES = [
+    {
+      id: 'rule_1',
+      gtin: '00812345678901',
+      itemTitle: 'Organic Cold-Pressed Almond Milk 32oz',
+      lot: 'BATCH-2026-A',
+      serial: '*',
+      isRecalled: false,
+      recallNoticeUrl: 'https://safety.brand.com/recall-alert/fda-2026-almond',
+      defaultUrl: 'https://brand.com/products/almond-milk',
+      geoRules: [
+        { country: 'US', targetUrl: 'https://brand.com/us/nutrition/almond-milk' },
+        { country: 'FR', targetUrl: 'https://brand.com/fr/tri-recyclage-almond' },
+        { country: 'DE', targetUrl: 'https://brand.com/de/pfand-ruecknahme-almond' },
+        { country: 'JP', targetUrl: 'https://brand.com/jp/allergen-spec-almond' }
+      ]
+    },
+    {
+      id: 'rule_2',
+      gtin: '00854921004128',
+      itemTitle: 'Infant Formula Powder 400g (Stage 1)',
+      lot: 'LOT-9924-REV',
+      serial: 'SN-00100..SN-00500',
+      isRecalled: true,
+      recallNoticeUrl: 'https://recalls.fda.gov/cfsan/2026/safety-alert-formula',
+      defaultUrl: 'https://brand.com/baby/stage-1',
+      geoRules: [
+        { country: 'US', targetUrl: 'https://brand.com/us/baby/stage-1-safety' },
+        { country: 'CA', targetUrl: 'https://brand.com/ca/recall-warning-formula' }
+      ]
+    }
+  ];
+
+  function DynamicResolver() {
+    this.rules = JSON.parse(localStorage.getItem('dualmark_resolver_rules') || 'null') || DEFAULT_RULES;
+  }
+
+  DynamicResolver.prototype = {
+    save: function() {
+      localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+    },
+
+    getRules: function() {
+      return this.rules;
+    },
+
+    addRule: function(rule) {
+      if (!rule.id) rule.id = 'rule_' + Date.now();
+      this.rules.unshift(rule);
+      this.save();
+      return rule;
+    },
+
+    updateRule: function(id, updatedFields) {
+      for (var i = 0; i < this.rules.length; i++) {
+        if (this.rules[i].id === id) {
+          Object.assign(this.rules[i], updatedFields);
+          this.save();
+          return this.rules[i];
+        }
+      }
+      return null;
+    },
+
+    deleteRule: function(id) {
+      this.rules = this.rules.filter(function(r) { return r.id !== id; });
+      this.save();
+    },
+
+    toggleRecall: function(id) {
+      for (var i = 0; i < this.rules.length; i++) {
+        if (this.rules[i].id === id) {
+          this.rules[i].isRecalled = !this.rules[i].isRecalled;
+          this.save();
+          return this.rules[i];
+        }
+      }
+      return null;
+    },
+
+    // Resolve URL for incoming request
+    resolve: function(gtin, lot, serial, countryCode) {
+      countryCode = (countryCode || 'US').toUpperCase();
+      for (var i = 0; i < this.rules.length; i++) {
+        var r = this.rules[i];
+        if (r.gtin === gtin) {
+          // Check lot match if specified
+          if (r.lot && r.lot !== '*' && lot && r.lot !== lot) continue;
+
+          // 1. Instant Recall Kill-Switch overrides everything
+          if (r.isRecalled) {
+            return {
+              targetUrl: r.recallNoticeUrl,
+              ruleMatched: r.id,
+              status: 'RECALLED_SAFETY_OVERRIDE',
+              message: 'EMERGENCY RECALL KILL-SWITCH ACTIVE'
+            };
+          }
+
+          // 2. Geo-targeted rules
+          if (r.geoRules && r.geoRules.length > 0) {
+            for (var g = 0; g < r.geoRules.length; g++) {
+              if (r.geoRules[g].country === countryCode) {
+                return {
+                  targetUrl: r.geoRules[g].targetUrl,
+                  ruleMatched: r.id,
+                  status: 'GEO_MATCH',
+                  country: countryCode
+                };
+              }
+            }
+          }
+
+          // 3. Default fallback
+          return {
+            targetUrl: r.defaultUrl,
+            ruleMatched: r.id,
+            status: 'DEFAULT_FALLBACK'
+          };
+        }
+      }
+
+      return {
+        targetUrl: 'https://id.dualmark.studio/01/' + gtin + '?status=unregistered',
+        ruleMatched: null,
+        status: 'UNREGISTERED_GTIN'
+      };
+    },
+
+    // Export 1: SQLite Database DDL & Data Dump (.sql / .sqlite)
+    exportSqlScript: function() {
+      var lines = [
+        '-- DualMark Studio Self-Hosted Dynamic Link Resolver',
+        '-- Zero-SaaS SQLite Routing Database Schema & Seed Data',
+        '-- Compliant with GS1 Digital Link Standard v1.2',
+        '',
+        'PRAGMA foreign_keys = ON;',
+        'BEGIN TRANSACTION;',
+        '',
+        'CREATE TABLE IF NOT EXISTS gs1_routes (',
+        '    id TEXT PRIMARY KEY,',
+        '    gtin TEXT NOT NULL,',
+        '    item_title TEXT,',
+        '    lot_pattern TEXT DEFAULT "*",',
+        '    serial_pattern TEXT DEFAULT "*",',
+        '    is_recalled INTEGER NOT NULL DEFAULT 0,',
+        '    recall_url TEXT,',
+        '    default_url TEXT NOT NULL,',
+        '    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+        ');',
+        '',
+        'CREATE TABLE IF NOT EXISTS gs1_geo_redirects (',
+        '    id INTEGER PRIMARY KEY AUTOINCREMENT,',
+        '    route_id TEXT NOT NULL,',
+        '    country_code TEXT NOT NULL,',
+        '    target_url TEXT NOT NULL,',
+        '    FOREIGN KEY (route_id) REFERENCES gs1_routes(id) ON DELETE CASCADE',
+        ');',
+        '',
+        'CREATE INDEX IF NOT EXISTS idx_gs1_routes_gtin ON gs1_routes(gtin);',
+        'CREATE INDEX IF NOT EXISTS idx_gs1_geo ON gs1_geo_redirects(route_id, country_code);',
+        ''
+      ];
+
+      for (var i = 0; i < this.rules.length; i++) {
+        var r = this.rules[i];
+        lines.push("INSERT INTO gs1_routes (id, gtin, item_title, lot_pattern, serial_pattern, is_recalled, recall_url, default_url) VALUES (" +
+          "'" + r.id + "', " +
+          "'" + r.gtin + "', " +
+          "'" + (r.itemTitle || '').replace(/'/g, "''") + "', " +
+          "'" + (r.lot || '*').replace(/'/g, "''") + "', " +
+          "'" + (r.serial || '*').replace(/'/g, "''") + "', " +
+          (r.isRecalled ? 1 : 0) + ", " +
+          "'" + (r.recallNoticeUrl || '').replace(/'/g, "''") + "', " +
+          "'" + (r.defaultUrl || '').replace(/'/g, "''") + "'" +
+          ");"
+        );
+
+        if (r.geoRules && r.geoRules.length > 0) {
+          for (var g = 0; g < r.geoRules.length; g++) {
+            var geo = r.geoRules[g];
+            lines.push("INSERT INTO gs1_geo_redirects (route_id, country_code, target_url) VALUES (" +
+              "'" + r.id + "', " +
+              "'" + geo.country + "', " +
+              "'" + geo.targetUrl.replace(/'/g, "''") + "'" +
+              ");"
+            );
+          }
+        }
+      }
+
+      lines.push('');
+      lines.push('COMMIT;');
+      return lines.join('\n');
+    },
+
+    // Export 2: Static JSON Rules Manifest
+    exportJsonRules: function() {
+      return JSON.stringify({
+        schemaVersion: '1.2.0',
+        generatedAt: new Date().toISOString(),
+        engine: 'DualMark Studio Zero-SaaS Edge Resolver',
+        ruleCount: this.rules.length,
+        routes: this.rules
+      }, null, 2);
+    },
+
+    // Export 3: Cloudflare Workers Script (Zero-SaaS edge server)
+    exportCloudflareWorker: function() {
+      return [
+        '/**',
+        ' * DualMark Studio — Cloudflare Worker Edge Resolver',
+        ' * Zero-SaaS Dynamic Link Resolver for GS1 Digital Link Sunrise 2027',
+        ' */',
+        'const ROUTES = ' + JSON.stringify(this.rules, null, 2) + ';',
+        '',
+        'addEventListener("fetch", event => {',
+        '  event.respondWith(handleRequest(event.request));',
+        '});',
+        '',
+        'async function handleRequest(request) {',
+        '  const url = new URL(request.url);',
+        '  const country = request.headers.get("cf-ipcountry") || "US";',
+        '  const match = url.pathname.match(/^\\/01\\/(\\d{14})(?:\\/10\\/([^/]+))?(?:\\/21\\/([^/]+))?/);',
+        '',
+        '  if (!match) {',
+        '    return new Response("DualMark Edge Resolver: Scan a valid GS1 Digital Link", { status: 404 });',
+        '  }',
+        '',
+        '  const gtin = match[1];',
+        '  const lot = match[2] || "";',
+        '  const serial = match[3] || "";',
+        '',
+        '  for (const rule of ROUTES) {',
+        '    if (rule.gtin === gtin) {',
+        '      // Recall kill-switch takes immediate precedence',
+        '      if (rule.isRecalled) {',
+        '        return Response.redirect(rule.recallNoticeUrl, 302);',
+        '      }',
+        '      // Geo-target rules',
+        '      if (rule.geoRules) {',
+        '        const geo = rule.geoRules.find(g => g.country === country);',
+        '        if (geo) return Response.redirect(geo.targetUrl, 302);',
+        '      }',
+        '      return Response.redirect(rule.defaultUrl, 302);',
+        '    }',
+        '  }',
+        '',
+        '  return new Response("GTIN not found in local routing table: " + gtin, { status: 404 });',
+        '}'
+      ].join('\n');
+    },
+
+    // Export 4: Nginx Map Configuration
+    exportNginxConfig: function() {
+      var lines = [
+        '# DualMark Studio — Nginx GS1 Digital Link Map Configuration',
+        '# Include in /etc/nginx/conf.d/gs1_routes.conf',
+        '',
+        'map $uri $gs1_redirect_target {'
+      ];
+
+      for (var i = 0; i < this.rules.length; i++) {
+        var r = this.rules[i];
+        var target = r.isRecalled ? r.recallNoticeUrl : r.defaultUrl;
+        lines.push('    "~^/01/' + r.gtin + '"    ' + target + ';');
+      }
+
+      lines.push('    default    https://id.dualmark.studio/not-found;');
+      lines.push('}');
+      lines.push('');
+      lines.push('server {');
+      lines.push('    listen 80;');
+      lines.push('    server_name id.brand.com;');
+      lines.push('    location /01/ {');
+      lines.push('        return 302 $gs1_redirect_target;');
+      lines.push('    }');
+      lines.push('}');
+      return lines.join('\n');
+    }
+  };
+
+  window.DualMarkResolver = new DynamicResolver();
+
+})(window);
