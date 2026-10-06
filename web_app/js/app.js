@@ -163,13 +163,22 @@
       }
     }
 
+    var weight2d = document.getElementById('synth-2d-weight');
+    var price2d = document.getElementById('synth-2d-price');
+    var po2d = document.getElementById('synth-2d-po');
+    var origin2d = document.getElementById('synth-2d-origin');
+
     function update2D() {
       var uri = window.DualMarkGS1.buildDigitalLinkUri({
         domain: domain2d.value,
         gtin: gtin2d.value,
         lot: lot2d.value,
         serial: serial2d.value,
-        expiration: exp2d.value
+        expiration: exp2d.value,
+        weight: weight2d ? weight2d.value.trim() : null,
+        price: price2d ? price2d.value.trim() : null,
+        po: po2d ? po2d.value.trim() : null,
+        origin: origin2d ? origin2d.value.trim() : null
       });
       preview2d.textContent = uri;
       window.DualMarkGS1.renderQrCanvas(canvas2d, uri, { cellSize: 5, margin: 3 });
@@ -178,8 +187,8 @@
     typeSelect.addEventListener('change', update1D);
     input1d.addEventListener('input', update1D);
 
-    [domain2d, gtin2d, lot2d, serial2d, exp2d].forEach(function(el) {
-      el.addEventListener('input', update2D);
+    [domain2d, gtin2d, lot2d, serial2d, exp2d, weight2d, price2d, po2d, origin2d].forEach(function(el) {
+      if (el) el.addEventListener('input', update2D);
     });
 
     // Downloads
@@ -215,6 +224,49 @@
       }
       window.DualMarkAudio.click();
     });
+
+    // GS1 Digital Link Conformance Test Suite
+    var btnConformance = document.getElementById('btn-gs1-conformance');
+    var conformanceResult = document.getElementById('gs1-conformance-result');
+    if (btnConformance && conformanceResult) {
+      btnConformance.addEventListener('click', function() {
+        var uri = preview2d.textContent;
+        var res = window.DualMarkGS1.validateConformance(uri);
+        conformanceResult.style.display = 'block';
+        if (res.valid) {
+          conformanceResult.innerHTML = '<span style="color:var(--emerald); font-weight:bold;">✓ GS1 CONFORMANCE PASSED</span> (Score: ' + res.score + '/100)<br>' +
+            '<span style="color:var(--text-secondary);">' + res.details.join(' | ') + '</span>';
+          showToast('✓ GS1 Digital Link Conformance Verified');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        } else {
+          conformanceResult.innerHTML = '<span style="color:var(--rose); font-weight:bold;">✗ GS1 CONFORMANCE FAILED</span><br>' +
+            '<span style="color:var(--rose);">' + res.errors.join('<br>') + '</span>';
+          showToast('⚠ GS1 Conformance Issues Detected');
+          if (window.DualMarkAudio) window.DualMarkAudio.warningBuzz();
+        }
+      });
+    }
+
+    // PIM / DAM Metadata Export (Salsify, Syndigo, 1WorldSync)
+    var btnExportPim = document.getElementById('btn-export-pim');
+    if (btnExportPim) {
+      btnExportPim.addEventListener('click', function() {
+        var gtin = gtin2d.value.trim();
+        var pimData = window.DualMarkGS1.exportPimFormat({
+          gtin: gtin,
+          lot: lot2d.value.trim(),
+          serial: serial2d.value.trim(),
+          expiration: exp2d.value.trim(),
+          weight: weight2d ? weight2d.value.trim() : null,
+          price: price2d ? price2d.value.trim() : null,
+          po: po2d ? po2d.value.trim() : null,
+          origin: origin2d ? origin2d.value.trim() : null
+        });
+        downloadBlob(JSON.stringify(pimData, null, 2), 'DualMark_PIM_Syndication_' + gtin + '.json', 'application/json');
+        showToast('📦 PIM / DAM Metadata Exported (Salsify, Syndigo, 1WorldSync)');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
 
     // GS1 GEPIR Prefix Validation Button
     var btnGepir = document.getElementById('btn-gepir-validate');
@@ -295,6 +347,59 @@
       showToast('⚡ Snapped to 52mm Safe Distance');
       window.DualMarkAudio.successChime();
     });
+
+    // ISO/IEC 15416 & 15415 Optical Verification & NIST Calibration
+    var btnIsoGrading = document.getElementById('btn-run-iso-grading');
+    var btnNistCal = document.getElementById('btn-nist-calibration');
+    var isoResultsWrap = document.getElementById('iso-grading-results');
+    var isoGradeBadge = document.getElementById('iso-overall-grade-badge');
+    var isoMetricsWrap = document.getElementById('iso-metrics-table-wrap');
+    var isoComplianceBadge = document.getElementById('iso-compliance-badge');
+
+    if (btnIsoGrading && window.DualMarkIsoVerifier) {
+      btnIsoGrading.addEventListener('click', function() {
+        var canvas1d = document.getElementById('canvas-1d');
+        var canvas2d = document.getElementById('canvas-2d');
+        var report1d = window.DualMarkIsoVerifier.gradeBarcode1D(canvas1d);
+        var report2d = window.DualMarkIsoVerifier.gradeBarcode2D(canvas2d);
+
+        var overallLetter = (report1d.overallGrade.letter === 'A' && report2d.overallGrade.letter === 'A') ? 'A' :
+                            (report1d.overallGrade.numeric < report2d.overallGrade.numeric ? report1d.overallGrade.letter : report2d.overallGrade.letter);
+        var overallNumeric = Math.min(report1d.overallGrade.numeric, report2d.overallGrade.numeric).toFixed(1);
+
+        if (isoResultsWrap) isoResultsWrap.style.display = 'block';
+        if (isoGradeBadge) {
+          isoGradeBadge.textContent = 'GRADE ' + overallLetter + ' (' + overallNumeric + ' / 4.0)';
+          isoGradeBadge.className = (overallLetter === 'A' || overallLetter === 'B') ? 'badge badge-green' : 'badge badge-rose';
+        }
+
+        if (isoMetricsWrap) {
+          isoMetricsWrap.innerHTML = [
+            '<table class="data-table" style="margin-top:8px;">',
+            '<thead><tr><th>Standard</th><th>Symbology</th><th>Rmin</th><th>Symbol Contrast</th><th>Modulation</th><th>Decodability / ANU</th><th>Defects</th><th>Grade</th></tr></thead>',
+            '<tbody>',
+            '<tr><td>ISO/IEC 15416</td><td>' + report1d.symbology + '</td><td>' + report1d.metrics.rmin + '</td><td>' + report1d.metrics.symbolContrast + '%</td><td>' + report1d.metrics.modulation + '</td><td>' + report1d.metrics.decodability + '</td><td>' + report1d.metrics.defects + '</td><td><strong>Grade ' + report1d.overallGrade.letter + '</strong></td></tr>',
+            '<tr><td>ISO/IEC 15415</td><td>' + report2d.symbology + '</td><td>' + report2d.metrics.rmin + '</td><td>' + report2d.metrics.symbolContrast + '%</td><td>' + report2d.metrics.modulation + '</td><td>' + report2d.metrics.axialNonUniformity + '</td><td>' + report2d.metrics.defects + '</td><td><strong>Grade ' + report2d.overallGrade.letter + '</strong></td></tr>',
+            '</tbody></table>'
+          ].join('');
+        }
+
+        showToast('✓ Optical Verification: ISO Grade ' + overallLetter + ' (' + overallNumeric + ')');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    if (btnNistCal && window.DualMarkIsoVerifier) {
+      btnNistCal.addEventListener('click', function() {
+        var cal = window.DualMarkIsoVerifier.performNistCalibration();
+        if (isoComplianceBadge) {
+          isoComplianceBadge.textContent = 'NIST CALIBRATED (FACTOR ' + cal.calibrationFactor + ')';
+          isoComplianceBadge.className = 'badge badge-green';
+        }
+        showToast('⚖️ NIST Calibration Verified: ' + cal.certificateId + ' (Drift: ' + cal.sensorDrift + ')');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
 
     window.clearanceInspector.render();
   }
@@ -535,6 +640,35 @@
         showToast('Please load a document image first');
       }
     });
+
+    // Cylindrical Surface Ray-Marching Unrolling
+    var cylRadiusSlider = document.getElementById('cyl-radius-slider');
+    var cylRadiusVal = document.getElementById('cyl-radius-val');
+    var btnUnrollCyl = document.getElementById('btn-unroll-cylindrical');
+    var cylCanvas = document.getElementById('canvas-cyl-unroll');
+    var cylWrap = document.getElementById('cyl-unroll-preview-wrap');
+
+    if (cylRadiusSlider && cylRadiusVal) {
+      cylRadiusSlider.addEventListener('input', function() {
+        cylRadiusVal.textContent = this.value + ' mm';
+      });
+    }
+
+    if (btnUnrollCyl && cylCanvas && window.DualMarkDewarp) {
+      btnUnrollCyl.addEventListener('click', function() {
+        var sourceCanvas = document.getElementById('canvas-1d') || document.getElementById('canvas-dewarp');
+        if (!sourceCanvas) return;
+        var radiusMm = cylRadiusSlider ? parseFloat(cylRadiusSlider.value) : 33;
+        var unrolled = window.DualMarkDewarp.unrollCylindricalSurface(sourceCanvas, radiusMm);
+        cylCanvas.width = unrolled.width;
+        cylCanvas.height = unrolled.height;
+        var ctx = cylCanvas.getContext('2d');
+        ctx.drawImage(unrolled, 0, 0);
+        if (cylWrap) cylWrap.style.display = 'block';
+        showToast('✓ Cylindrical Ray-Marching Unroll Applied (' + radiusMm + ' mm radius)');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
   }
 
   // 6. Module 5: FSMA Traceability & PDF Dossier
@@ -555,6 +689,10 @@
       tableBody.innerHTML = '';
       records.forEach(function(rec) {
         var tr = document.createElement('tr');
+        var sigBadge = rec.part11Signature
+          ? '<span class="badge badge-green" title="' + (rec.part11Signature.signerName || 'Signed') + '">✓ ECDSA P-256</span>'
+          : '<span class="badge badge-cyan" style="opacity:0.6;">Unsigned</span>';
+
         tr.innerHTML = [
           '<td><strong>' + rec.id + '</strong></td>',
           '<td>' + rec.eventType + '</td>',
@@ -562,6 +700,7 @@
           '<td>' + rec.gtin + '</td>',
           '<td>' + new Date(rec.recordedAt).toLocaleString() + '</td>',
           '<td><small style="font-family:monospace; color:#38BDF8;">' + rec.sha256.substring(0, 16) + '...</small></td>',
+          '<td>' + sigBadge + '</td>',
           '<td>' +
             '<button class="btn btn-secondary btn-sm pdf-btn" data-id="' + rec.id + '">📄 PDF Dossier</button> ' +
             '<button class="btn btn-danger btn-sm del-btn" data-id="' + rec.id + '">×</button>' +
@@ -591,6 +730,54 @@
           renderRecordsTable();
           showToast('Record deleted');
         });
+      });
+    }
+
+    // FDA 24-Hour Sortable Spreadsheet CSV Export
+    var btnFdaCsv = document.getElementById('btn-export-fda-csv');
+    if (btnFdaCsv) {
+      btnFdaCsv.addEventListener('click', function() {
+        var csv = window.DualMarkFsma.exportFdaSortableSpreadsheet();
+        downloadBlob(csv, 'FDA_FSMA204_Sortable_Spreadsheet.csv', 'text/csv');
+        showToast('📊 FDA 24-Hour Sortable Spreadsheet Exported');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // GS1 EPCIS 2.0 JSON-LD Export
+    var btnEpcis = document.getElementById('btn-export-epcis-jsonld');
+    if (btnEpcis) {
+      btnEpcis.addEventListener('click', function() {
+        var epcis = window.DualMarkFsma.exportEpcisJsonLd();
+        downloadBlob(epcis, 'DualMark_EPCIS20_Events.jsonld', 'application/ld+json');
+        showToast('🔗 GS1 EPCIS 2.0 JSON-LD Exported');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // 21 CFR Part 11 Digital Signature Sign-Off
+    var btnSign = document.getElementById('btn-sign-part11');
+    var part11Msg = document.getElementById('part11-status-msg');
+    if (btnSign) {
+      btnSign.addEventListener('click', async function() {
+        var records = window.DualMarkFsma.getRecords();
+        if (records.length === 0) {
+          showToast('No CTE records available to sign');
+          return;
+        }
+        var latest = records[0];
+        await window.DualMarkFsma.signRecord21CfrPart11(
+          latest.id,
+          'Quality Assurance Director',
+          'Reviewer & Compliance Officer'
+        );
+        renderRecordsTable();
+        if (part11Msg) {
+          part11Msg.style.display = 'block';
+          part11Msg.textContent = '✓ Record ' + latest.id + ' digitally signed per 21 CFR Part 11 (ECDSA P-256 / SHA-256).';
+        }
+        showToast('✍️ 21 CFR Part 11 Cryptographic Sign-Off Applied');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
 
@@ -739,6 +926,94 @@
           showToast('✓ Ultra High-Res Vector PDF (1200 DPI Equivalent) Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
         });
+      });
+    }
+
+    // Pantone Spot Separation EPS Export
+    var btnPantoneEps = document.getElementById('btn-export-pantone-eps');
+    if (btnPantoneEps) {
+      btnPantoneEps.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_cmyk_eps', function() {
+          var data = getActivePrepressData();
+          var eps = window.DualMarkPrepress.generatePantoneEps(data.barcode1d, data.qrMatrix);
+          window.DualMarkPrepress.downloadFile(eps, 'DualMark_Pantone_Spot_Separation.eps', 'application/postscript');
+          showToast('✓ Pantone Spot Separation (Process Black C & Rubine Red C) EPS Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
+
+    // Adobe Illustrator Layered PDF (OCG) Export
+    var btnLayeredPdf = document.getElementById('btn-export-layered-pdf');
+    if (btnLayeredPdf) {
+      btnLayeredPdf.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
+          var data = getActivePrepressData();
+          var clearanceMm = window.clearanceInspector ? window.clearanceInspector.getMetrics().edgeDistanceMm : 52;
+          var pdf = window.DualMarkPrepress.generateLayeredPdf(data.barcode1d, data.qrMatrix, { clearanceMm: clearanceMm });
+          window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Layered_Illustrator_OCG.pdf', 'application/pdf');
+          showToast('✓ Adobe Illustrator Layered PDF (OCG) Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
+
+    // Zebra ZPL II Thermal Printer Generator
+    var btnGenZpl = document.getElementById('btn-generate-zpl');
+    var btnCopyZpl = document.getElementById('btn-copy-zpl');
+    var btnDownloadZpl = document.getElementById('btn-download-zpl');
+    var zplDpiSelect = document.getElementById('zpl-dpi-select');
+    var zplOutputPreview = document.getElementById('zpl-output-preview');
+
+    function getActiveZpl() {
+      var val1d = (document.getElementById('synth-1d-input') && document.getElementById('synth-1d-input').value.trim()) || '081234567890';
+      var uri2d = (document.getElementById('synth-2d-uri-preview') && document.getElementById('synth-2d-uri-preview').textContent) || 'https://id.brand.com/01/00812345678901';
+      var lot = (document.getElementById('synth-2d-lot') && document.getElementById('synth-2d-lot').value.trim()) || 'LOT-2026-X';
+      var dpi = zplDpiSelect ? parseInt(zplDpiSelect.value, 10) : 203;
+
+      if (window.DualMarkZpl) {
+        return window.DualMarkZpl.generateDualMarkZpl({
+          gtin: val1d,
+          digitalLinkUri: uri2d,
+          lot: lot,
+          dpi: dpi,
+          clearanceMm: 52
+        });
+      }
+      return '^XA\n^FO50,50^BCN,100,Y,N,N^FD>:' + val1d + '^FS\n^XZ';
+    }
+
+    if (btnGenZpl && zplOutputPreview) {
+      btnGenZpl.addEventListener('click', function() {
+        var zpl = getActiveZpl();
+        zplOutputPreview.textContent = zpl;
+        showToast('⚡ Zebra ZPL II Command Stream Generated');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    if (btnCopyZpl) {
+      btnCopyZpl.addEventListener('click', function() {
+        var zpl = zplOutputPreview.textContent;
+        if (zpl.indexOf('^XA') === -1) zpl = getActiveZpl();
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(zpl).then(function() {
+            showToast('📋 Copied ZPL Code to Clipboard');
+          });
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    if (btnDownloadZpl) {
+      btnDownloadZpl.addEventListener('click', function() {
+        var zpl = zplOutputPreview.textContent;
+        if (zpl.indexOf('^XA') === -1) zpl = getActiveZpl();
+        downloadBlob(zpl, 'DualMark_Zebra_Sunrise2027.zpl', 'text/plain');
+        showToast('💾 Zebra ZPL File Downloaded');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
   }

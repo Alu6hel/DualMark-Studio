@@ -1,0 +1,9 @@
+DualMark Studio es la estación de trabajo industrial líder para el cumplimiento normativo del empaque y la preimpresión de códigos de barras, diseñada para la transición GS1 Sunrise 2027 y la norma FDA FSMA 204.
+
+CARACTERÍSTICAS PRINCIPALES:
+• Síntesis de códigos duales: Genere códigos 1D (UPC-A, EAN-13, ITF-14) y códigos 2D GS1 Digital Link v1.2 de alta precisión.
+• Inspector óptico de 50 mm: Valide en tiempo real la distancia mínima de separación de 50 mm para evitar interferencias en escáneres POS.
+• Preprensa industrial CMYK y BWR: Exportación EPS PostScript Nivel 3 y PDF vectorial a 1200 DPI con compensación de ganancia de punto.
+• Impresión térmica Zebra ZPL II: Código nativo directo para aplicadores industriales.
+• Registro FDA FSMA 204 y EPCIS 2.0: Trazabilidad criptográfica SHA-256 y exportación de hoja electrónica conforme al modelo FDA.
+• 100% Sin conexión (Air-Gapped): Procesamiento local con cero recolección de datos.

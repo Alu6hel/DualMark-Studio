@@ -7,7 +7,7 @@
   'use strict';
 
   function QRCode(typeNumber, errorCorrectionLevel) {
-    this.typeNumber = typeNumber || 4;
+    this.typeNumber = (typeof typeNumber === 'number') ? typeNumber : 0;
     this.errorCorrectionLevel = errorCorrectionLevel || 'M';
     this.modules = null;
     this.moduleCount = 0;

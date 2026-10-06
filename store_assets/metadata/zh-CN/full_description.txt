@@ -1,0 +1,10 @@
+DualMark Studio 是一款完全离线运行的企业级包装印前制版与全链条追溯工作站，专为 GS1 Digital Link（Sunrise 2027）转型与美国 FDA FSMA Rule 204 食品追溯法规打造。
+
+核心特性：
+• 双码合成引擎：同步生成 1D 零售条码（UPC-A、EAN-13、Code 128、ITF-14）与 2D GS1 Digital Link 矢量码。
+• 50mm 刀模安全间距检测：实时验证条码间距 ≥ 50 mm，杜绝零售 POS 收银扫描交叉串读。
+• ISO/IEC 15416 与 15415 光学校验：反射率轮廓评级（符号反差、调制比、缺陷度、可译码度），支持 NIST 溯源校准。
+• PostScript Level 3 专色分色与分层 PDF（OCG）：导出潘通专色分色（专色黑与红宝石红刀模线）及 Adobe Illustrator / Esko 专用分层矢量文件。
+• 斑马 Zebra ZPL II 工业热敏打印：原生生成 203/300/600 DPI 热敏条码指令流。
+• FDA FSMA 204 与 EPCIS 2.0 追溯：结构化记录关键追溯事件（CTE/KDE），支持 24 小时合规电子表格导出及 21 CFR Part 11 电子签名（ECDSA P-256）。
+• 零网络依赖与数据隐私安全：100% 离线端侧运算，不收集或上传任何数据。

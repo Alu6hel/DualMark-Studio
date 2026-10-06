@@ -1,0 +1,10 @@
+DualMark Studio ist eine professionelle, autarke Arbeitsstation für Verpackungsvorbereitung, Druckvorstufe und lückenlose Rückverfolgbarkeit nach dem Standard GS1 Digital Link und der FDA FSMA Rule 204.
+
+HAUPTFUNKTIONEN:
+• Dual-Code Synthesizer: Parallele Generierung von 1D-Barcodes (UPC-A, EAN-13, Code 128, ITF-14) und 2D GS1 Digital Link QR-Codes.
+• 50mm Stanzlinien-Abstandsprüfer: Gewährleistet ≥ 50 mm optischen Abstand zur Vermeidung von Scanner-Störungen an Hochgeschwindigkeits-Kassensystemen gemäß GS1 Sunrise 2027.
+• ISO/IEC 15416 & 15415 Optische Qualitätsprüfung: Messung von Symbolkontrast, Modulation, Defekten und Decodierbarkeit mit NIST-rückführbarer Kalibrierung.
+• PostScript Level 3 & PDF OCG Export: Erzeugung von Pantone-Sonderfarbenauszügen (Prozess-Schwarz & Rubine Red Stanzlinie) und ebenenbasierten PDFs für Adobe Illustrator und Esko RIP.
+• Zebra ZPL II Direktthermodruck: Native Druckersteuerung für 203, 300 und 600 DPI Thermo- und Thermotransferdrucker.
+• FDA FSMA Rule 204 & EPCIS 2.0: Lückenlose Erfassung von Critical Tracking Events (CTEs) und Key Data Elements (KDEs), 24-Stunden-FDA-Tabellenexport und 21 CFR Part 11 digitale Signatur (ECDSA P-256).
+• 100% Offline & Datenschutzkonform: Funktioniert vollständig ohne Internetverbindung, keinerlei Datenübertragung an Dritte.

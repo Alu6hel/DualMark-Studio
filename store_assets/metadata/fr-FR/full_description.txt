@@ -1,0 +1,10 @@
+DualMark Studio est un poste de travail prépresse autonome et sécurisé conçu pour la transition GS1 Digital Link (Sunrise 2027) et la conformité réglementaire FDA FSMA Rule 204.
+
+FONCTIONNALITÉS CLÉS :
+• Synthétiseur double code : Génération vectorielle simultanée de codes-barres 1D (UPC-A, EAN-13, Code 128, ITF-14) et de codes 2D GS1 Digital Link.
+• Inspecteur de gabarit 50 mm : Contrôle en temps réel du dégagement optique ≥ 50 mm évitant les collisions de lecture aux caisses automatiques.
+• Vérification optique ISO/IEC 15416 & 15415 : Analyse du contraste, de la modulation et des défauts avec étalonnage traçable NIST.
+• Exportation prépresse PostScript L3 & PDF OCG : Séparation ton direct Pantone (Noir quadri et repère Rubine Red) et calques vectoriels pour Adobe Illustrator et Esko.
+• Moteur Zebra ZPL II : Synthèse de flux natifs 203, 300 et 600 DPI pour imprimantes thermiques industrielles.
+• Traçabilité FDA FSMA 204 & EPCIS 2.0 : Enregistrement certifié des événements CTE/KDE, tableur FDA 24h et signature électronique sécurisée 21 CFR Part 11 (ECDSA P-256).
+• Fonctionnement 100 % hors ligne : Traitement local strict, aucune collecte ni partage de données.

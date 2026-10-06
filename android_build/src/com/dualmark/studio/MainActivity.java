@@ -290,6 +290,25 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public boolean clearAllUserData() {
+            runOnUiThread(() -> {
+                try {
+                    getSharedPreferences("dualmark_prefs", MODE_PRIVATE).edit().clear().apply();
+                    if (webView != null) {
+                        webView.clearCache(true);
+                        webView.clearFormData();
+                        webView.clearHistory();
+                        webView.evaluateJavascript("localStorage.clear(); sessionStorage.clear(); location.reload();", null);
+                    }
+                    Toast.makeText(MainActivity.this, "✓ All User Data & Cache Purged", Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error clearing user data", e);
+                }
+            });
+            return true;
+        }
     }
 
     private void registerEnterpriseScannerReceiver() {

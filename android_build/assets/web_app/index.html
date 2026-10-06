@@ -113,9 +113,32 @@
             <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD (e.g. 271231)">
           </div>
 
+          <!-- Extended GS1 Application Identifiers (AIs) -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px;">Extended GS1 AIs (Supply Chain &amp; Logistics)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px;">Net Weight kg (AI 3102)</label>
+                <input type="text" id="synth-2d-weight" class="mono-input" value="001500" placeholder="e.g. 001500 (15.00kg)">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px;">Price Payable (AI 3922)</label>
+                <input type="text" id="synth-2d-price" class="mono-input" value="001999" placeholder="e.g. 001999 ($19.99)">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px;">PO Number (AI 400)</label>
+                <input type="text" id="synth-2d-po" class="mono-input" value="PO-88391" placeholder="e.g. PO-88391">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px;">Country Origin (AI 422)</label>
+                <input type="text" id="synth-2d-origin" class="mono-input" value="840" placeholder="ISO 3166-1 (840=USA)">
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
             <label>Synthesized Standard GS1 Digital Link URI</label>
-            <div class="code-block" id="synth-2d-uri-preview">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231</div>
+            <div class="code-block" id="synth-2d-uri-preview">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
           </div>
 
           <div class="barcode-preview-box">
@@ -125,7 +148,12 @@
           <div class="btn-row">
             <button class="btn btn-emerald" id="btn-2d-svg">Download 2D Vector SVG</button>
             <button class="btn btn-secondary" id="btn-2d-copy">Copy Digital Link URI</button>
+            <button class="btn btn-primary" id="btn-gs1-conformance">✓ GS1 Conformance Test Suite</button>
+            <button class="btn btn-secondary" id="btn-export-pim">📦 Export PIM/DAM (Salsify/Syndigo)</button>
           </div>
+          <div id="gs1-conformance-result" style="display:none; margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
+        </div>
+
         <!-- GS1 GEPIR Prefix Validation Card -->
         <div class="card" style="grid-column: 1 / -1; margin-top: 14px;">
           <div class="card-title">
@@ -194,6 +222,30 @@
           <div style="text-align: right;">
             <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
             <small style="color: var(--text-muted);">Threshold: 50.0 mm</small>
+          </div>
+        </div>
+
+        <!-- ISO/IEC Optical Verification & Calibration Station -->
+        <div class="card" style="margin-top: 18px;">
+          <div class="card-title">
+            <span>ISO/IEC 15416 &amp; 15415 Optical Grading Station</span>
+            <span class="badge badge-purple" id="iso-compliance-badge">CALIBRATED VERIFIER (ISO/IEC 15426)</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
+            Simulate an optical verification scan evaluating reflectance profiles (Rmin, Symbol Contrast, Modulation, Defects, Decodability, Axial Non-Uniformity) per ISO/IEC 15416 (1D) and ISO/IEC 15415 (2D) with NIST-traceable calibration.
+          </p>
+
+          <div class="btn-row" style="margin-bottom: 14px;">
+            <button class="btn btn-primary" id="btn-run-iso-grading">🔍 Run Full ISO Optical Grading</button>
+            <button class="btn btn-secondary" id="btn-nist-calibration">⚖️ NIST-Traceable Calibration Check</button>
+          </div>
+
+          <div id="iso-grading-results" style="display:none; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-weight: 700; font-size: 13px;">ISO/IEC Optical Grade Report</span>
+              <span id="iso-overall-grade-badge" class="badge badge-green" style="font-size: 14px; font-weight: 800;">GRADE A (4.0 / 4.0)</span>
+            </div>
+            <div id="iso-metrics-table-wrap" style="overflow-x: auto; font-size: 11px; font-family: var(--font-mono);"></div>
           </div>
         </div>
       </div>
@@ -317,6 +369,30 @@
             <button class="btn btn-emerald" id="btn-flatten-dewarp">Flatten & Binarize Document</button>
           </div>
         </div>
+
+        <!-- Cylindrical Surface Ray-Marching Dewarping -->
+        <div class="card" style="grid-column: 1 / -1; margin-top: 14px;">
+          <div class="card-title">
+            <span>Cylindrical Surface Ray-Marching Unroller</span>
+            <span class="badge badge-cyan">BEVERAGE CANS &amp; BOTTLES</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">
+            Correct optical barcode distortion on curved cylindrical containers (soda cans, bottles, tubes) using inverse ray-marching projection before barcode decoding.
+          </p>
+          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 220px;">
+              <label>Cylinder Radius: <strong id="cyl-radius-val" style="color: var(--cyan);">33 mm</strong> (Standard 12oz Can)</label>
+              <input type="range" id="cyl-radius-slider" min="15" max="80" value="33" style="width: 100%;">
+            </div>
+            <div style="margin-top: 10px;">
+              <button class="btn btn-secondary" id="btn-unroll-cylindrical">🔄 Unroll Cylindrical Curvature</button>
+            </div>
+          </div>
+          <div id="cyl-unroll-preview-wrap" style="display:none; margin-top: 12px; text-align: center;">
+            <canvas id="canvas-cyl-unroll" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);"></canvas>
+            <div style="font-size: 11px; color: var(--emerald); margin-top: 4px;">✓ Cylindrical curvature flattened into orthogonal scan plane.</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -381,8 +457,19 @@
           </div>
 
           <div class="btn-row" style="margin-top: 18px;">
-            <button class="btn btn-emerald" id="btn-commit-cte">Commit CTE & Generate PDF Dossier</button>
+            <button class="btn btn-emerald" id="btn-commit-cte">Commit CTE &amp; Generate PDF Dossier</button>
           </div>
+        </div>
+
+        <!-- FDA 204 & EPCIS 2.0 Regulatory Export Bar -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+          <div style="font-size: 13px; font-weight: 700; color: var(--emerald); margin-bottom: 8px;">FDA Rule 204 Compliance &amp; EPCIS 2.0 Export Suite</div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-export-fda-csv">📊 Export FDA 24-Hr Sortable Spreadsheet (CSV)</button>
+            <button class="btn btn-emerald" id="btn-export-epcis-jsonld">🔗 Export GS1 EPCIS 2.0 JSON-LD</button>
+            <button class="btn btn-secondary" id="btn-sign-part11">✍️ 21 CFR Part 11 Digital Sign-Off (ECDSA)</button>
+          </div>
+          <div id="part11-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--cyan); margin-top: 8px;"></div>
         </div>
 
         <!-- Logged CTEs Table -->
@@ -397,6 +484,7 @@
                 <th>GTIN</th>
                 <th>Recorded Timestamp</th>
                 <th>SHA-256 Hash</th>
+                <th>Part 11 Sig</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -463,8 +551,42 @@
           </div>
           <div class="btn-row">
             <button class="btn btn-primary" id="btn-export-cmyk-eps">Download PostScript Level 3 CMYK EPS</button>
-            <button class="btn btn-emerald" id="btn-export-pdf-600">Download Vector PDF (600 DPI)</button>
+            <button class="btn btn-secondary" id="btn-export-pantone-eps">Download Pantone Spot Separation EPS</button>
+            <button class="btn btn-emerald" id="btn-export-layered-pdf">Download Layered Illustrator PDF (OCG)</button>
+            <button class="btn btn-secondary" id="btn-export-pdf-600">Download Vector PDF (600 DPI)</button>
             <button class="btn btn-secondary" id="btn-export-pdf-1200">Download Vector PDF (1200 DPI)</button>
+          </div>
+        </div>
+
+        <!-- Zebra ZPL II Industrial Direct Thermal Engine -->
+        <div class="card" style="margin-top: 18px;">
+          <div class="card-title">
+            <span>Zebra ZPL II Direct Thermal Label Generator</span>
+            <span class="badge badge-cyan">INDUSTRIAL THERMAL PRINTING</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
+            Synthesize native Zebra Programming Language (ZPL II) code for Zebra, Honeywell, and SATO direct thermal label printers. Automatically encodes 1D UPC-A/EAN-13 (^BC) and 2D GS1 Digital Link (^BQN) with hardware-calculated 50mm clearance and zero-driver raw socket capability.
+          </p>
+
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;">
+            <div style="flex: 1; min-width: 200px;">
+              <label>Print Head Resolution (DPI)</label>
+              <select id="zpl-dpi-select">
+                <option value="203" selected>203 DPI (8 dots/mm — Standard Warehouse / Shipping)</option>
+                <option value="300">300 DPI (12 dots/mm — High Density Packaging)</option>
+                <option value="600">600 DPI (24 dots/mm — Micro Pharma / Electronics)</option>
+              </select>
+            </div>
+            <div style="margin-top: 18px;">
+              <button class="btn btn-primary" id="btn-generate-zpl">⚡ Generate ZPL II Stream</button>
+            </div>
+          </div>
+
+          <div class="code-block" id="zpl-output-preview" style="max-height: 180px; overflow-y: auto;">Click "Generate ZPL II Stream" to produce raw printer instructions...</div>
+
+          <div class="btn-row" style="margin-top: 14px;">
+            <button class="btn btn-emerald" id="btn-copy-zpl">📋 Copy ZPL to Clipboard</button>
+            <button class="btn btn-secondary" id="btn-download-zpl">💾 Download .zpl File</button>
           </div>
         </div>
       </div>
@@ -523,9 +645,10 @@
         </div>
       </div>
       <div class="btn-row" style="justify-content: space-between;">
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <a href="legal/privacy_policy.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Privacy Policy</a>
           <a href="legal/terms_of_service.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Terms of Service</a>
+          <a href="legal/data_deletion.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Data Deletion</a>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-legal-confirm">Acknowledge</button>
       </div>
@@ -544,6 +667,8 @@
   <script src="js/licensing.js"></script>
   <script src="js/vector_prepress.js"></script>
   <script src="js/gepir_validator.js"></script>
+  <script src="js/zpl_generator.js"></script>
+  <script src="js/iso_verifier.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

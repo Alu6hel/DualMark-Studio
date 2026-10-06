@@ -316,6 +316,56 @@
       offCtx.putImageData(imgData, 0, 0);
 
       return offCanvas.toDataURL('image/jpeg', 0.88);
+    },
+
+    // Cylindrical Ray-Marching & Unrolling Dewarp for Bottles, Cans, and Curved Pouches
+    unrollCylindricalSurface: function(targetWidth, targetHeight, curvatureDepth) {
+      if (!this.sourceImage) return null;
+      targetWidth = targetWidth || 800;
+      targetHeight = targetHeight || 600;
+      curvatureDepth = curvatureDepth || 0.45; // 0.1 (gentle curve) to 0.8 (tight bottle cylinder)
+
+      var offCanvas = document.createElement('canvas');
+      offCanvas.width = targetWidth;
+      offCanvas.height = targetHeight;
+      var offCtx = offCanvas.getContext('2d');
+
+      var img = this.sourceImage;
+      var tempCanvas = document.createElement('canvas');
+      tempCanvas.width = targetWidth;
+      tempCanvas.height = targetHeight;
+      var tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+      var srcData = tempCtx.getImageData(0, 0, targetWidth, targetHeight);
+      var dstData = offCtx.createImageData(targetWidth, targetHeight);
+
+      var srcPixels = srcData.data;
+      var dstPixels = dstData.data;
+
+      var halfW = targetWidth / 2;
+      var radius = halfW / Math.sin(curvatureDepth);
+
+      for (var y = 0; y < targetHeight; y++) {
+        for (var x = 0; x < targetWidth; x++) {
+          var normX = (x - halfW) / halfW; // -1.0 to 1.0
+          var theta = normX * curvatureDepth;
+          var originalNormX = Math.sin(theta) / Math.sin(curvatureDepth);
+          var srcX = Math.round(halfW + (originalNormX * halfW));
+
+          if (srcX >= 0 && srcX < targetWidth) {
+            var dstIdx = (y * targetWidth + x) * 4;
+            var srcIdx = (y * targetWidth + srcX) * 4;
+            dstPixels[dstIdx] = srcPixels[srcIdx];
+            dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1];
+            dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2];
+            dstPixels[dstIdx + 3] = srcPixels[srcIdx + 3];
+          }
+        }
+      }
+
+      offCtx.putImageData(dstData, 0, 0);
+      return offCanvas.toDataURL('image/jpeg', 0.90);
     }
   };
 

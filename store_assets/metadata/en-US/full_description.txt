@@ -1,0 +1,10 @@
+DualMark Studio is the premier industrial packaging compliance and barcode pre-flight workstation built for packaging prepress engineers, quality control technicians, and supply chain operators preparing for the GS1 Sunrise 2027 transition.
+
+KEY FEATURES:
+• Dual-Code Barcode Synthesis: Generate ISO-compliant 1D retail barcodes (UPC-A, EAN-13, Code 128, ITF-14) and 2D GS1 Digital Link standard QR codes simultaneously.
+• 50mm Physical Clearance Inspector: Interactive optical die-line simulator enforcing the GS1-mandated 50mm edge-to-edge quiet zone clearance to prevent POS retail scanner beam collision and cross-talk.
+• Industrial Prepress Engine: Export PostScript Level 3 CMYK (100% Process Black) EPS and 600/1200 DPI vector PDFs with Barcode Width Reduction (BWR) ink-gain compensation.
+• Direct Thermal Zebra ZPL II: Generate direct ZPL streams for automated industrial label applicators.
+• FDA FSMA Rule 204 CTE/KDE Logger: Cryptographic SHA-256 chain-of-custody logging with 24-hour FDA electronic sortable spreadsheet and GS1 EPCIS 2.0 JSON-LD exports.
+• Enterprise Scanner Interop: Native broadcast intent integration for rugged handheld scanners (Zebra DataWedge, Honeywell Mobility Edge, Datalogic).
+• 100% Air-Gapped & Zero-Telemetry: Runs entirely offline on-device with zero cloud telemetry.

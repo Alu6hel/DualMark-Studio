@@ -1,0 +1,15 @@
+{
+  "name": "dualmark-studio-desktop",
+  "version": "1.0.0",
+  "description": "DualMark Studio — Packaging Pre-Flight & Barcode Compliance Workstation",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack:mac": "electron-builder --mac",
+    "pack:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.0"
+  }
+}
