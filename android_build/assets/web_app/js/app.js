@@ -1217,13 +1217,17 @@
   function initExportsModule() {
     document.getElementById('btn-export-combined-svg').addEventListener('click', function() {
       // Export full SVG with 1D and 2D placed side-by-side with 50mm clearance marker
-      var svg1d = window.DualMarkBarcode1D.renderSvg('UPC-A', '081234567890');
-      var svg2d = window.DualMarkGS1.renderQrSvg('https://id.brand.com/01/00812345678901');
+      var type1d = (document.getElementById('synth-1d-type') && document.getElementById('synth-1d-type').value) || 'UPC-A';
+      var val1d = (document.getElementById('synth-1d-input') && document.getElementById('synth-1d-input').value.trim()) || '081234567890';
+      var svg1dRes = window.DualMarkBarcode1D ? window.DualMarkBarcode1D.renderSvg(type1d, val1d) : { svg: '' };
+      var svg1dContent = svg1dRes.svg || svg1dRes;
+      var uri2d = (document.getElementById('synth-2d-uri-preview') && document.getElementById('synth-2d-uri-preview').textContent) || 'https://id.brand.com/01/00812345678901';
+      var svg2d = window.DualMarkGS1 ? window.DualMarkGS1.renderQrSvg(uri2d) : '';
 
       var combinedSvg = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="1000" height="400">',
         '<rect width="1000" height="400" fill="#FFFFFF"/>',
-        '<g transform="translate(60, 100)">' + svg1d.svg + '</g>',
+        '<g transform="translate(60, 100)">' + svg1dContent + '</g>',
         '<g transform="translate(580, 100)">' + svg2d + '</g>',
         '<line x1="480" y1="200" x2="570" y2="200" stroke="#EF4444" stroke-width="3" stroke-dasharray="6,6"/>',
         '<text x="525" y="190" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#EF4444">≥ 50 mm</text>',
