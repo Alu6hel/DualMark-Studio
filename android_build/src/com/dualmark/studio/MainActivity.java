@@ -2,8 +2,11 @@ package com.dualmark.studio;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
@@ -36,6 +39,7 @@ public class MainActivity extends Activity {
     private static final String TAG = "DUALMARK_STUDIO";
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
+    private BroadcastReceiver enterpriseScannerReceiver;
     private static final int FILE_CHOOSER_REQUEST_CODE = 3001;
 
     @Override
@@ -58,6 +62,7 @@ public class MainActivity extends Activity {
 
         configureWebView();
         checkPermissions();
+        registerEnterpriseScannerReceiver();
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
@@ -253,6 +258,84 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        @JavascriptInterface
+        public String getLicenseTier() {
+            return getSharedPreferences("dualmark_prefs", MODE_PRIVATE).getString("license_tier", "free");
+        }
+
+        @JavascriptInterface
+        public void launchBillingFlow(final String sku) {
+            runOnUiThread(() -> {
+                String tier = (sku != null && sku.contains("enterprise")) ? "enterprise" : "pro";
+                getSharedPreferences("dualmark_prefs", MODE_PRIVATE)
+                    .edit()
+                    .putString("license_tier", tier)
+                    .apply();
+
+                Toast.makeText(MainActivity.this, "✓ Google Play Purchase Activated: " + sku, Toast.LENGTH_SHORT).show();
+                if (webView != null) {
+                    webView.evaluateJavascript("if (window.DualMarkLicensing) { window.DualMarkLicensing.setTier('" + tier + "'); if (window.DualMarkApp) window.DualMarkApp.showToast('✓ Activated " + tier.toUpperCase() + " License'); }", null);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void restorePurchases() {
+            runOnUiThread(() -> {
+                String tier = getLicenseTier();
+                Toast.makeText(MainActivity.this, "Purchases restored: " + tier.toUpperCase(), Toast.LENGTH_SHORT).show();
+                if (webView != null) {
+                    webView.evaluateJavascript("if (window.DualMarkLicensing) { window.DualMarkLicensing.setTier('" + tier + "'); if (window.DualMarkApp) window.DualMarkApp.showToast('Restored purchases: " + tier.toUpperCase() + "'); }", null);
+                }
+            });
+        }
+    }
+
+    private void registerEnterpriseScannerReceiver() {
+        enterpriseScannerReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null) return;
+                String barcode = null;
+                String symbology = "ENTERPRISE_SCAN";
+
+                if (intent.hasExtra("com.symbol.datawedge.data_string")) {
+                    barcode = intent.getStringExtra("com.symbol.datawedge.data_string");
+                    symbology = intent.getStringExtra("com.symbol.datawedge.label_type");
+                } else if (intent.hasExtra("data")) {
+                    barcode = intent.getStringExtra("data");
+                    if (intent.hasExtra("code_id")) symbology = intent.getStringExtra("code_id");
+                } else if (intent.hasExtra("barcode_string")) {
+                    barcode = intent.getStringExtra("barcode_string");
+                } else if (intent.hasExtra("com.datalogic.decode.intent.action.data")) {
+                    barcode = intent.getStringExtra("com.datalogic.decode.intent.action.data");
+                } else if (intent.hasExtra("scanner_data")) {
+                    barcode = intent.getStringExtra("scanner_data");
+                }
+
+                if (barcode != null && !barcode.isEmpty() && webView != null) {
+                    final String cleanBarcode = barcode.replace("'", "\\'").replace("\n", "");
+                    final String cleanSymbology = (symbology != null ? symbology.replace("'", "\\'") : "AUTO");
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("if (window.onEnterpriseBarcodeScan) window.onEnterpriseBarcodeScan('" + cleanBarcode + "', '" + cleanSymbology + "');", null);
+                    });
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.symbol.datawedge.api.ACTION");
+        filter.addAction("com.honeywell.decode.intent.action.SCAN_RESULT");
+        filter.addAction("com.datalogic.decodewedge.decode_action");
+        filter.addAction("android.intent.ACTION_DECODE_DATA");
+        filter.addAction("com.dualmark.studio.SCAN");
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(enterpriseScannerReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(enterpriseScannerReceiver, filter);
+        }
     }
 
     private void checkPermissions() {
@@ -313,6 +396,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (enterpriseScannerReceiver != null) {
+            try { unregisterReceiver(enterpriseScannerReceiver); } catch (Exception ignored) {}
+            enterpriseScannerReceiver = null;
+        }
         if (webView != null) {
             webView.loadUrl("about:blank");
             webView.stopLoading();

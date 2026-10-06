@@ -61,19 +61,27 @@ zip -ur "$DIR/build/unaligned.apk" assets/
 "$ZIPALIGN" -f -p 4 "$DIR/build/unaligned.apk" "$DIR/build/aligned.apk"
 
 # 7. Sign APK
-echo "[7/7] Signing APK..."
-KEYSTORE="$DIR/debug.keystore"
+echo "[7/7] Signing APK with Release Keystore (v1, v2, v3)..."
+KEYSTORE="$DIR/release.keystore"
 if [ ! -f "$KEYSTORE" ]; then
-  echo "Generating debug keystore..."
-  keytool -genkey -v -keystore "$KEYSTORE" -alias dualmarkdebug -keyalg RSA -keysize 2048 -validity 10000 \
-    -storepass android -keypass android -dname "CN=DualMark Studio,O=DualMark,C=US"
+  echo "Generating release keystore..."
+  keytool -genkey -v -keystore "$KEYSTORE" -alias dualmark -keyalg RSA -keysize 2048 -validity 10000 \
+    -storetype PKCS12 -storepass dualmark2026 -keypass dualmark2026 \
+    -dname "CN=DualMark Studio Production,OU=Prepress Technologies,O=DualMark Studio,L=San Francisco,ST=California,C=US"
 fi
 
-"$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:android --key-pass pass:android \
+"$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass pass:dualmark2026 --key-pass pass:dualmark2026 \
+  --ks-key-alias dualmark \
+  --v1-signing-enabled true \
+  --v2-signing-enabled true \
+  --v3-signing-enabled true \
   --out "$DIR/DualMark_Studio.apk" "$DIR/build/aligned.apk"
+
+echo "Verifying APK Signatures..."
+"$APKSIGNER" verify --verbose "$DIR/DualMark_Studio.apk"
 
 cp "$DIR/DualMark_Studio.apk" "$ROOT_DIR/DualMark_Studio.apk"
 
-echo "=== SUCCESS! Standalone Android APK created ==="
+echo "=== SUCCESS! Standalone Production Android APK created ==="
 ls -lh "$DIR/DualMark_Studio.apk"
 ls -lh "$ROOT_DIR/DualMark_Studio.apk"

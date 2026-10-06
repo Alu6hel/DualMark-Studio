@@ -85,13 +85,18 @@
     return window.DualMarkQR.renderSvgString(uri, options);
   }
 
+  function generateQrMatrix(uri, options) {
+    return window.DualMarkQR.getModuleMatrix(uri, options);
+  }
+
   window.DualMarkGS1 = {
     formatGtin14: formatGtin14,
     buildDigitalLinkUri: buildDigitalLinkUri,
     buildHriString: buildHriString,
     parseDigitalLinkUri: parseDigitalLinkUri,
     renderQrCanvas: renderQrCanvas,
-    renderQrSvg: renderQrSvg
+    renderQrSvg: renderQrSvg,
+    generateQrMatrix: generateQrMatrix
   };
 
 })(window);

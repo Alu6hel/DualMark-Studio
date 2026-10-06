@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B132B"/>
+      <stop offset="100%" stop-color="#1C2541"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- Outer Accent Border -->
+  <rect x="16" y="16" width="480" height="480" rx="36" fill="none" stroke="url(#accent)" stroke-width="6"/>
+
+  <!-- 1D Barcode Graphic (Left side) -->
+  <g transform="translate(60, 110)">
+    <rect x="0" y="0" width="8" height="190" fill="#00F0FF"/>
+    <rect x="16" y="0" width="16" height="190" fill="#00F0FF"/>
+    <rect x="40" y="0" width="6" height="190" fill="#00F0FF"/>
+    <rect x="54" y="0" width="22" height="190" fill="#00F0FF"/>
+    <rect x="84" y="0" width="10" height="190" fill="#00F0FF"/>
+    <rect x="102" y="0" width="16" height="190" fill="#00F0FF"/>
+    <rect x="126" y="0" width="6" height="190" fill="#00F0FF"/>
+    <rect x="140" y="0" width="18" height="190" fill="#00F0FF"/>
+    <!-- Guard Bars -->
+    <rect x="0" y="190" width="8" height="24" fill="#00F0FF"/>
+    <rect x="150" y="190" width="8" height="24" fill="#00F0FF"/>
+  </g>
+
+  <!-- 50mm Optical Clearance Beam in Center -->
+  <g transform="translate(244, 110)">
+    <line x1="12" y1="20" x2="12" y2="190" stroke="#EF4444" stroke-width="4" stroke-dasharray="8,6"/>
+    <circle cx="12" cy="105" r="18" fill="#1C2541" stroke="#EF4444" stroke-width="3"/>
+    <text x="12" y="110" font-family="monospace, sans-serif" font-size="11" font-weight="bold" fill="#EF4444" text-anchor="middle">50mm</text>
+  </g>
+
+  <!-- 2D DataMatrix / QR Graphic (Right side) -->
+  <g transform="translate(294, 110)">
+    <!-- Finder Pattern 1 (Top-Left) -->
+    <rect x="0" y="0" width="56" height="56" fill="none" stroke="#10B981" stroke-width="10"/>
+    <rect x="18" y="18" width="20" height="20" fill="#10B981"/>
+    <!-- Finder Pattern 2 (Top-Right) -->
+    <rect x="100" y="0" width="56" height="56" fill="none" stroke="#10B981" stroke-width="10"/>
+    <rect x="118" y="18" width="20" height="20" fill="#10B981"/>
+    <!-- Finder Pattern 3 (Bottom-Left) -->
+    <rect x="0" y="134" width="56" height="56" fill="none" stroke="#10B981" stroke-width="10"/>
+    <rect x="18" y="152" width="20" height="20" fill="#10B981"/>
+    <!-- Data modules -->
+    <rect x="70" y="24" width="16" height="16" fill="#10B981"/>
+    <rect x="24" y="72" width="16" height="16" fill="#10B981"/>
+    <rect x="72" y="72" width="16" height="16" fill="#10B981"/>
+    <rect x="120" y="72" width="16" height="16" fill="#10B981"/>
+    <rect x="72" y="120" width="16" height="16" fill="#10B981"/>
+    <rect x="120" y="120" width="16" height="16" fill="#10B981"/>
+    <rect x="96" y="150" width="20" height="20" fill="#10B981"/>
+    <rect x="134" y="160" width="20" height="20" fill="#10B981"/>
+  </g>
+
+  <!-- Typography -->
+  <text x="256" y="380" font-family="'Segoe UI', Roboto, sans-serif" font-size="38" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">DUALMARK</text>
+  <text x="256" y="420" font-family="monospace, sans-serif" font-size="18" font-weight="700" fill="#00F0FF" text-anchor="middle" letter-spacing="6">STUDIO</text>
+  <text x="256" y="455" font-family="sans-serif" font-size="13" font-weight="600" fill="#64748B" text-anchor="middle" letter-spacing="1">GS1 SUNRISE 2027 • PREPRESS PRO</text>
+</svg>

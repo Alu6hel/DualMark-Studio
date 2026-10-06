@@ -92,6 +92,45 @@
         document.body.classList.add('theme-light');
       }
     }
+
+    // Commercial Licensing & Editions Modal
+    var btnLicensing = document.getElementById('btn-licensing');
+    var badgeLicensing = document.getElementById('header-license-badge');
+    if (btnLicensing) {
+      btnLicensing.addEventListener('click', function() {
+        if (window.DualMarkLicensing) window.DualMarkLicensing.showPaywallModal();
+      });
+    }
+    if (badgeLicensing) {
+      badgeLicensing.addEventListener('click', function() {
+        if (window.DualMarkLicensing) window.DualMarkLicensing.showPaywallModal();
+      });
+    }
+
+    // Legal & Regulatory Disclaimers Modal
+    var btnLegal = document.getElementById('btn-legal');
+    var modalLegal = document.getElementById('modal-legal-compliance');
+    var btnCloseLegal = document.getElementById('btn-close-legal');
+    var btnLegalConfirm = document.getElementById('btn-legal-confirm');
+
+    if (btnLegal && modalLegal) {
+      btnLegal.addEventListener('click', function() {
+        modalLegal.style.display = 'flex';
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+    if (btnCloseLegal && modalLegal) {
+      btnCloseLegal.addEventListener('click', function() {
+        modalLegal.style.display = 'none';
+      });
+    }
+    if (btnLegalConfirm && modalLegal) {
+      btnLegalConfirm.addEventListener('click', function() {
+        modalLegal.style.display = 'none';
+        showToast('Legal & Regulatory Disclaimers Acknowledged');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
   }
 
   // 2. Module 1: Dual-Code Synth
@@ -176,6 +215,37 @@
       }
       window.DualMarkAudio.click();
     });
+
+    // GS1 GEPIR Prefix Validation Button
+    var btnGepir = document.getElementById('btn-gepir-validate');
+    var gepirInput = document.getElementById('gepir-check-input');
+    var gepirBadge = document.getElementById('gepir-country-badge');
+    var gepirResultBox = document.getElementById('gepir-result-box');
+
+    if (btnGepir && gepirInput) {
+      btnGepir.addEventListener('click', async function() {
+        var gtin = gepirInput.value.trim();
+        if (!gtin) {
+          showToast('Please enter a GTIN or barcode to verify');
+          return;
+        }
+        var res = await window.DualMarkGepir.queryGepir(gtin);
+        if (gepirBadge) gepirBadge.textContent = res.memberOrg + ' (' + res.prefix + ')';
+        if (gepirResultBox) {
+          var chkStatus = res.checksumValid
+            ? '<strong style="color: var(--emerald);">VALID (Check Digit ' + res.expectedCheckDigit + ')</strong>'
+            : '<strong style="color: var(--rose);">CHECKSUM ERROR (Expected ' + res.expectedCheckDigit + ')</strong>';
+          gepirResultBox.innerHTML = 'Country / MO: <strong style="color: var(--cyan);">' + res.country + '</strong> | Checksum (Modulo 10): ' + chkStatus + ' | Status: Verified Local Registry';
+        }
+        if (res.checksumValid) {
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          showToast('✓ GS1 Prefix & Checksum Verified: ' + res.memberOrg);
+        } else {
+          if (window.DualMarkAudio) window.DualMarkAudio.warningBuzz();
+          showToast('⚠ Checksum Mismatch for ' + gtin);
+        }
+      });
+    }
 
     update1D();
     update2D();
@@ -342,7 +412,7 @@
 
     var studio = new window.DualMarkScanner.ScannerDewarpStudio(previewCanvas, dewarpCanvas);
 
-    btnStart.addEventListener('click', function() {
+    function executeStartCamera() {
       badgeState.textContent = 'CAMERA STREAMING';
       badgeState.className = 'badge badge-green';
       btnStart.style.display = 'none';
@@ -365,7 +435,58 @@
         btnStop.style.display = 'none';
         showToast('Camera access unavailable (Check permissions)');
       });
+    }
+
+    btnStart.addEventListener('click', function() {
+      var accepted = localStorage.getItem('dualmark_camera_rationale_accepted');
+      if (accepted === 'true') {
+        executeStartCamera();
+      } else {
+        var modal = document.getElementById('modal-camera-rationale');
+        if (modal) {
+          modal.style.display = 'flex';
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
+        } else {
+          executeStartCamera();
+        }
+      }
     });
+
+    // Camera Rationale Modal Actions
+    var btnCameraGrant = document.getElementById('btn-camera-grant');
+    var btnCameraFallback = document.getElementById('btn-camera-fallback');
+    var btnCameraDismiss = document.getElementById('btn-camera-dismiss');
+    var btnCloseCameraRationale = document.getElementById('btn-close-camera-rationale');
+    var modalCamera = document.getElementById('modal-camera-rationale');
+
+    if (btnCameraGrant) {
+      btnCameraGrant.addEventListener('click', function() {
+        localStorage.setItem('dualmark_camera_rationale_accepted', 'true');
+        if (modalCamera) modalCamera.style.display = 'none';
+        executeStartCamera();
+      });
+    }
+
+    if (btnCameraFallback) {
+      btnCameraFallback.addEventListener('click', function() {
+        if (modalCamera) modalCamera.style.display = 'none';
+        var fileIn = document.getElementById('input-scan-file');
+        if (fileIn) fileIn.click();
+        showToast('Offline File Fallback Selected');
+      });
+    }
+
+    if (btnCameraDismiss && modalCamera) {
+      btnCameraDismiss.addEventListener('click', function() {
+        modalCamera.style.display = 'none';
+      });
+    }
+
+    if (btnCloseCameraRationale && modalCamera) {
+      btnCloseCameraRationale.addEventListener('click', function() {
+        modalCamera.style.display = 'none';
+      });
+    }
 
     btnStop.addEventListener('click', function() {
       studio.stopCamera();
@@ -551,7 +672,102 @@
       downloadBlob(JSON.stringify(bundle, null, 2), 'DualMark_Master_Archive.json', 'application/json');
       showToast('Master Archive JSON Exported');
     });
+
+    // Barcode Width Reduction (BWR) Slider
+    var bwrSlider = document.getElementById('prepress-bwr-slider');
+    var bwrReadout = document.getElementById('prepress-bwr-readout');
+    if (bwrSlider && bwrReadout) {
+      bwrSlider.addEventListener('input', function() {
+        var val = parseInt(this.value, 10) || 0;
+        if (window.DualMarkPrepress) window.DualMarkPrepress.setBwrMicrons(val);
+        bwrReadout.textContent = val + ' µm' + (val === 0 ? ' (Nominal)' : ' (Ink Spread Reduction)');
+      });
+    }
+
+    // Helper to get active 1D data and QR matrix for prepress export
+    function getActivePrepressData() {
+      var type1d = document.getElementById('synth-1d-type')?.value || 'UPC-A';
+      var val1d = document.getElementById('synth-1d-input')?.value.trim() || '081234567890';
+      var res1d = window.DualMarkBarcode1D.renderSvg(type1d, val1d);
+      var uri2d = document.getElementById('synth-2d-uri-preview')?.textContent || 'https://id.brand.com/01/00812345678901';
+      var qrMatrix = window.DualMarkGS1 ? window.DualMarkGS1.generateQrMatrix(uri2d) : null;
+      return {
+        barcode1d: { pattern: res1d.pattern, text: res1d.text },
+        qrMatrix: qrMatrix
+      };
+    }
+
+    // CMYK PostScript Level 3 EPS Export
+    var btnCmykEps = document.getElementById('btn-export-cmyk-eps');
+    if (btnCmykEps) {
+      btnCmykEps.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_cmyk_eps', function() {
+          var data = getActivePrepressData();
+          var eps = window.DualMarkPrepress.generateCmykEps(data.barcode1d, data.qrMatrix);
+          window.DualMarkPrepress.downloadFile(eps, 'DualMark_Prepress_CMYK.eps', 'application/postscript');
+          showToast('✓ PostScript Level 3 CMYK EPS Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
+
+    // High-Resolution Vector PDF 600 DPI Export
+    var btnPdf600 = document.getElementById('btn-export-pdf-600');
+    if (btnPdf600) {
+      btnPdf600.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
+          var data = getActivePrepressData();
+          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 600 });
+          window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_600DPI.pdf', 'application/pdf');
+          showToast('✓ High-Res Vector PDF (600 DPI Equivalent) Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
+
+    // High-Resolution Vector PDF 1200 DPI Export
+    var btnPdf1200 = document.getElementById('btn-export-pdf-1200');
+    if (btnPdf1200) {
+      btnPdf1200.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
+          var data = getActivePrepressData();
+          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 1200 });
+          window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_1200DPI.pdf', 'application/pdf');
+          showToast('✓ Ultra High-Res Vector PDF (1200 DPI Equivalent) Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
   }
+
+  // Enterprise Handheld Scanner (Zebra DataWedge, Honeywell, Datalogic) Intent Bridge
+  window.onEnterpriseBarcodeScan = function(barcode, symbology) {
+    symbology = symbology || 'UNKNOWN';
+    if (window.DualMarkAudio) window.DualMarkAudio.scanBeep();
+    showToast('🔫 [Enterprise Wedge] ' + symbology + ': ' + barcode);
+
+    // Auto-fill active inputs across app modules
+    var synthInput = document.getElementById('synth-1d-input');
+    if (synthInput) {
+      synthInput.value = barcode;
+      synthInput.dispatchEvent(new Event('input'));
+    }
+    var gepirInput = document.getElementById('gepir-check-input');
+    if (gepirInput) {
+      gepirInput.value = barcode;
+    }
+    var resolveInput = document.getElementById('test-resolve-gtin');
+    if (resolveInput) {
+      resolveInput.value = barcode;
+    }
+    var fsmaGtin = document.getElementById('fsma-gtin');
+    if (fsmaGtin) {
+      fsmaGtin.value = barcode;
+    }
+  };
 
   // Initialization
   window.addEventListener('DOMContentLoaded', function() {
@@ -562,6 +778,10 @@
     initScannerModule();
     initFsmaModule();
     initExportsModule();
+
+    if (window.DualMarkLicensing) {
+      window.DualMarkLicensing.init();
+    }
 
     // Check if running inside native Android wrapper
     if (window.DualMarkBridge && typeof window.DualMarkBridge.isNativeApp === 'function' && window.DualMarkBridge.isNativeApp()) {

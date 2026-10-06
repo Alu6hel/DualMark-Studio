@@ -537,6 +537,24 @@
       }
       svg.push('</svg>');
       return svg.join('');
+    },
+
+    getModuleMatrix: function(text, options) {
+      options = options || {};
+      var ecLevel = options.ecLevel || 'M';
+      var qr = new QRCode(0, ecLevel);
+      qr.addData(text);
+      qr.make();
+      var count = qr.getModuleCount();
+      var matrix = [];
+      for (var r = 0; r < count; r++) {
+        var row = [];
+        for (var c = 0; c < count; c++) {
+          row.push(qr.isDark(r, c));
+        }
+        matrix.push(row);
+      }
+      return matrix;
     }
   };
 

@@ -63,7 +63,10 @@
       // Low dual warning buzz (clearance collision < 50mm)
       playTone(180, 'sawtooth', 0.18, 0.2);
       setTimeout(function() { playTone(140, 'sawtooth', 0.22, 0.2); }, 120);
-    }
+    },
+    playSuccess: function() { this.successChime(); },
+    playClick: function() { this.click(); },
+    playWarning: function() { this.warningBuzz(); }
   };
 
 })(window);

@@ -358,7 +358,20 @@
     }
 
     svg.push('</svg>');
-    return { svg: svg.join(''), fullCode: result.fullCode, prefixInfo: lookupPrefix(result.fullCode) };
+    return {
+      svg: svg.join(''),
+      fullCode: result.fullCode,
+      prefixInfo: lookupPrefix(result.fullCode),
+      pattern: result.bitstream,
+      text: result.fullCode
+    };
+  }
+
+  function getBitstream(type, rawValue) {
+    if (type === 'UPC-A') return getUpcABitstream(rawValue);
+    if (type === 'EAN-13') return getEan13Bitstream(rawValue);
+    if (type === 'ITF-14') return getItf14Bitstream(rawValue);
+    return getCode128Bitstream(rawValue);
   }
 
   window.DualMarkBarcode1D = {
@@ -366,7 +379,8 @@
     validateMod10: validateMod10,
     lookupPrefix: lookupPrefix,
     renderCanvas: renderCanvas,
-    renderSvg: renderSvg
+    renderSvg: renderSvg,
+    getBitstream: getBitstream
   };
 
 })(window);
