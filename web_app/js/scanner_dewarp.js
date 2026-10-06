@@ -28,6 +28,7 @@
     this.activeCornerIndex = -1;
     this.sourceImage = null; // Stored image for dewarping
 
+    this.continuousTracking = false;
     this.hasBarcodeDetector = ('BarcodeDetector' in window);
     if (this.hasBarcodeDetector) {
       try {
@@ -147,6 +148,38 @@
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 12px "JetBrains Mono", monospace';
       ctx.fillText('DUAL OPTICAL IMAGER ACTIVE [1D + 2D]', 20, 30);
+
+      // Continuous 50mm Live Tracking Caliper Overlay
+      if (this.continuousTracking) {
+        var y1d = h * 0.4;
+        var y2d = boxY;
+        var distPx = Math.abs(y2d - y1d);
+        var distMm = (distPx * 0.35).toFixed(1);
+        var isPass = parseFloat(distMm) >= 50.0;
+
+        ctx.save();
+        ctx.strokeStyle = isPass ? '#10B981' : '#EF4444';
+        ctx.fillStyle = isPass ? '#10B981' : '#EF4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+
+        var caliperX = Math.max(30, w * 0.84);
+        ctx.beginPath();
+        ctx.moveTo(caliperX, y1d);
+        ctx.lineTo(caliperX, y2d);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(caliperX, y1d, 4, 0, Math.PI * 2);
+        ctx.arc(caliperX, y2d, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = 'bold 11px "JetBrains Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.fillText(distMm + ' mm ' + (isPass ? '✓ SAFE' : '⚠ COLLISION'), caliperX - 8, (y1d + y2d) / 2 + 4);
+        ctx.restore();
+      }
     },
 
     // 3. Dual Detection Engine

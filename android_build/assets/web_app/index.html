@@ -34,15 +34,8 @@
     </div>
   </header>
 
-  <!-- Navigation Scroll Tabs -->
-  <nav class="nav-scroll" id="nav-tabs">
-    <button class="nav-tab active" data-tab="tab-synth">📐 1. Synth</button>
-    <button class="nav-tab" data-tab="tab-clearance">📏 2. 50mm Die-Line</button>
-    <button class="nav-tab" data-tab="tab-resolver">🔀 3. Resolver</button>
-    <button class="nav-tab" data-tab="tab-scanner">📷 4. Scanner</button>
-    <button class="nav-tab" data-tab="tab-fsma">📜 5. FSMA 204</button>
-    <button class="nav-tab" data-tab="tab-exports">💾 6. Prepress Exports</button>
-  </nav>
+  <!-- Top Nav Scroller Removed: Single Source of Navigation is Bottom Nav Bar -->
+  <div id="nav-tabs" style="display:none;" aria-hidden="true"></div>
 
   <!-- Main Container -->
   <main class="main-content">
@@ -112,9 +105,9 @@
             <canvas id="canvas-1d"></canvas>
           </div>
 
-          <div class="btn-row">
-            <button class="btn btn-secondary" id="btn-1d-svg">Download 1D Vector SVG</button>
-            <button class="btn btn-secondary" id="btn-1d-png">Save PNG Image</button>
+          <div class="tool-bar">
+            <button class="btn btn-secondary" id="btn-1d-svg">💾 1D SVG</button>
+            <button class="btn btn-secondary" id="btn-1d-png">🖼️ 1D PNG</button>
           </div>
         </div>
 
@@ -147,94 +140,89 @@
             <input type="text" id="synth-2d-gtin" class="mono-input" value="00812345678901" maxlength="14">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div class="form-group">
               <label>Batch / Lot (AI 10)</label>
               <input type="text" id="synth-2d-lot" class="mono-input" value="LOT-2026-X" maxlength="20">
             </div>
             <div class="form-group">
-              <label>Serial Number (AI 21)</label>
+              <label>Serial (AI 21)</label>
               <input type="text" id="synth-2d-serial" class="mono-input" value="SN-94021" maxlength="20">
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div class="form-group">
-              <label>Expiration Date (AI 17 - YYMMDD)</label>
+              <label>Exp (AI 17)</label>
               <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD">
             </div>
             <div class="form-group">
-              <label>Calendar Date Picker</label>
+              <label>Calendar Date</label>
               <input type="date" id="synth-2d-exp-date" class="mono-input" value="2027-12-31">
             </div>
           </div>
 
           <!-- Extended GS1 Application Identifiers (AIs) -->
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-            <div style="font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px;">Extended GS1 AIs (Supply Chain &amp; Logistics)</div>
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">Extended GS1 AIs (Supply Chain &amp; Logistics)</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 11px;">Net Weight kg (AI 3102)</label>
-                <input type="text" id="synth-2d-weight" class="mono-input" value="001500" placeholder="e.g. 001500 (15.00kg)">
+                <label style="font-size: 10px;">Weight kg (AI 3102)</label>
+                <input type="text" id="synth-2d-weight" class="mono-input" value="001500" placeholder="001500">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 11px;">Price Payable (AI 3922)</label>
-                <input type="text" id="synth-2d-price" class="mono-input" value="001999" placeholder="e.g. 001999 ($19.99)">
+                <label style="font-size: 10px;">Price (AI 3922)</label>
+                <input type="text" id="synth-2d-price" class="mono-input" value="001999" placeholder="001999">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 11px;">PO Number (AI 400)</label>
-                <input type="text" id="synth-2d-po" class="mono-input" value="PO-88391" placeholder="e.g. PO-88391">
+                <label style="font-size: 10px;">PO # (AI 400)</label>
+                <input type="text" id="synth-2d-po" class="mono-input" value="PO-88391" placeholder="PO-88391">
               </div>
               <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 11px;">Country Origin (AI 422)</label>
+                <label style="font-size: 10px;">Origin (AI 422)</label>
                 <select id="synth-2d-country-select" style="font-size: 11px; padding: 6px;">
-                  <option value="840" selected>840 — United States (USA)</option>
-                  <option value="124">124 — Canada (CAN)</option>
-                  <option value="250">250 — France (FRA)</option>
-                  <option value="276">276 — Germany (DEU)</option>
-                  <option value="392">392 — Japan (JPN)</option>
-                  <option value="826">826 — United Kingdom (GBR)</option>
-                  <option value="036">036 — Australia (AUS)</option>
+                  <option value="840" selected>840 — USA</option>
+                  <option value="124">124 — CAN</option>
+                  <option value="250">250 — FRA</option>
+                  <option value="276">276 — DEU</option>
+                  <option value="392">392 — JPN</option>
+                  <option value="826">826 — GBR</option>
+                  <option value="036">036 — AUS</option>
                 </select>
                 <input type="hidden" id="synth-2d-origin" value="840">
               </div>
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Synthesized Standard GS1 Payload</label>
-            <div class="code-block" id="synth-2d-uri-preview">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <label style="font-size: 10px;">GS1 Digital Link URI</label>
+            <div class="code-block" id="synth-2d-uri-preview" style="margin: 4px 0; padding: 8px; font-size: 11px;">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
           </div>
 
           <div class="barcode-preview-box">
             <canvas id="canvas-2d"></canvas>
           </div>
 
-          <div class="btn-row">
-            <button class="btn btn-emerald" id="btn-2d-svg">Download 2D Vector SVG</button>
-            <button class="btn btn-secondary" id="btn-2d-copy">Copy Digital Link URI</button>
-            <button class="btn btn-primary" id="btn-gs1-conformance">✓ GS1 Conformance Test Suite</button>
-            <button class="btn btn-secondary" id="btn-export-pim">📦 Export PIM/DAM (Salsify/Syndigo)</button>
+          <div class="tool-bar">
+            <button class="btn btn-secondary" id="btn-2d-copy">📋 Copy URI</button>
+            <button class="btn btn-emerald" id="btn-2d-svg">💾 2D SVG</button>
+            <button class="btn btn-primary" id="btn-gs1-conformance">✓ GS1 Audit</button>
+            <button class="btn btn-secondary" id="btn-export-pim">📦 PIM</button>
           </div>
-          <div id="gs1-conformance-result" style="display:none; margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
+          <div id="gs1-conformance-result" style="display:none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
         </div>
 
-        <!-- GS1 GEPIR Prefix Validation Card -->
-        <div class="card" style="grid-column: 1 / -1; margin-top: 14px;">
-          <div class="card-title">
-            <span>GS1 GEPIR Company Prefix &amp; Registry Validator</span>
+        <!-- GS1 GEPIR Prefix Validation -->
+        <div class="card" style="grid-column: 1 / -1; margin-top: 4px; padding: 12px 16px;">
+          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+            <span>GS1 Prefix &amp; Registry Validator</span>
             <span class="badge badge-cyan" id="gepir-country-badge">GS1 US (000-019 / 050-139)</span>
           </div>
-          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 220px;">
-              <label>Target GTIN / Barcode for Registry Check</label>
-              <input type="text" id="gepir-check-input" class="mono-input" value="00812345678901" placeholder="Enter GTIN-12/13/14">
-            </div>
-            <div style="margin-top: 18px;">
-              <button class="btn btn-secondary" id="btn-gepir-validate">🔍 Verify GS1 Prefix &amp; Checksum</button>
-            </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="text" id="gepir-check-input" class="mono-input" value="00812345678901" placeholder="Enter GTIN-12/13/14" style="flex: 1;">
+            <button class="btn btn-secondary" id="btn-gepir-validate" style="white-space: nowrap;">🔍 Verify</button>
           </div>
-          <div id="gepir-result-box" style="margin-top: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-size: 12px; font-family: var(--font-mono); color: var(--text-secondary);">
+          <div id="gepir-result-box" style="margin-top: 8px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; font-size: 11px; font-family: var(--font-mono); color: var(--text-secondary);">
             Country / MO: <strong style="color: var(--cyan);">United States &amp; Canada (GS1 US)</strong> | Checksum (Modulo 10): <strong style="color: var(--emerald);">VALID (Check Digit 1)</strong> | Status: Verified Local Registry
           </div>
         </div>
@@ -248,27 +236,23 @@
           <span>50mm Physical Clearance Die-Line Inspector</span>
           <span class="badge badge-cyan">SUNRISE 2027 AUDITOR</span>
         </div>
-        <p style="color: var(--text-secondary); margin-bottom: 14px;">
-          During the Sunrise 2027 transition, consumer goods must carry <strong>both</strong> a legacy 1D UPC and a 2D GS1 Digital Link QR code. They must maintain strictly <strong>≥50 mm clearance</strong> to prevent cashier scanner cross-talk at 40–70 items/minute.
-        </p>
 
-        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;">
-          <div style="flex: 1; min-width: 220px;">
-            <label>Packaging Die-Line Preset</label>
-            <select id="clearance-preset">
-              <option value="snack" selected>Snack Bar / Flow-Wrap (150 x 55 mm)</option>
-              <option value="blister">Blister Pack (Cosmetics / Lip Balm) (110 x 75 mm)</option>
-              <option value="bottle">Beverage Bottle Label (180 x 85 mm)</option>
-              <option value="pharma">Pharmaceutical Carton (90 x 50 mm)</option>
-              <option value="retail_box">Retail Folding Carton Box (220 x 160 mm)</option>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="flex: 1; min-width: 170px;">
+            <select id="clearance-preset" style="font-size: 12px; padding: 7px 10px;">
+              <option value="snack" selected>Snack Bar (150 x 55 mm)</option>
+              <option value="blister">Blister Pack (110 x 75 mm)</option>
+              <option value="bottle">Bottle Label (180 x 85 mm)</option>
+              <option value="pharma">Pharma Carton (90 x 50 mm)</option>
+              <option value="retail_box">Folding Carton (220 x 160 mm)</option>
             </select>
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap;">
-            <button class="btn btn-primary" id="btn-snap-50mm">⚡ Snap to 50mm Safe Spacing</button>
-            <div class="zoom-controls-bar">
-              <button class="btn btn-secondary btn-sm" id="btn-zoom-in" title="Zoom In">🔍+ Zoom</button>
-              <button class="btn btn-secondary btn-sm" id="btn-zoom-out" title="Zoom Out">🔍- Zoom</button>
-              <button class="btn btn-secondary btn-sm" id="btn-zoom-reset" title="Reset Zoom">↺ 100%</button>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <button class="btn btn-primary btn-sm" id="btn-snap-50mm" style="padding: 7px 12px;">⚡ Snap 50mm</button>
+            <div class="btn-group">
+              <button class="btn" id="btn-zoom-out" title="Zoom Out" style="padding: 7px 10px;">🔍−</button>
+              <button class="btn" id="btn-zoom-reset" title="Reset Zoom" style="padding: 7px 10px;">↺</button>
+              <button class="btn" id="btn-zoom-in" title="Zoom In" style="padding: 7px 10px;">🔍+</button>
             </div>
           </div>
         </div>
@@ -279,36 +263,33 @@
         </div>
 
         <!-- Real-time Status Meter -->
-        <div class="status-meter pass" id="clearance-status-box">
+        <div class="status-meter pass" id="clearance-status-box" style="padding: 10px 14px; margin-top: 12px;">
           <div>
-            <div class="status-headline" id="clearance-status-text">
+            <div class="status-headline" id="clearance-status-text" style="font-size: 13px;">
               <span id="clearance-status-icon">✓</span>
               <span>COMPLIANT (≥ 50.0 mm)</span>
             </div>
-            <div class="status-detail" id="clearance-status-sub">
-              Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements.
+            <div class="status-detail" id="clearance-status-sub" style="font-size: 11px;">
+              Edge-to-edge optical clearance satisfies Sunrise 2027 pass rate.
             </div>
           </div>
           <div style="text-align: right;">
-            <div style="font-family: var(--font-mono); font-size: 24px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
-            <small style="color: var(--text-muted);">Threshold: 50.0 mm</small>
+            <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
+            <small style="color: var(--text-muted); font-size: 10px;">Threshold: 50.0 mm</small>
           </div>
         </div>
 
         <!-- ISO/IEC Optical Verification & Calibration Station -->
-        <div class="card" style="margin-top: 18px;">
-          <div class="card-title">
+        <div class="card" style="margin-top: 14px; padding: 14px;">
+          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
             <span>ISO/IEC 15416 &amp; 15415 Optical Grading Station</span>
             <span class="badge badge-purple" id="iso-compliance-badge">CALIBRATED VERIFIER (ISO/IEC 15426)</span>
           </div>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-            Simulate an optical verification scan evaluating reflectance profiles (Rmin, Symbol Contrast, Modulation, Defects, Decodability, Axial Non-Uniformity) per ISO/IEC 15416 (1D) and ISO/IEC 15415 (2D) with NIST-traceable calibration.
-          </p>
 
-          <div class="btn-row" style="margin-bottom: 14px;">
-            <button class="btn btn-primary" id="btn-run-iso-grading">🔍 Run Full ISO Optical Grading</button>
-            <button class="btn btn-secondary" id="btn-nist-calibration">⚖️ NIST-Traceable Calibration Check</button>
-            <button class="btn btn-emerald" id="btn-iso-cert-pdf">📄 Printable ISO Certificate (PDF)</button>
+          <div class="tool-bar" style="margin-top: 0; margin-bottom: 10px;">
+            <button class="btn btn-primary" id="btn-run-iso-grading">🔍 Run ISO Grade</button>
+            <button class="btn btn-secondary" id="btn-nist-calibration">⚖️ NIST Check</button>
+            <button class="btn btn-emerald" id="btn-iso-cert-pdf">📄 PDF Cert</button>
           </div>
 
           <div id="iso-grading-results" style="display:none; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
@@ -329,9 +310,6 @@
           <span>Zero-SaaS Dynamic Link Resolver</span>
           <span class="badge badge-emerald">STANDALONE EDGE ROUTING</span>
         </div>
-        <p style="color: var(--text-secondary); margin-bottom: 14px;">
-          A 2D barcode is a dynamic URI router. Configure Geo-Targeted redirects and Instant Recall Kill-Switches without recurring per-link SaaS fees. Export to SQLite, JSON, Cloudflare Workers, or Nginx.
-        </p>
 
         <!-- Rules Table -->
         <div style="overflow-x: auto;">
@@ -353,35 +331,32 @@
         </div>
 
         <!-- Resolution Live Tester -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-top: 18px;">
-          <h4 style="margin-bottom: 12px; font-size: 14px;">⚡ Real-Time Resolution Simulator</h4>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px;">
-            <div>
-              <label>Test GTIN</label>
-              <input type="text" id="test-resolve-gtin" class="mono-input" value="00812345678901">
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-top: 14px;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px;">
+              <input type="text" id="test-resolve-gtin" class="mono-input" value="00812345678901" placeholder="Test GTIN">
             </div>
-            <div>
-              <label>Client Country Header</label>
+            <div style="flex: 1; min-width: 130px;">
               <select id="test-resolve-country">
-                <option value="US" selected>United States (US)</option>
-                <option value="FR">France (FR - Tri-Recyclage)</option>
-                <option value="DE">Germany (DE - Pfand System)</option>
-                <option value="JP">Japan (JP - Consumer Affairs)</option>
-                <option value="UK">United Kingdom (UK)</option>
+                <option value="US" selected>US (United States)</option>
+                <option value="FR">FR (France)</option>
+                <option value="DE">DE (Germany)</option>
+                <option value="JP">JP (Japan)</option>
+                <option value="UK">UK (United Kingdom)</option>
               </select>
             </div>
-            <div style="margin-top: 24px;">
-              <button class="btn btn-primary" id="btn-test-resolve" style="width: 100%;">Test Route Resolution</button>
-            </div>
+            <button class="btn btn-primary" id="btn-test-resolve" style="white-space: nowrap;">⚡ Resolve</button>
+            <button class="btn btn-secondary" id="btn-add-resolve-rule" style="white-space: nowrap;">➕ Add Route</button>
           </div>
-          <div class="code-block" id="test-resolve-output">Target URL: https://brand.com/us/nutrition/almond-milk (Status: GEO_MATCH US)</div>
+          <div class="code-block" id="test-resolve-output" style="margin: 8px 0 0; padding: 8px 10px; font-size: 11px;">Target URL: https://brand.com/us/nutrition/almond-milk (Status: GEO_MATCH US)</div>
         </div>
 
-        <div class="btn-row" style="margin-top: 18px;">
-          <button class="btn btn-secondary" id="btn-export-sql">Download SQLite Database (.sql)</button>
-          <button class="btn btn-secondary" id="btn-export-json">Export JSON Rules</button>
-          <button class="btn btn-secondary" id="btn-export-cf">Export Cloudflare Worker</button>
-          <button class="btn btn-secondary" id="btn-export-nginx">Export Nginx Map</button>
+        <!-- Fused Edge Deployment Hub -->
+        <div class="tool-bar" style="margin-top: 12px;">
+          <button class="btn btn-secondary" id="btn-export-sql">🗄️ SQLite (.sql)</button>
+          <button class="btn btn-secondary" id="btn-export-json">📄 JSON Rules</button>
+          <button class="btn btn-secondary" id="btn-export-cf">⚡ Cloudflare</button>
+          <button class="btn btn-secondary" id="btn-export-nginx">🌐 Nginx</button>
         </div>
       </div>
     </section>
@@ -396,78 +371,69 @@
             <span class="badge badge-cyan" id="scanner-state-badge">CAMERA OFFLINE</span>
           </div>
 
-          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
-            Simultaneously reads 1D barcodes and 2D GS1 Digital Links in sub-second passes.
-          </p>
-
           <div class="video-scanner-wrap">
             <video id="scanner-video" style="display:none;"></video>
             <canvas id="scanner-canvas"></canvas>
           </div>
 
-          <div class="btn-row">
-            <button class="btn btn-primary glove-touch-btn" id="btn-start-camera">Start Live Camera</button>
-            <button class="btn btn-danger glove-touch-btn" id="btn-stop-camera" style="display:none;">Stop Camera</button>
-            <button class="btn btn-secondary glove-touch-btn" id="btn-toggle-torch">🔦 Toggle Light</button>
-            <label class="btn btn-secondary glove-touch-btn" style="cursor: pointer;">
-              Upload Photo File <input type="file" id="input-scan-file" accept="image/*" style="display:none;">
+          <div class="tool-bar" style="margin-top: 10px;">
+            <button class="btn btn-primary glove-touch-btn" id="btn-start-camera">📷 Start Camera</button>
+            <button class="btn btn-danger glove-touch-btn" id="btn-stop-camera" style="display:none;">🛑 Stop</button>
+            <button class="btn btn-secondary glove-touch-btn" id="btn-toggle-torch">🔦 Light</button>
+            <label class="btn btn-secondary glove-touch-btn" style="cursor: pointer; margin: 0;">
+              📁 Upload <input type="file" id="input-scan-file" accept="image/*" style="display:none;">
             </label>
           </div>
 
-          <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="chk-continuous-scan" style="width: 18px; height: 18px;">
-            <label for="chk-continuous-scan" style="font-size: 12px; cursor: pointer; color: var(--cyan); font-weight: 600;">Continuous Dual-Barcode Clearance Tracking</label>
+          <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="chk-continuous-scan" style="width: 16px; height: 16px;">
+            <label for="chk-continuous-scan" style="font-size: 11px; cursor: pointer; color: var(--cyan); margin: 0;">Continuous 50mm Tracking</label>
           </div>
 
-          <div style="margin-top: 14px;">
-            <label>Decoded Barcode Result</label>
-            <div class="code-block" id="scan-decoded-result">Awaiting barcode optical acquisition...</div>
+          <div style="margin-top: 10px;">
+            <label style="font-size: 10px;">Decoded Payload</label>
+            <div class="code-block" id="scan-decoded-result" style="margin: 4px 0 0; padding: 8px 10px; font-size: 11px;">Awaiting optical acquisition...</div>
           </div>
         </div>
 
-        <!-- Document Scanner & Dewarping -->
+        <!-- Integrated Surface & Geometry Corrector Studio -->
         <div class="card">
-          <div class="card-title">
-            <span>Paperwork Perspective Dewarping & OCR</span>
-            <span class="badge badge-emerald">FSMA AUDIT ARCHIVE</span>
-          </div>
-          <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
-            Dewarp and binarize physical Bills of Lading, Farm Origin Certificates, and Packing Run Sheets.
-          </p>
-
-          <div style="text-align: center; margin: 12px 0;">
-            <canvas id="canvas-dewarp" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);"></canvas>
+          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+            <span>Surface &amp; Geometry Corrector</span>
+            <span class="badge badge-emerald">DEWARP &amp; UNROLLER</span>
           </div>
 
-          <div class="btn-row">
-            <label class="btn btn-secondary" style="cursor: pointer;">
-              Load Document Photo <input type="file" id="input-dewarp-file" accept="image/*" style="display:none;">
-            </label>
-            <button class="btn btn-emerald" id="btn-flatten-dewarp">Flatten & Binarize Document</button>
+          <div class="segmented-control" id="surface-mode-switch" style="margin-bottom: 12px;">
+            <button type="button" class="segmented-item active" data-surface="document" id="seg-surface-doc">📄 Document Flatten</button>
+            <button type="button" class="segmented-item" data-surface="cylindrical" id="seg-surface-cyl">🥫 Cylindrical Unroller</button>
           </div>
-        </div>
 
-        <!-- Cylindrical Surface Ray-Marching Dewarping -->
-        <div class="card" style="grid-column: 1 / -1; margin-top: 14px;">
-          <div class="card-title">
-            <span>Cylindrical Surface Ray-Marching Unroller</span>
-            <span class="badge badge-cyan">BEVERAGE CANS &amp; BOTTLES</span>
-          </div>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">
-            Correct optical barcode distortion on curved cylindrical containers (soda cans, bottles, tubes) using inverse ray-marching projection before barcode decoding.
-          </p>
-          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 220px;">
-              <label>Cylinder Radius: <strong id="cyl-radius-val" style="color: var(--cyan);">33 mm</strong> (Standard 12oz Can)</label>
-              <input type="range" id="cyl-radius-slider" min="15" max="80" value="33" style="width: 100%;">
+          <!-- Document Mode Pane -->
+          <div id="pane-surface-doc" style="display: block;">
+            <div style="text-align: center; margin: 8px 0;">
+              <canvas id="canvas-dewarp" style="max-width: 100%; max-height: 140px; border-radius: 6px; border: 1px solid var(--border-color);"></canvas>
             </div>
-            <div style="margin-top: 10px;">
-              <button class="btn btn-secondary" id="btn-unroll-cylindrical">🔄 Unroll Cylindrical Curvature</button>
+            <div class="tool-bar">
+              <label class="btn btn-secondary" style="cursor: pointer; margin: 0;">
+                📁 Load Photo <input type="file" id="input-dewarp-file" accept="image/*" style="display:none;">
+              </label>
+              <button class="btn btn-emerald" id="btn-flatten-dewarp">⚡ Flatten &amp; Binarize</button>
             </div>
           </div>
-          <div id="cyl-unroll-preview-wrap" style="display:none; margin-top: 12px; text-align: center;">
-            <canvas id="canvas-cyl-unroll" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);"></canvas>
-            <div style="font-size: 11px; color: var(--emerald); margin-top: 4px;">✓ Cylindrical curvature flattened into orthogonal scan plane.</div>
+
+          <!-- Cylindrical Mode Pane -->
+          <div id="pane-surface-cyl" style="display: none;">
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 180px;">
+                <label style="font-size: 11px;">Radius: <strong id="cyl-radius-val" style="color: var(--cyan);">33 mm</strong> (12oz Can)</label>
+                <input type="range" id="cyl-radius-slider" min="15" max="80" value="33" style="width: 100%;">
+              </div>
+              <button class="btn btn-secondary" id="btn-unroll-cylindrical" style="white-space: nowrap;">🔄 Unroll</button>
+            </div>
+            <div id="cyl-unroll-preview-wrap" style="display:none; margin-top: 10px; text-align: center;">
+              <canvas id="canvas-cyl-unroll" style="max-width: 100%; max-height: 140px; border-radius: 6px; border: 1px solid var(--border-color);"></canvas>
+              <div style="font-size: 10px; color: var(--emerald); margin-top: 4px;">✓ Cylindrical curvature flattened into orthogonal plane.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -480,13 +446,10 @@
           <span>FDA FSMA Rule 204 Critical Tracking Events (CTEs)</span>
           <span class="badge badge-cyan">21 CFR PART 1 SUBPART S</span>
         </div>
-        <p style="color: var(--text-secondary); margin-bottom: 14px;">
-          Log auditable food traceability events, record Key Data Elements (KDEs), capture device GPS coordinates, and compile tamper-evident PDF/A chain-of-custody dossiers with cryptographic SHA-256 signatures.
-        </p>
 
         <!-- New CTE Form -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; margin-bottom: 20px;">
-          <h4 style="margin-bottom: 14px; font-size: 14px;">+ Record Critical Tracking Event (CTE)</h4>
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <h4 style="margin-bottom: 10px; font-size: 13px; color: var(--emerald);">+ Record Critical Tracking Event (CTE)</h4>
           <div class="grid-2">
             <div>
               <div class="form-group">
@@ -503,17 +466,17 @@
                 <input type="text" id="fsma-tlc" class="mono-input" value="TLC-9924-ALM">
               </div>
               <div class="form-group" id="fsma-parent-tlc-wrap">
-                <label>Input / Parent TLC (Transformation Genealogy Link)</label>
+                <label>Parent TLC (Genealogy)</label>
                 <input type="text" id="fsma-input-tlc" class="mono-input" value="TLC-RAW-ALMOND-08" placeholder="Parent Lot Code">
               </div>
               <div class="form-group">
-                <label>Global Trade Item Number (GTIN-14)</label>
+                <label>GTIN-14</label>
                 <input type="text" id="fsma-gtin" class="mono-input" value="00812345678901">
               </div>
             </div>
             <div>
               <div class="form-group">
-                <label>FDA Food Traceability List (FTL) Commodity</label>
+                <label>FTL Commodity</label>
                 <select id="fsma-ftl-select" style="margin-bottom: 6px;">
                   <option value="Nut Butters (peanut butter, almond butter, cashew butter)" selected>Nut Butters (almond/peanut/cashew)</option>
                   <option value="Cheeses, other than hard cheeses (soft, semi-soft)">Soft / Semi-Soft Cheeses</option>
@@ -528,39 +491,38 @@
                 <input type="text" id="fsma-commodity" value="Organic Cold-Pressed Almond Butter (Raw Almond Base)">
               </div>
               <div class="form-group">
-                <label>Quantity & Unit of Measure</label>
+                <label>Quantity &amp; Unit</label>
                 <input type="text" id="fsma-quantity" value="480 Cases / 12 units per case">
               </div>
               <div class="form-group">
-                <label>Facility GLN / Physical Location</label>
+                <label>Facility GLN</label>
                 <input type="text" id="fsma-gln" value="GLN 0812345000012 — Central Hub Dock #4">
               </div>
             </div>
           </div>
 
-          <div style="display: flex; gap: 12px; align-items: center; margin-top: 10px;">
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 8px;">
             <div style="flex: 1;">
-              <label>GPS Geotag Origin</label>
-              <input type="text" id="fsma-gps" class="mono-input" value="37.7749° N, 122.4194° W [Live Field GPS]" readonly>
+              <input type="text" id="fsma-gps" class="mono-input" value="37.7749° N, 122.4194° W [Live Field GPS]" readonly style="font-size: 11px;">
             </div>
-            <div style="margin-top: 20px;">
-              <button class="btn btn-secondary glove-touch-btn" id="btn-refresh-gps">📍 Acquire GPS</button>
-            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-gps" style="white-space: nowrap; padding: 7px 12px;">📍 GPS</button>
           </div>
 
-          <div class="btn-row" style="margin-top: 18px;">
-            <button class="btn btn-emerald glove-touch-btn" id="btn-commit-cte">Commit CTE &amp; Generate PDF Dossier</button>
+          <div class="tool-bar" style="margin-top: 12px;">
+            <button class="btn btn-emerald" id="btn-commit-cte" style="width: 100%;">⚡ Commit CTE Record &amp; Chain Hash</button>
           </div>
         </div>
 
-        <!-- FDA 204 & EPCIS 2.0 Regulatory Export Bar -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-          <div style="font-size: 13px; font-weight: 700; color: var(--emerald); margin-bottom: 8px;">FDA Rule 204 Compliance &amp; EPCIS 2.0 Export Suite</div>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="btn-export-fda-csv">📊 Export FDA 24-Hr Sortable Spreadsheet (CSV)</button>
-            <button class="btn btn-emerald" id="btn-export-epcis-jsonld">🔗 Export GS1 EPCIS 2.0 JSON-LD</button>
-            <button class="btn btn-secondary" id="btn-export-epcis-xml">📄 Export GS1 EPCIS 2.0 XML</button>
-            <button class="btn btn-secondary" id="btn-sign-part11">✍️ 21 CFR Part 11 Digital Sign-Off (ECDSA)</button>
+        <!-- FDA 204 & EPCIS 2.0 Compliance Dossier Suite -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--emerald);">Compliance Dossier Suite</span>
+            <button class="btn btn-secondary btn-sm" id="btn-sign-part11" style="padding: 4px 10px; font-size: 11px;">✍️ 21 CFR Part 11 Sign</button>
+          </div>
+          <div class="tool-bar" style="margin-top: 0;">
+            <button class="btn btn-primary" id="btn-export-fda-csv">📊 FDA CSV</button>
+            <button class="btn btn-emerald" id="btn-export-epcis-jsonld">🔗 EPCIS JSON-LD</button>
+            <button class="btn btn-secondary" id="btn-export-epcis-xml">📄 EPCIS XML</button>
           </div>
           <div id="part11-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--cyan); margin-top: 8px;"></div>
         </div>
@@ -598,136 +560,117 @@
           <span class="badge badge-cyan">AIR-GAPPED WORKSTATION</span>
         </div>
 
-        <div class="grid-2">
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
-            <h4 style="margin-bottom: 8px;">Vector Packaging Labels (SVG)</h4>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-              Export resolution-independent vectors for prepress packaging die-line integration in Adobe Illustrator, Esko, and CAD.
-            </p>
-            <div class="btn-row">
-              <button class="btn btn-primary" id="btn-export-combined-svg">Download Dual-Code Die-Line SVG</button>
-              <button class="btn btn-secondary" id="btn-print-labels">Print Packaging Proof Sheet</button>
-            </div>
+        <!-- Master Prepress Vector Engine & BWR -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 13px; font-weight: 700; color: var(--cyan);">Prepress Vector Plates &amp; BWR Compensation</span>
+            <span id="prepress-bwr-readout" class="badge badge-cyan" style="font-family: var(--font-mono); font-size: 11px;">0 µm (Nominal)</span>
           </div>
 
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
-            <h4 style="margin-bottom: 8px;">Zero-SaaS SQLite & Edge Code</h4>
-            <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-              Package all active routing tables into zero-telemetry self-hosted files.
-            </p>
-            <div class="btn-row">
-              <button class="btn btn-emerald" id="btn-export-all-rules">Download Routing Bundle (.zip/.json)</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Batch CSV / Multi-SKU Synthesis Card -->
-        <div class="card" style="margin-top: 18px;">
-          <div class="card-title">
-            <span>High-Throughput Batch CSV Multi-SKU Synthesis</span>
-            <span class="badge badge-emerald">ENTERPRISE BATCH ENGINE</span>
-          </div>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-            Process thousands of packaging labels client-side. Upload or paste a CSV manifest (<code>SKU, GTIN, Lot, Serial, ExpDate, Weight, TargetURL</code>) to generate dual barcodes and package into a standalone ZIP archive.
-          </p>
-
-          <div class="form-group">
-            <textarea id="batch-csv-input" class="mono-input" style="height: 100px; font-size: 11px;" placeholder="SKU,GTIN,Lot,Serial,ExpDate,Weight,TargetURL&#10;SKU-101,00812345678901,LOT-A1,SN-001,271231,001500,https://id.brand.com/01/00812345678901&#10;SKU-102,00812345678918,LOT-B2,SN-002,280630,002000,https://id.brand.com/01/00812345678918"></textarea>
+          <div class="slider-wrap" style="margin: 6px 0 8px;">
+            <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">-100 µm</span>
+            <input type="range" id="prepress-bwr-slider" min="-100" max="0" step="5" value="0">
+            <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">0 µm</span>
           </div>
 
-          <div class="btn-row">
-            <button class="btn btn-emerald" id="btn-run-batch-zip">📦 Generate Batch Package (.ZIP)</button>
-            <button class="btn btn-secondary" id="btn-batch-proof-sheet">📑 Multi-Up Gang-Run Proof Sheet (PDF)</button>
-          </div>
-          <div id="batch-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--emerald); margin-top: 8px;"></div>
-        </div>
-
-        <!-- Industrial Prepress & BWR Card -->
-        <div class="card" style="margin-top: 18px;">
-          <div class="card-title">
-            <span>Industrial Vector Prepress &amp; Barcode Width Reduction (BWR)</span>
-            <span class="badge badge-purple">ENTERPRISE PREPRESS</span>
-          </div>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-            Export zero-RGB PostScript Level 3 CMYK (100% Process Black) and vector PDF plates.
-            Apply Barcode Width Reduction (BWR) to compensate for flexographic or lithographic ink spread on porous substrates.
-          </p>
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="font-weight: 600; font-size: 13px;">Bar Gain Compensation (BWR):</label>
-              <span id="prepress-bwr-readout" class="badge badge-cyan" style="font-family: var(--font-mono); font-size: 13px;">0 µm (Nominal)</span>
-            </div>
-            <div class="slider-wrap">
-              <span style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono);">-100 µm</span>
-              <input type="range" id="prepress-bwr-slider" min="-100" max="0" step="5" value="0">
-              <span style="font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono);">0 µm</span>
-            </div>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px;">
-              Recommended: -40 µm to -75 µm for flexo corrugated kraft paper; -20 µm to -35 µm for coated folding cartons.
-            </div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="btn-export-cmyk-eps">Download PostScript Level 3 CMYK EPS</button>
-            <button class="btn btn-secondary" id="btn-export-pantone-eps">Download Pantone Spot Separation EPS</button>
-            <button class="btn btn-emerald" id="btn-export-layered-pdf">Download Layered Illustrator PDF (OCG)</button>
-            <button class="btn btn-secondary" id="btn-export-pdf-600">Download Vector PDF (600 DPI)</button>
-            <button class="btn btn-secondary" id="btn-export-pdf-1200">Download Vector PDF (1200 DPI)</button>
+          <div class="tool-bar" style="margin-top: 8px;">
+            <button class="btn btn-primary" id="btn-export-cmyk-eps">📄 CMYK EPS</button>
+            <button class="btn btn-secondary" id="btn-export-pantone-eps">🎨 Pantone Spot</button>
+            <button class="btn btn-emerald" id="btn-export-layered-pdf">📑 Layered PDF</button>
+            <button class="btn btn-secondary" id="btn-export-pdf-600">📐 600 DPI</button>
+            <button class="btn btn-secondary" id="btn-export-pdf-1200">📐 1200 DPI</button>
+            <button class="btn btn-secondary" id="btn-export-combined-svg">📐 Die-Line SVG</button>
+            <button class="btn btn-secondary" id="btn-print-labels">🖨️ Proof Sheet</button>
           </div>
         </div>
 
         <!-- Zebra ZPL II & Direct Network Socket Printing -->
-        <div class="card" style="margin-top: 18px;">
-          <div class="card-title">
-            <span>Zebra ZPL II Direct Thermal Label Generator &amp; TCP Socket Spooler</span>
-            <span class="badge badge-cyan">INDUSTRIAL THERMAL PRINTING</span>
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+            <span>Zebra ZPL II Thermal Printer &amp; Socket Spooler</span>
+            <span class="badge badge-cyan">RAW PORT 9100</span>
           </div>
-          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
-            Synthesize native Zebra Programming Language (ZPL II) code for Zebra, Honeywell, and SATO direct thermal label printers. Automatically encodes 1D UPC-A/EAN-13 (^BC) and 2D GS1 Digital Link (^BQN) with hardware-calculated 50mm clearance and zero-driver raw socket capability.
-          </p>
 
-          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;">
-            <div style="flex: 1; min-width: 200px;">
-              <label>Print Head Resolution (DPI)</label>
-              <select id="zpl-dpi-select">
-                <option value="203" selected>203 DPI (8 dots/mm — Standard Warehouse / Shipping)</option>
-                <option value="300">300 DPI (12 dots/mm — High Density Packaging)</option>
-                <option value="600">600 DPI (24 dots/mm — Micro Pharma / Electronics)</option>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 140px;">
+              <select id="zpl-dpi-select" style="font-size: 11px; padding: 6px 8px;">
+                <option value="203" selected>203 DPI (8 dots/mm — Shipping)</option>
+                <option value="300">300 DPI (12 dots/mm — Packaging)</option>
+                <option value="600">600 DPI (24 dots/mm — Pharma)</option>
               </select>
             </div>
-            <div style="margin-top: 18px;">
-              <button class="btn btn-primary" id="btn-generate-zpl">⚡ Generate ZPL II Stream</button>
-            </div>
+            <button class="btn btn-primary btn-sm" id="btn-generate-zpl" style="padding: 6px 12px; white-space: nowrap;">⚡ Generate ZPL</button>
           </div>
 
-          <div class="code-block" id="zpl-output-preview" style="max-height: 140px; overflow-y: auto;">Click "Generate ZPL II Stream" to produce raw printer instructions...</div>
+          <div class="code-block" id="zpl-output-preview" style="max-height: 90px; overflow-y: auto; margin: 8px 0; font-size: 10.5px; padding: 8px;">Click "Generate ZPL" to synthesize printer code...</div>
 
-          <div class="btn-row" style="margin-top: 14px;">
-            <button class="btn btn-emerald" id="btn-copy-zpl">📋 Copy ZPL to Clipboard</button>
-            <button class="btn btn-secondary" id="btn-download-zpl">💾 Download .zpl File</button>
+          <div class="tool-bar" style="margin-top: 6px;">
+            <button class="btn btn-emerald btn-sm" id="btn-copy-zpl">📋 Copy ZPL</button>
+            <button class="btn btn-secondary btn-sm" id="btn-download-zpl">💾 Save .zpl</button>
           </div>
 
           <!-- Direct Network Socket Spooler -->
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-top: 14px;">
-            <div style="font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px;">Direct Network Printer Socket Spooler (Raw Port 9100)</div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-              <div style="flex: 2; min-width: 160px;">
-                <label style="font-size: 11px;">Printer IP Address / Host</label>
-                <input type="text" id="tcp-printer-ip" class="mono-input" value="192.168.1.100" placeholder="e.g. 192.168.1.100">
-              </div>
-              <div style="flex: 1; min-width: 80px;">
-                <label style="font-size: 11px;">Port (Default: 9100)</label>
-                <input type="number" id="tcp-printer-port" class="mono-input" value="9100">
-              </div>
-              <div style="margin-top: 18px;">
-                <button class="btn btn-primary" id="btn-send-tcp-socket">🖨️ Send ZPL to Network Printer</button>
-              </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+            <div style="flex: 2; min-width: 130px;">
+              <input type="text" id="tcp-printer-ip" class="mono-input" value="192.168.1.100" placeholder="Printer IP" style="font-size: 11px; padding: 6px 8px;">
             </div>
+            <div style="flex: 1; min-width: 60px;">
+              <input type="number" id="tcp-printer-port" class="mono-input" value="9100" style="font-size: 11px; padding: 6px 8px;">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-send-tcp-socket" style="white-space: nowrap; padding: 6px 12px;">🖨️ Send TCP</button>
           </div>
+        </div>
+
+        <!-- High-Throughput Batch Engine -->
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+            <span>Batch CSV Multi-SKU Synthesis</span>
+            <span class="badge badge-emerald">ZIP ARCHIVE</span>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 8px;">
+            <textarea id="batch-csv-input" class="mono-input" style="height: 70px; font-size: 10.5px; padding: 8px;" placeholder="SKU,GTIN,Lot,Serial,ExpDate,Weight,TargetURL&#10;SKU-101,00812345678901,LOT-A1,SN-001,271231,001500,https://id.brand.com/01/00812345678901"></textarea>
+          </div>
+
+          <div class="tool-bar" style="margin-top: 6px;">
+            <button class="btn btn-emerald btn-sm" id="btn-run-batch-zip">📦 Generate ZIP</button>
+            <button class="btn btn-secondary btn-sm" id="btn-batch-proof-sheet">📑 Proof Sheet</button>
+            <button class="btn btn-secondary btn-sm" id="btn-export-all-rules">🗄️ Routing Bundle</button>
+          </div>
+          <div id="batch-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--emerald); margin-top: 6px;"></div>
         </div>
       </div>
     </section>
 
   </main>
+
+  <!-- Fixed Mobile Bottom Navigation Bar (Sticky Native App Experience) -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bottom-nav-item active" data-tab="tab-synth" title="1D/2D Barcode Generator">
+      <span class="bottom-nav-icon">📐</span>
+      <span class="bottom-nav-label">Synth</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="tab-clearance" title="50mm Die-Line Clearance">
+      <span class="bottom-nav-icon">📏</span>
+      <span class="bottom-nav-label">50mm</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="tab-resolver" title="Zero-SaaS Dynamic Resolver">
+      <span class="bottom-nav-icon">🔀</span>
+      <span class="bottom-nav-label">Resolver</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="tab-scanner" title="Optical Scanner & Dewarp">
+      <span class="bottom-nav-icon">📷</span>
+      <span class="bottom-nav-label">Scanner</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="tab-fsma" title="FSMA 204 Food Traceability">
+      <span class="bottom-nav-icon">📜</span>
+      <span class="bottom-nav-label">FSMA 204</span>
+    </button>
+    <button class="bottom-nav-item" data-tab="tab-exports" title="Prepress Export Center">
+      <span class="bottom-nav-icon">💾</span>
+      <span class="bottom-nav-label">Exports</span>
+    </button>
+  </nav>
 
   <div id="toast-container"></div>
 

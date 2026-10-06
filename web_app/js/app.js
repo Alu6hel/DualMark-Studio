@@ -48,25 +48,42 @@
 
   // 1. Navigation Tab Switching
   function initNav() {
-    var tabs = document.querySelectorAll('.nav-tab');
+    var topTabs = document.querySelectorAll('.nav-tab');
+    var bottomItems = document.querySelectorAll('.bottom-nav-item');
     var panes = document.querySelectorAll('.tab-pane');
 
-    tabs.forEach(function(tab) {
+    window.switchTab = function(targetId) {
+      topTabs.forEach(function(t) {
+        if (t.getAttribute('data-tab') === targetId) t.classList.add('active');
+        else t.classList.remove('active');
+      });
+      bottomItems.forEach(function(b) {
+        if (b.getAttribute('data-tab') === targetId) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      panes.forEach(function(p) {
+        if (p.id === targetId) p.classList.add('active');
+        else p.classList.remove('active');
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
+
+      // If switching to Clearance tab, re-render die-line canvas scale
+      if (targetId === 'tab-clearance' && window.clearanceInspector) {
+        setTimeout(function() { window.clearanceInspector.render(); }, 50);
+      }
+    };
+
+    topTabs.forEach(function(tab) {
       tab.addEventListener('click', function() {
-        var targetId = tab.getAttribute('data-tab');
-        tabs.forEach(function(t) { t.classList.remove('active'); });
-        panes.forEach(function(p) { p.classList.remove('active'); });
+        window.switchTab(tab.getAttribute('data-tab'));
+      });
+    });
 
-        tab.classList.add('active');
-        var targetPane = document.getElementById(targetId);
-        if (targetPane) targetPane.classList.add('active');
-
-        window.DualMarkAudio.click();
-
-        // If switching to Clearance tab, re-render die-line canvas scale
-        if (targetId === 'tab-clearance' && window.clearanceInspector) {
-          setTimeout(function() { window.clearanceInspector.render(); }, 50);
-        }
+    bottomItems.forEach(function(item) {
+      item.addEventListener('click', function() {
+        window.switchTab(item.getAttribute('data-tab'));
       });
     });
 
@@ -408,6 +425,15 @@
     [domain2d, gtin2d, lot2d, serial2d, exp2d, weight2d, price2d, po2d, origin2d].forEach(function(el) {
       if (el) el.addEventListener('input', update2D);
     });
+
+    var countrySelect = document.getElementById('synth-2d-country-select');
+    if (countrySelect && origin2d) {
+      countrySelect.addEventListener('change', function() {
+        origin2d.value = this.value;
+        update2D();
+        showToast('Origin Country AI 422: ' + this.options[this.selectedIndex].text);
+      });
+    }
 
     // Downloads
     document.getElementById('btn-1d-svg').addEventListener('click', function() {
@@ -773,6 +799,31 @@
       showToast('Nginx Map Configuration Exported');
     });
 
+    var btnAddRule = document.getElementById('btn-add-resolve-rule');
+    if (btnAddRule) {
+      btnAddRule.addEventListener('click', function() {
+        var gtin = (testGtin && testGtin.value.trim()) || '00812345678901';
+        var country = (testCountry && testCountry.value) || 'US';
+        var newRule = {
+          id: 'rule_' + Date.now(),
+          gtin: gtin,
+          itemTitle: 'Packaging Route (' + gtin + ')',
+          lot: '*',
+          serial: '*',
+          isRecalled: false,
+          recallNoticeUrl: 'https://safety.brand.com/recall-alert',
+          defaultUrl: 'https://brand.com/p/' + gtin,
+          geoRules: [
+            { country: country, targetUrl: 'https://brand.com/' + country.toLowerCase() + '/item/' + gtin }
+          ]
+        };
+        window.DualMarkResolver.addRule(newRule);
+        renderRulesTable();
+        showToast('✓ Added Route Rule for ' + gtin);
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
     renderRulesTable();
   }
 
@@ -952,6 +1003,40 @@
         if (cylWrap) cylWrap.style.display = 'block';
         showToast('✓ Cylindrical Ray-Marching Unroll Applied (' + radiusMm + ' mm radius)');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // Segmented control switcher for Surface Corrector
+    var segDoc = document.getElementById('seg-surface-doc');
+    var segCyl = document.getElementById('seg-surface-cyl');
+    var paneDoc = document.getElementById('pane-surface-doc');
+    var paneCyl = document.getElementById('pane-surface-cyl');
+
+    if (segDoc && segCyl && paneDoc && paneCyl) {
+      segDoc.addEventListener('click', function() {
+        segDoc.classList.add('active');
+        segCyl.classList.remove('active');
+        paneDoc.style.display = 'block';
+        paneCyl.style.display = 'none';
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+
+      segCyl.addEventListener('click', function() {
+        segCyl.classList.add('active');
+        segDoc.classList.remove('active');
+        paneDoc.style.display = 'none';
+        paneCyl.style.display = 'block';
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    // Continuous 50mm Tracking Toggle
+    var chkContinuous = document.getElementById('chk-continuous-scan');
+    if (chkContinuous) {
+      chkContinuous.addEventListener('change', function() {
+        studio.continuousTracking = this.checked;
+        showToast(this.checked ? '✓ Continuous 50mm Tracking Active' : 'Continuous Tracking Stopped');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
   }
