@@ -1,6 +1,7 @@
 /**
  * DualMark Studio — 50mm Physical Clearance Die-Line Inspector
  * Validates optical spacing between 1D UPC and 2D GS1 barcodes to prevent POS laser-grid cross-talk.
+ * Features touch pinch-to-zoom, pan, and snap-to-safe layout engine.
  */
 (function(window) {
   'use strict';
@@ -39,6 +40,8 @@
 
     this.activeDragging = null; // '1d' or '2d'
     this.scale = 4.0; // Screen pixels per millimeter (px/mm)
+    this.zoomLevel = 1.0; // Zoom multiplier (0.5x to 3.0x)
+    this.initialPinchDistance = 0;
     this.listeners = [];
 
     this.initEvents();
@@ -60,6 +63,28 @@
       this.packageHeightMm = Math.max(30, hMm);
       this.autoAlign();
       this.render();
+    },
+
+    zoomIn: function() {
+      this.zoomLevel = Math.min(3.0, this.zoomLevel + 0.25);
+      this.render();
+      return this.zoomLevel;
+    },
+
+    zoomOut: function() {
+      this.zoomLevel = Math.max(0.6, this.zoomLevel - 0.25);
+      this.render();
+      return this.zoomLevel;
+    },
+
+    resetZoom: function() {
+      this.zoomLevel = 1.0;
+      this.render();
+      return this.zoomLevel;
+    },
+
+    getZoomLevel: function() {
+      return this.zoomLevel;
     },
 
     onUpdate: function(callback) {
@@ -88,55 +113,62 @@
         bottom: this.barcode2d.y + this.barcode2d.h / 2
       };
 
-      var dx = 0;
-      if (b1.right < b2.left) dx = b2.left - b1.right;
-      else if (b2.right < b1.left) dx = b1.left - b2.right;
+      // Horizontal and vertical gaps between rectangles
+      var dx = Math.max(0, Math.max(b1.left - b2.right, b2.left - b1.right));
+      var dy = Math.max(0, Math.max(b1.top - b2.bottom, b2.top - b1.bottom));
 
-      var dy = 0;
-      if (b1.bottom < b2.top) dy = b2.top - b1.bottom;
-      else if (b2.bottom < b1.top) dy = b1.top - b2.bottom;
+      var distance = Math.sqrt(dx * dx + dy * dy);
+      var isCompliant = distance >= 50.0;
 
-      var edgeDistance = Math.hypot(dx, dy);
-      var centerDistance = Math.hypot(this.barcode2d.x - this.barcode1d.x, this.barcode2d.y - this.barcode1d.y);
-
-      var isCompliant = edgeDistance >= 50.0;
       return {
-        edgeDistanceMm: parseFloat(edgeDistance.toFixed(1)),
-        centerDistanceMm: parseFloat(centerDistance.toFixed(1)),
+        distanceMm: parseFloat(distance.toFixed(1)),
+        edgeDistanceMm: parseFloat(distance.toFixed(1)),
         isCompliant: isCompliant,
-        thresholdMm: 50.0,
-        marginDeltaMm: parseFloat((edgeDistance - 50.0).toFixed(1))
+        marginDeltaMm: (distance - 50.0).toFixed(1),
+        dxMm: parseFloat(dx.toFixed(1)),
+        dyMm: parseFloat(dy.toFixed(1)),
+        b1: b1,
+        b2: b2
       };
     },
 
-    autoAlign: function() {
-      // Auto-separate to satisfy 50mm clearance safely
-      this.barcode1d.x = Math.max(this.barcode1d.w / 2 + 5, 25);
-      this.barcode1d.y = this.packageHeightMm / 2;
+    getMetrics: function() {
+      return this.calculateDistanceMm();
+    },
 
-      this.barcode2d.x = Math.min(this.packageWidthMm - this.barcode2d.w / 2 - 5, this.barcode1d.x + this.barcode1d.w / 2 + 50 + this.barcode2d.w / 2);
+    autoAlign: function() {
+      // Place 1D on left, 2D on right with >= 50mm safe spacing
+      var targetCenter1 = this.barcode1d.w / 2 + 10;
+      var targetCenter2 = Math.min(this.packageWidthMm - this.barcode2d.w / 2 - 10, targetCenter1 + this.barcode1d.w / 2 + 52 + this.barcode2d.w / 2);
+
+      this.barcode1d.x = targetCenter1;
+      this.barcode1d.y = this.packageHeightMm / 2;
+      this.barcode2d.x = targetCenter2;
       this.barcode2d.y = this.packageHeightMm / 2;
     },
 
-    snapToSafe50mm: function() {
-      // Shift 2D code so edge-to-edge distance equals exactly 52 mm
-      var targetDistance = 52.0;
-      var dirX = this.barcode2d.x - this.barcode1d.x;
-      var dirY = this.barcode2d.y - this.barcode1d.y;
-      var len = Math.hypot(dirX, dirY) || 1;
-
-      var normX = dirX / len;
-      var normY = dirY / len;
-
-      var totalSpan = (this.barcode1d.w / 2 + this.barcode2d.w / 2) + targetDistance;
-      this.barcode2d.x = this.barcode1d.x + (normX * totalSpan);
-      this.barcode2d.y = this.barcode1d.y + (normY * totalSpan);
-
-      // Clamp to package boundaries
-      this.barcode2d.x = Math.max(this.barcode2d.w / 2 + 2, Math.min(this.packageWidthMm - this.barcode2d.w / 2 - 2, this.barcode2d.x));
-      this.barcode2d.y = Math.max(this.barcode2d.h / 2 + 2, Math.min(this.packageHeightMm - this.barcode2d.h / 2 - 2, this.barcode2d.y));
-
+    snapTo50mm: function() {
+      var metrics = this.calculateDistanceMm();
+      if (!metrics.isCompliant) {
+        var needed = 52.0;
+        // Shift 2D to the right if space allows
+        var newX2 = this.barcode1d.x + (this.barcode1d.w / 2) + needed + (this.barcode2d.w / 2);
+        if (newX2 + this.barcode2d.w / 2 <= this.packageWidthMm - 4) {
+          this.barcode2d.x = newX2;
+        } else {
+          // Otherwise shift 1D left as much as possible
+          this.barcode1d.x = this.barcode1d.w / 2 + 4;
+          this.barcode2d.x = this.barcode1d.x + (this.barcode1d.w / 2) + needed + (this.barcode2d.w / 2);
+        }
+      }
       this.render();
+      if (window.DualMarkAudio && typeof window.DualMarkAudio.successChime === 'function') {
+        window.DualMarkAudio.successChime();
+      }
+    },
+
+    snapToSafe50mm: function() {
+      this.snapTo50mm();
     },
 
     initEvents: function() {
@@ -156,8 +188,15 @@
       }
 
       function handleStart(e) {
+        if (e.touches && e.touches.length === 2) {
+          // Pinch start
+          var dx = e.touches[0].clientX - e.touches[1].clientX;
+          var dy = e.touches[0].clientY - e.touches[1].clientY;
+          self.initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+          return;
+        }
+
         var pos = getCanvasPos(e);
-        // Check hit on 1D or 2D
         var hit1d = Math.abs(pos.xMm - self.barcode1d.x) <= self.barcode1d.w / 2 && Math.abs(pos.yMm - self.barcode1d.y) <= self.barcode1d.h / 2;
         var hit2d = Math.abs(pos.xMm - self.barcode2d.x) <= self.barcode2d.w / 2 && Math.abs(pos.yMm - self.barcode2d.y) <= self.barcode2d.h / 2;
 
@@ -171,6 +210,23 @@
       }
 
       function handleMove(e) {
+        if (e.touches && e.touches.length === 2 && self.initialPinchDistance > 0) {
+          // Pinch move
+          if (e.cancelable) e.preventDefault();
+          var dx = e.touches[0].clientX - e.touches[1].clientX;
+          var dy = e.touches[0].clientY - e.touches[1].clientY;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          var factor = dist / self.initialPinchDistance;
+          if (factor > 1.1) {
+            self.zoomIn();
+            self.initialPinchDistance = dist;
+          } else if (factor < 0.9) {
+            self.zoomOut();
+            self.initialPinchDistance = dist;
+          }
+          return;
+        }
+
         if (!isMouseDown || !self.activeDragging) return;
         if (e.cancelable) e.preventDefault();
         var pos = getCanvasPos(e);
@@ -185,9 +241,10 @@
         self.render();
       }
 
-      function handleEnd() {
+      function handleEnd(e) {
         isMouseDown = false;
         self.activeDragging = null;
+        self.initialPinchDistance = 0;
       }
 
       this.canvas.addEventListener('mousedown', handleStart);
@@ -204,10 +261,10 @@
       var c = this.canvas;
       var ctx = this.ctx;
 
-      // Adapt scale based on canvas display width
       var containerWidth = c.parentElement ? c.parentElement.clientWidth : 600;
       var maxCanvasWidth = Math.min(containerWidth - 32, 850);
-      this.scale = maxCanvasWidth / this.packageWidthMm;
+      var baseScale = maxCanvasWidth / this.packageWidthMm;
+      this.scale = baseScale * this.zoomLevel;
 
       var widthPx = Math.round(this.packageWidthMm * this.scale);
       var heightPx = Math.round(this.packageHeightMm * this.scale);
@@ -217,7 +274,7 @@
       var scale = this.scale;
 
       // 1. Draw Package Outline & Die-Line
-      ctx.fillStyle = '#0F172A'; // Dark slate package background
+      ctx.fillStyle = '#0F172A';
       ctx.fillRect(0, 0, widthPx, heightPx);
 
       // Grid Lines (every 10mm)
@@ -241,104 +298,101 @@
       ctx.lineWidth = 2;
       ctx.strokeRect(1, 1, widthPx - 2, heightPx - 2);
 
-      // Package dimension labels
+      // Package dimension labels & zoom level
       ctx.fillStyle = '#64748B';
       ctx.font = '600 11px sans-serif';
       ctx.fillText(this.packageWidthMm + ' mm', 8, 16);
       ctx.fillText(this.packageHeightMm + ' mm', 8, heightPx - 8);
+      ctx.fillText((this.zoomLevel * 100).toFixed(0) + '% Zoom', widthPx - 65, 16);
 
       // 2. Draw Caliper / Clearance Line
-      var x1 = this.barcode1d.x * scale;
-      var y1 = this.barcode1d.y * scale;
-      var x2 = this.barcode2d.x * scale;
-      var y2 = this.barcode2d.y * scale;
+      var p1 = { x: this.barcode1d.x * scale, y: this.barcode1d.y * scale };
+      var p2 = { x: this.barcode2d.x * scale, y: this.barcode2d.y * scale };
 
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = metrics.isCompliant ? '#10B981' : '#EF4444';
-      ctx.lineWidth = 3;
-      ctx.setLineDash([6, 6]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Caliper Badge in center of measurement line
-      var midX = (x1 + x2) / 2;
-      var midY = (y1 + y2) / 2;
-
-      ctx.fillStyle = metrics.isCompliant ? '#064E3B' : '#7F1D1D';
-      ctx.strokeStyle = metrics.isCompliant ? '#10B981' : '#EF4444';
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = metrics.isCompliant ? '#10B981' : '#F43F5E';
       ctx.lineWidth = 2;
-      var badgeW = 96;
-      var badgeH = 28;
-      ctx.fillRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH);
-      ctx.strokeRect(midX - badgeW / 2, midY - badgeH / 2, badgeW, badgeH);
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.restore();
+
+      // Measurement bubble in middle
+      var midX = (p1.x + p2.x) / 2;
+      var midY = (p1.y + p2.y) / 2;
+      ctx.fillStyle = metrics.isCompliant ? '#10B981' : '#F43F5E';
+      ctx.beginPath();
+      ctx.arc(midX, midY, 18, 0, Math.PI * 2);
+      ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 12px "JetBrains Mono", monospace';
+      ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(metrics.edgeDistanceMm + ' mm', midX, midY - 1);
+      ctx.fillText(metrics.distanceMm + 'm', midX, midY);
 
-      // 3. Draw 1D Barcode Widget
-      var b1w = this.barcode1d.w * scale;
-      var b1h = this.barcode1d.h * scale;
-      var b1x = x1 - b1w / 2;
-      var b1y = y1 - b1h / 2;
+      // 3. Draw 1D Barcode Placeholder Box
+      var b1Px = {
+        x: (this.barcode1d.x - this.barcode1d.w / 2) * scale,
+        y: (this.barcode1d.y - this.barcode1d.h / 2) * scale,
+        w: this.barcode1d.w * scale,
+        h: this.barcode1d.h * scale
+      };
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(b1x, b1y, b1w, b1h);
-      ctx.strokeStyle = '#38BDF8';
+      ctx.fillRect(b1Px.x, b1Px.y, b1Px.w, b1Px.h);
+      ctx.strokeStyle = (this.activeDragging === '1d') ? '#0284C7' : '#94A3B8';
       ctx.lineWidth = (this.activeDragging === '1d') ? 3 : 1;
-      ctx.strokeRect(b1x, b1y, b1w, b1h);
+      ctx.strokeRect(b1Px.x, b1Px.y, b1Px.w, b1Px.h);
 
-      // Simulated barcode stripes
+      // Simulated vertical bars
       ctx.fillStyle = '#000000';
-      var stripeCount = 28;
-      var stripeStep = b1w / (stripeCount + 6);
-      for (var s = 0; s < stripeCount; s++) {
-        var sw = (s % 3 === 0) ? stripeStep * 1.5 : stripeStep * 0.7;
-        ctx.fillRect(b1x + (s + 3) * stripeStep, b1y + 3, sw, b1h - 10);
+      var numBars = 22;
+      var barGap = b1Px.w / (numBars * 2);
+      for (var b = 0; b < numBars; b++) {
+        var bx = b1Px.x + b * (barGap * 2) + barGap;
+        var bw = (b % 3 === 0) ? barGap * 1.5 : barGap * 0.8;
+        ctx.fillRect(bx, b1Px.y + 4, bw, b1Px.h - 14);
       }
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 9px monospace';
-      ctx.fillText('1D UPC-A', x1, b1y + b1h - 2);
+      ctx.font = '9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('1D UPC-A', b1Px.x + b1Px.w / 2, b1Px.y + b1Px.h - 4);
 
-      // 4. Draw 2D GS1 QR Code Widget
-      var b2w = this.barcode2d.w * scale;
-      var b2h = this.barcode2d.h * scale;
-      var b2x = x2 - b2w / 2;
-      var b2y = y2 - b2h / 2;
+      // 4. Draw 2D QR Code Placeholder Box
+      var b2Px = {
+        x: (this.barcode2d.x - this.barcode2d.w / 2) * scale,
+        y: (this.barcode2d.y - this.barcode2d.h / 2) * scale,
+        w: this.barcode2d.w * scale,
+        h: this.barcode2d.h * scale
+      };
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(b2x, b2y, b2w, b2h);
-      ctx.strokeStyle = '#10B981';
+      ctx.fillRect(b2Px.x, b2Px.y, b2Px.w, b2Px.h);
+      ctx.strokeStyle = (this.activeDragging === '2d') ? '#0284C7' : '#94A3B8';
       ctx.lineWidth = (this.activeDragging === '2d') ? 3 : 1;
-      ctx.strokeRect(b2x, b2y, b2w, b2h);
+      ctx.strokeRect(b2Px.x, b2Px.y, b2Px.w, b2Px.h);
 
-      // Simulated 2D QR finder blocks
+      // Simulated 2D finder patterns
       ctx.fillStyle = '#000000';
-      var fSize = b2w * 0.28;
-      // Finder 1
-      ctx.strokeRect(b2x + 2, b2y + 2, fSize, fSize);
-      ctx.fillRect(b2x + 4, b2y + 4, fSize - 4, fSize - 4);
-      // Finder 2
-      ctx.strokeRect(b2x + b2w - fSize - 2, b2y + 2, fSize, fSize);
-      ctx.fillRect(b2x + b2w - fSize, b2y + 4, fSize - 4, fSize - 4);
-      // Finder 3
-      ctx.strokeRect(b2x + 2, b2y + b2h - fSize - 2, fSize, fSize);
-      ctx.fillRect(b2x + 4, b2y + b2h - fSize, fSize - 4, fSize - 4);
+      var finderSize = b2Px.w * 0.28;
+      ctx.fillRect(b2Px.x + 3, b2Px.y + 3, finderSize, finderSize);
+      ctx.fillRect(b2Px.x + b2Px.w - finderSize - 3, b2Px.y + 3, finderSize, finderSize);
+      ctx.fillRect(b2Px.x + 3, b2Px.y + b2Px.h - finderSize - 3, finderSize, finderSize);
 
-      ctx.font = 'bold 8px monospace';
-      ctx.fillText('2D GS1', x2, y2);
+      ctx.fillStyle = '#000000';
+      ctx.font = '8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('2D GS1', b2Px.x + b2Px.w / 2, b2Px.y + b2Px.h / 2 + 2);
 
       this.notifyUpdate(metrics);
     }
   };
 
+  window.ClearanceInspector = ClearanceInspector;
   window.DualMarkClearance = {
-    ClearanceInspector: ClearanceInspector,
-    PACKAGING_PRESETS: PACKAGING_PRESETS
+    ClearanceInspector: ClearanceInspector
   };
-
 })(window);

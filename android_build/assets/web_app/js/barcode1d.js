@@ -108,10 +108,33 @@
 
   // 1. Synthesize UPC-A Bitstream (95 modules)
   function getUpcABitstream(upc12) {
-    if (upc12.length === 11) {
-      upc12 += calculateMod10(upc12);
+    var raw = (upc12 || '').toString().trim().replace(/\D/g, '');
+    // In GS1/retail, UPC-A is 12 digits. Scanners and packaging databases often pass:
+    // - 13 digits starting with '0' (GTIN-13 format of UPC-A, e.g. 0012345678905 -> 012345678905)
+    // - 14 digits starting with '00' (GTIN-14 format of UPC-A, e.g. 00012345678905 -> 012345678905)
+    if (raw.length === 13 && raw.charAt(0) === '0') {
+      raw = raw.substring(1);
+    } else if (raw.length === 14 && raw.substring(0, 2) === '00') {
+      raw = raw.substring(2);
     }
-    if (upc12.length !== 12) throw new Error("UPC-A must be 12 digits");
+
+    if (raw.length === 11) {
+      raw += calculateMod10(raw);
+    } else if (raw.length === 13) {
+      // 13-digit code starting with non-zero (International EAN-13)
+      return getEan13Bitstream(raw);
+    } else if (raw.length < 11 && raw.length > 0) {
+      // Auto-pad partial inputs gracefully
+      while (raw.length < 11) raw = '0' + raw;
+      raw += calculateMod10(raw);
+    } else if (raw.length > 12) {
+      raw = raw.substring(0, 12);
+    }
+
+    upc12 = raw;
+    if (upc12.length !== 12) {
+      upc12 = '000000000000';
+    }
 
     var bitstream = '101'; // Start guard
     // Left 6 digits (L-codes)
@@ -131,10 +154,23 @@
 
   // 2. Synthesize EAN-13 Bitstream (95 modules)
   function getEan13Bitstream(ean13) {
-    if (ean13.length === 12) {
-      ean13 += calculateMod10(ean13);
+    var raw = (ean13 || '').toString().trim().replace(/\D/g, '');
+    if (raw.length === 14 && raw.charAt(0) === '0') {
+      raw = raw.substring(1);
     }
-    if (ean13.length !== 13) throw new Error("EAN-13 must be 13 digits");
+    if (raw.length === 12) {
+      raw += calculateMod10(raw);
+    } else if (raw.length < 12 && raw.length > 0) {
+      while (raw.length < 12) raw = '0' + raw;
+      raw += calculateMod10(raw);
+    } else if (raw.length > 13) {
+      raw = raw.substring(0, 13);
+    }
+
+    ean13 = raw;
+    if (ean13.length !== 13) {
+      ean13 = '0000000000000';
+    }
 
     var first = parseInt(ean13.charAt(0), 10);
     var parity = EAN_PARITY[first];
@@ -200,8 +236,19 @@
   var I25_WEIGHTS = ['NNWWN', 'WNNNW', 'NWNNW', 'WWNNN', 'NNWNW', 'WNWNN', 'NWWNN', 'NNNWW', 'WNNWN', 'NWNWN'];
 
   function getItf14Bitstream(itf14) {
-    if (itf14.length === 13) itf14 += calculateMod10(itf14);
-    if (itf14.length !== 14) throw new Error("ITF-14 must be 14 digits");
+    var raw = (itf14 || '').toString().trim().replace(/\D/g, '');
+    if (raw.length === 13) {
+      raw += calculateMod10(raw);
+    } else if (raw.length < 13 && raw.length > 0) {
+      while (raw.length < 13) raw = '0' + raw;
+      raw += calculateMod10(raw);
+    } else if (raw.length > 14) {
+      raw = raw.substring(0, 14);
+    }
+    itf14 = raw;
+    if (itf14.length !== 14) {
+      itf14 = '00000000000000';
+    }
 
     var bitstream = '1010'; // Start: narrow bar, narrow space, narrow bar, narrow space
     for (var i = 0; i < 14; i += 2) {

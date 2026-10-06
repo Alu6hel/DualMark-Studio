@@ -18,7 +18,12 @@ async function main() {
   console.log("======================================================================\n");
 
   // 1. Fetch WebSocket debugger URL
-  const listRes = await fetch("http://127.0.0.1:9225/json");
+  let listRes;
+  try {
+    listRes = await fetch("http://127.0.0.1:9222/json");
+  } catch (e) {
+    listRes = await fetch("http://127.0.0.1:9225/json");
+  }
   const pages = await listRes.json();
   const page = pages.find(p => p.type === 'page' && p.url.includes('web_app'));
   if (!page) {

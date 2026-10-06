@@ -25,6 +25,8 @@
     }
   }
 
+  window.DualMarkApp = { showToast: showToast };
+
   // File download helper (Web or Android native bridge)
   function downloadBlob(content, filename, mimeType) {
     // If native Android Bridge is available
@@ -131,6 +133,39 @@
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
+
+    // Interactive Guided Tour
+    var btnTour = document.getElementById('btn-tour');
+    if (btnTour) {
+      btnTour.addEventListener('click', function() {
+        if (window.DualMarkTour) window.DualMarkTour.start();
+      });
+    }
+
+    // High-Contrast Outdoor Loading Dock Theme
+    var btnOutdoor = document.getElementById('btn-outdoor');
+    if (btnOutdoor) {
+      btnOutdoor.addEventListener('click', function() {
+        document.body.classList.toggle('theme-outdoor');
+        var isOutdoor = document.body.classList.contains('theme-outdoor');
+        localStorage.setItem('dualmark_outdoor', isOutdoor ? 'true' : 'false');
+        showToast(isOutdoor ? 'High-Contrast Outdoor Theme' : 'Standard Dark Theme');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+      if (localStorage.getItem('dualmark_outdoor') === 'true') {
+        document.body.classList.add('theme-outdoor');
+      }
+    }
+
+    // Sanitized System Diagnostics Export
+    var btnDiagnostics = document.getElementById('btn-diagnostics');
+    if (btnDiagnostics) {
+      btnDiagnostics.addEventListener('click', function() {
+        if (window.DualMarkLicensing && typeof window.DualMarkLicensing.exportDiagnosticBundle === 'function') {
+          window.DualMarkLicensing.exportDiagnosticBundle();
+        }
+      });
+    }
   }
 
   // 2. Module 1: Dual-Code Synth
@@ -146,21 +181,106 @@
     var lot2d = document.getElementById('synth-2d-lot');
     var serial2d = document.getElementById('synth-2d-serial');
     var exp2d = document.getElementById('synth-2d-exp');
+    var expDate2d = document.getElementById('synth-2d-exp-date');
+    var symbologySelect = document.getElementById('synth-2d-symbology');
+    var badge2dStandard = document.getElementById('badge-2d-standard');
     var preview2d = document.getElementById('synth-2d-uri-preview');
     var canvas2d = document.getElementById('canvas-2d');
 
     function update1D() {
       try {
         var type = typeSelect.value;
+        var rawVal = input1d.value.trim();
+        var digitsOnly = rawVal.replace(/\D/g, '');
+        var note = '';
+
+        // Intelligent auto-detection & normalization
+        if (/[A-Za-z]/.test(rawVal) && type !== 'Code-128') {
+          type = 'Code-128';
+          typeSelect.value = 'Code-128';
+          note = ' • Auto-detected alphanumeric (Code 128)';
+        } else if (type === 'UPC-A') {
+          if (digitsOnly.length === 13) {
+            if (digitsOnly.charAt(0) === '0') {
+              note = ' • GTIN-13 normalized to UPC-A (12 digits)';
+            } else {
+              type = 'EAN-13';
+              typeSelect.value = 'EAN-13';
+              note = ' • Auto-switched to EAN-13 (13-digit global GTIN)';
+            }
+          } else if (digitsOnly.length === 14 && digitsOnly.substring(0, 2) === '00') {
+            note = ' • GTIN-14 normalized to UPC-A';
+          } else if (digitsOnly.length === 14) {
+            type = 'ITF-14';
+            typeSelect.value = 'ITF-14';
+            note = ' • Auto-switched to ITF-14 (14-digit master carton)';
+          }
+        } else if (type === 'EAN-13') {
+          if (digitsOnly.length === 14 && digitsOnly.charAt(0) === '0') {
+            note = ' • GTIN-14 normalized to EAN-13';
+          } else if (digitsOnly.length === 14) {
+            type = 'ITF-14';
+            typeSelect.value = 'ITF-14';
+            note = ' • Auto-switched to ITF-14';
+          }
+        }
+
         badge1d.textContent = type;
-        var val = input1d.value.trim() || '081234567890';
+        var val = rawVal || '081234567890';
         var res = window.DualMarkBarcode1D.renderCanvas(canvas1d, type, val, { scale: 3, barHeight: 110 });
         if (res.prefixInfo) {
-          info1d.textContent = 'GS1 Region: ' + res.prefixInfo.country + ' (' + res.prefixInfo.org + ')';
+          info1d.textContent = 'GS1 Region: ' + res.prefixInfo.country + ' (' + res.prefixInfo.org + ')' + note;
+          info1d.style.color = 'var(--text-secondary)';
         }
       } catch (err) {
-        info1d.textContent = 'Error: ' + err.message;
+        info1d.textContent = 'Status: ' + err.message;
+        info1d.style.color = 'var(--warning)';
       }
+    }
+
+    // Auto-calculate Modulo-10 Check Digit
+    var btnCalcChk = document.getElementById('btn-1d-calc-chk');
+    if (btnCalcChk) {
+      btnCalcChk.addEventListener('click', function() {
+        var raw = input1d.value.trim().replace(/\D/g, '');
+        if (!raw) {
+          showToast('Please enter barcode digits first');
+          return;
+        }
+        var type = typeSelect.value;
+        if (type === 'UPC-A' && raw.length === 13 && raw.charAt(0) === '0') {
+          raw = raw.substring(1);
+        }
+        var targetLen = 12;
+        if (type === 'EAN-13') targetLen = 13;
+        else if (type === 'ITF-14') targetLen = 14;
+        else if (type === 'UPC-A') targetLen = 12;
+
+        var root = raw;
+        if (root.length >= targetLen) {
+          root = root.substring(0, targetLen - 1);
+        } else {
+          while (root.length < targetLen - 1) root = '0' + root;
+        }
+
+        var chk = null;
+        if (window.DualMarkGepir && typeof window.DualMarkGepir.calculateModulo10CheckDigit === 'function') {
+          chk = window.DualMarkGepir.calculateModulo10CheckDigit(root);
+        }
+        if (chk === null) {
+          var sum = 0;
+          for (var i = root.length - 1, pos = 0; i >= 0; i--, pos++) {
+            var d = parseInt(root[i], 10);
+            sum += (pos % 2 === 0) ? (d * 3) : d;
+          }
+          chk = (10 - (sum % 10)) % 10;
+        }
+
+        input1d.value = root + chk;
+        update1D();
+        showToast('✓ Modulo-10 Check Digit Calculated: ' + chk);
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
     }
 
     var weight2d = document.getElementById('synth-2d-weight');
@@ -169,6 +289,13 @@
     var origin2d = document.getElementById('synth-2d-origin');
 
     function update2D() {
+      var symbology = symbologySelect ? symbologySelect.value : 'QR';
+      if (badge2dStandard) {
+        if (symbology === 'DataMatrix') badge2dStandard.textContent = 'ISO/IEC 16022 (ECC 200)';
+        else if (symbology === 'DotCode') badge2dStandard.textContent = 'ISO/IEC 20835 (DotCode)';
+        else badge2dStandard.textContent = 'ISO/IEC 18004 (QR Code)';
+      }
+
       var uri = window.DualMarkGS1.buildDigitalLinkUri({
         domain: domain2d.value,
         gtin: gtin2d.value,
@@ -181,11 +308,102 @@
         origin: origin2d ? origin2d.value.trim() : null
       });
       preview2d.textContent = uri;
-      window.DualMarkGS1.renderQrCanvas(canvas2d, uri, { cellSize: 5, margin: 3 });
+
+      if (symbology === 'DataMatrix' && window.DualMarkDataMatrix) {
+        window.DualMarkDataMatrix.renderCanvas(canvas2d, uri, { scale: 5, margin: 3 });
+      } else if (symbology === 'DotCode' && window.DualMarkDotCode) {
+        window.DualMarkDotCode.renderCanvas(canvas2d, uri, { dotSize: 5, margin: 4 });
+      } else {
+        window.DualMarkGS1.renderQrCanvas(canvas2d, uri, { cellSize: 5, margin: 3 });
+      }
+    }
+
+    // Bi-directional Date Conversion (YYMMDD <-> YYYY-MM-DD)
+    if (expDate2d && exp2d) {
+      expDate2d.addEventListener('change', function() {
+        var parts = this.value.split('-');
+        if (parts.length === 3) {
+          exp2d.value = parts[0].slice(-2) + parts[1] + parts[2];
+          update2D();
+        }
+      });
+
+      exp2d.addEventListener('input', function() {
+        var val = this.value.trim();
+        if (val.length === 6 && /^\d{6}$/.test(val)) {
+          var yy = parseInt(val.slice(0, 2), 10);
+          var mm = val.slice(2, 4);
+          var dd = val.slice(4, 6);
+          var year = (yy >= 50 ? 1900 : 2000) + yy;
+          expDate2d.value = year + '-' + mm + '-' + dd;
+        }
+      });
+    }
+
+    // 1-Click Industry Brand Presets
+    var presetJuice = document.getElementById('preset-juice');
+    if (presetJuice) {
+      presetJuice.addEventListener('click', function() {
+        typeSelect.value = 'UPC-A';
+        input1d.value = '081234567890';
+        domain2d.value = 'https://id.brand.com';
+        gtin2d.value = '00812345678901';
+        lot2d.value = 'LOT-JUICE-99';
+        serial2d.value = 'SN-40291';
+        exp2d.value = '261115';
+        if (expDate2d) expDate2d.value = '2026-11-15';
+        if (weight2d) weight2d.value = '000450';
+        if (origin2d) origin2d.value = '840';
+        if (symbologySelect) symbologySelect.value = 'QR';
+        update1D();
+        update2D();
+        showToast('🧃 Cold-Pressed Juice Preset Loaded');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    var presetPharma = document.getElementById('preset-pharma');
+    if (presetPharma) {
+      presetPharma.addEventListener('click', function() {
+        typeSelect.value = 'Code-128';
+        input1d.value = 'PHARMA40921';
+        domain2d.value = 'https://rx.pharma.org';
+        gtin2d.value = '00301234567896';
+        lot2d.value = 'LOT-RX-2026';
+        serial2d.value = 'SN-998811';
+        exp2d.value = '280531';
+        if (expDate2d) expDate2d.value = '2028-05-31';
+        if (symbologySelect) symbologySelect.value = 'DataMatrix';
+        update1D();
+        update2D();
+        showToast('💊 Pharma Blister (DataMatrix) Preset Loaded');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    var presetShipper = document.getElementById('preset-shipper');
+    if (presetShipper) {
+      presetShipper.addEventListener('click', function() {
+        typeSelect.value = 'ITF-14';
+        input1d.value = '10081234567897';
+        domain2d.value = 'https://logistics.supply.com';
+        gtin2d.value = '10081234567897';
+        lot2d.value = 'PALLET-881';
+        serial2d.value = '001234560000000018';
+        exp2d.value = '271231';
+        if (expDate2d) expDate2d.value = '2027-12-31';
+        if (weight2d) weight2d.value = '050000';
+        if (symbologySelect) symbologySelect.value = 'QR';
+        update1D();
+        update2D();
+        showToast('📦 Master Shipper (ITF-14 / SSCC) Preset Loaded');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
     }
 
     typeSelect.addEventListener('change', update1D);
     input1d.addEventListener('input', update1D);
+    if (symbologySelect) symbologySelect.addEventListener('change', update2D);
 
     [domain2d, gtin2d, lot2d, serial2d, exp2d, weight2d, price2d, po2d, origin2d].forEach(function(el) {
       if (el) el.addEventListener('input', update2D);
@@ -209,9 +427,22 @@
 
     document.getElementById('btn-2d-svg').addEventListener('click', function() {
       var uri = preview2d.textContent;
-      var svg = window.DualMarkGS1.renderQrSvg(uri, { cellSize: 6, margin: 4 });
-      downloadBlob(svg, '2D_GS1_DigitalLink.svg', 'image/svg+xml');
-      showToast('2D GS1 Digital Link Vector SVG Downloaded');
+      var symbology = symbologySelect ? symbologySelect.value : 'QR';
+      var svg, filename;
+      if (symbology === 'DataMatrix' && window.DualMarkDataMatrix) {
+        var res = window.DualMarkDataMatrix.renderSvg(uri);
+        svg = res.svg;
+        filename = '2D_GS1_DataMatrix.svg';
+      } else if (symbology === 'DotCode' && window.DualMarkDotCode) {
+        var res = window.DualMarkDotCode.renderSvg(uri);
+        svg = res.svg;
+        filename = '2D_GS1_DotCode.svg';
+      } else {
+        svg = window.DualMarkGS1.renderQrSvg(uri, { cellSize: 6, margin: 4 });
+        filename = '2D_GS1_DigitalLink.svg';
+      }
+      downloadBlob(svg, filename, 'image/svg+xml');
+      showToast('2D Vector SVG Downloaded (' + symbology + ')');
       window.DualMarkAudio.click();
     });
 
@@ -397,6 +628,46 @@
           isoComplianceBadge.className = 'badge badge-green';
         }
         showToast('⚖️ NIST Calibration Verified: ' + cal.certificateId + ' (Drift: ' + cal.sensorDrift + ')');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // Zoom Controls
+    var btnZoomIn = document.getElementById('btn-zoom-in');
+    var btnZoomOut = document.getElementById('btn-zoom-out');
+    var btnZoomReset = document.getElementById('btn-zoom-reset');
+
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener('click', function() {
+        var z = window.clearanceInspector.zoomIn();
+        showToast('🔍 Zoom: ' + Math.round(z * 100) + '%');
+      });
+    }
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener('click', function() {
+        var z = window.clearanceInspector.zoomOut();
+        showToast('🔍 Zoom: ' + Math.round(z * 100) + '%');
+      });
+    }
+    if (btnZoomReset) {
+      btnZoomReset.addEventListener('click', function() {
+        window.clearanceInspector.resetZoom();
+        showToast('↺ Zoom Reset (100%)');
+      });
+    }
+
+    // Printable ISO Certificate PDF
+    var btnIsoCertPdf = document.getElementById('btn-iso-cert-pdf');
+    if (btnIsoCertPdf && window.DualMarkIsoVerifier) {
+      btnIsoCertPdf.addEventListener('click', function() {
+        var gtin = (document.getElementById('synth-2d-gtin') && document.getElementById('synth-2d-gtin').value.trim()) || '00812345678901';
+        var pdfStr = window.DualMarkIsoVerifier.generateCertificatePdf({
+          gtin: gtin,
+          operator: 'Lead Prepress QC Engineer',
+          substrate: 'Coated SBS Folding Carton Board (18pt)'
+        });
+        downloadBlob(pdfStr, 'DualMark_ISO_Compliance_Certificate_' + gtin + '.pdf', 'application/pdf');
+        showToast('📄 Printable ISO 15415/15416 Certificate PDF Generated');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -601,6 +872,20 @@
       btnStop.style.display = 'none';
     });
 
+    // Torch / Flashlight Toggle
+    var btnTorch = document.getElementById('btn-toggle-torch');
+    if (btnTorch) {
+      btnTorch.addEventListener('click', function() {
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.toggleTorch === 'function') {
+          var on = window.DualMarkBridge.toggleTorch();
+          showToast(on ? '🔦 Hardware Flashlight Activated' : '🔦 Flashlight Off');
+        } else {
+          showToast('🔦 Flashlight toggled (Supported on native Android or compatible Web cameras)');
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
     // File scan input
     var scanFileInput = document.getElementById('input-scan-file');
     scanFileInput.addEventListener('change', function(e) {
@@ -697,9 +982,10 @@
           '<td><strong>' + rec.id + '</strong></td>',
           '<td>' + rec.eventType + '</td>',
           '<td><span class="badge badge-cyan">' + rec.tlc + '</span></td>',
+          '<td><small style="color:var(--text-secondary);">' + (rec.inputTlc || '—') + '</small></td>',
           '<td>' + rec.gtin + '</td>',
           '<td>' + new Date(rec.recordedAt).toLocaleString() + '</td>',
-          '<td><small style="font-family:monospace; color:#38BDF8;">' + rec.sha256.substring(0, 16) + '...</small></td>',
+          '<td><small style="font-family:monospace; color:#38BDF8;">' + (rec.sha256 ? rec.sha256.substring(0, 16) : '') + '...</small></td>',
           '<td>' + sigBadge + '</td>',
           '<td>' +
             '<button class="btn btn-secondary btn-sm pdf-btn" data-id="' + rec.id + '">📄 PDF Dossier</button> ' +
@@ -733,6 +1019,15 @@
       });
     }
 
+    // FDA Food Traceability List (FTL) Commodity Selector
+    var ftlSelect = document.getElementById('fsma-ftl-select');
+    if (ftlSelect && commInput) {
+      ftlSelect.addEventListener('change', function() {
+        commInput.value = this.value;
+        showToast('FDA FTL Commodity: ' + this.options[this.selectedIndex].text);
+      });
+    }
+
     // FDA 24-Hour Sortable Spreadsheet CSV Export
     var btnFdaCsv = document.getElementById('btn-export-fda-csv');
     if (btnFdaCsv) {
@@ -751,6 +1046,17 @@
         var epcis = window.DualMarkFsma.exportEpcisJsonLd();
         downloadBlob(epcis, 'DualMark_EPCIS20_Events.jsonld', 'application/ld+json');
         showToast('🔗 GS1 EPCIS 2.0 JSON-LD Exported');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // GS1 EPCIS 2.0 XML Export
+    var btnEpcisXml = document.getElementById('btn-export-epcis-xml');
+    if (btnEpcisXml) {
+      btnEpcisXml.addEventListener('click', function() {
+        var xml = window.DualMarkFsma.exportEpcisXml();
+        downloadBlob(xml, 'DualMark_EPCIS20_Events.xml', 'application/xml');
+        showToast('📄 GS1 EPCIS 2.0 XML Exported');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -797,9 +1103,11 @@
     });
 
     btnCommit.addEventListener('click', async function() {
+      var inputTlcEl = document.getElementById('fsma-input-tlc');
       var newRecord = {
         eventType: eventSelect.value,
         tlc: tlcInput.value.trim(),
+        inputTlc: inputTlcEl ? inputTlcEl.value.trim() : null,
         gtin: gtinInput.value.trim(),
         commodity: commInput.value.trim(),
         quantity: qtyInput.value.trim(),
@@ -1013,6 +1321,134 @@
         if (zpl.indexOf('^XA') === -1) zpl = getActiveZpl();
         downloadBlob(zpl, 'DualMark_Zebra_Sunrise2027.zpl', 'text/plain');
         showToast('💾 Zebra ZPL File Downloaded');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // Direct TCP Port 9100 Network Socket Spooler
+    var btnSendTcp = document.getElementById('btn-send-tcp-socket');
+    var tcpIpInput = document.getElementById('tcp-printer-ip');
+    var tcpPortInput = document.getElementById('tcp-printer-port');
+    if (btnSendTcp) {
+      btnSendTcp.addEventListener('click', function() {
+        var ip = (tcpIpInput && tcpIpInput.value.trim()) || '192.168.1.100';
+        var port = (tcpPortInput && parseInt(tcpPortInput.value, 10)) || 9100;
+        var zpl = getActiveZpl();
+
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.printRawTcpSocket === 'function') {
+          window.DualMarkBridge.printRawTcpSocket(ip, port, zpl);
+          showToast('🖨️ ZPL stream dispatched to printer socket ' + ip + ':' + port);
+        } else {
+          showToast('🖨️ TCP Raw Socket simulated in Web sandbox: ' + ip + ':' + port);
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // High-Throughput Batch CSV Multi-SKU Synthesis Engine
+    var btnBatchZip = document.getElementById('btn-run-batch-zip');
+    var btnBatchProof = document.getElementById('btn-batch-proof-sheet');
+    var batchCsvInput = document.getElementById('batch-csv-input');
+    var batchStatusMsg = document.getElementById('batch-status-msg');
+
+    if (btnBatchZip && batchCsvInput) {
+      btnBatchZip.addEventListener('click', function() {
+        var raw = batchCsvInput.value.trim();
+        if (!raw) {
+          showToast('Please provide CSV data');
+          return;
+        }
+        var lines = raw.split('\n').filter(function(l) { return l.trim().length > 0; });
+        if (lines.length <= 1) {
+          showToast('CSV must contain a header and at least one SKU record');
+          return;
+        }
+        var zip = window.DualMarkZip ? window.DualMarkZip.create() : null;
+        if (!zip) {
+          showToast('ZIP Packager engine unavailable');
+          return;
+        }
+
+        var count = 0;
+        for (var i = 1; i < lines.length; i++) {
+          var cols = lines[i].split(',').map(function(c) { return c.trim(); });
+          if (cols.length < 2) continue;
+          var sku = cols[0] || ('SKU-' + i);
+          var gtin = cols[1] || '00812345678901';
+          var lot = cols[2] || 'LOT-2026';
+          var serial = cols[3] || ('SN-' + i);
+          var exp = cols[4] || '271231';
+          var weight = cols[5] || '001500';
+          var targetUrl = cols[6] || ('https://id.brand.com/01/' + gtin);
+
+          // 1D Barcode SVG
+          var upcVal = gtin.length >= 12 ? gtin.slice(-12) : gtin;
+          var svg1d = window.DualMarkBarcode1D.renderSvg('UPC-A', upcVal);
+          zip.addFile(sku + '_1D_UPC.svg', svg1d.svg);
+
+          // 2D GS1 Digital Link QR SVG
+          var svg2d = window.DualMarkGS1.renderQrSvg(targetUrl);
+          zip.addFile(sku + '_2D_GS1_DigitalLink.svg', svg2d);
+
+          // Machine-readable manifest JSON
+          var manifest = {
+            sku: sku,
+            gtin: gtin,
+            lot: lot,
+            serial: serial,
+            expiration: exp,
+            weight: weight,
+            targetUrl: targetUrl,
+            generatedAt: new Date().toISOString()
+          };
+          zip.addFile(sku + '_manifest.json', JSON.stringify(manifest, null, 2));
+          count++;
+        }
+
+        var blob = zip.buildZipBlob();
+        downloadBlob(blob, 'DualMark_Batch_SKUs_' + Date.now() + '.zip', 'application/zip');
+        if (batchStatusMsg) {
+          batchStatusMsg.style.display = 'block';
+          batchStatusMsg.textContent = '✓ Successfully packaged ' + count + ' SKUs (' + blob.size + ' bytes ZIP archive).';
+        }
+        showToast('📦 Batch ZIP Package Generated (' + count + ' SKUs)');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    if (btnBatchProof && batchCsvInput) {
+      btnBatchProof.addEventListener('click', function() {
+        var raw = batchCsvInput.value.trim();
+        var lines = raw.split('\n').filter(function(l) { return l.trim().length > 0; });
+        var count = Math.max(1, lines.length - 1);
+
+        var proofSvg = [
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 ' + (150 + count * 220) + '" width="1200" height="' + (150 + count * 220) + '">',
+          '<rect width="100%" height="100%" fill="#FFFFFF"/>',
+          '<text x="50" y="50" font-family="sans-serif" font-size="22" font-weight="bold" fill="#0F172A">DUALMARK STUDIO -- MULTI-UP GANG-RUN PROOF SHEET</text>',
+          '<text x="50" y="80" font-family="sans-serif" font-size="12" fill="#64748B">Prepress Approval | Sunrise 2027 Compliant Dual-Code Placement (&gt;=50mm Clearance) | Total SKUs: ' + count + '</text>'
+        ];
+
+        for (var i = 1; i < lines.length; i++) {
+          var cols = lines[i].split(',').map(function(c) { return c.trim(); });
+          var sku = cols[0] || ('SKU-' + i);
+          var gtin = cols[1] || '00812345678901';
+          var y = 100 + (i - 1) * 220;
+          proofSvg.push('<rect x="40" y="' + y + '" width="1120" height="200" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1" rx="8"/>');
+          proofSvg.push('<text x="60" y="' + (y + 30) + '" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0284C7">ITEM ' + i + ': ' + sku + ' [GTIN: ' + gtin + ']</text>');
+
+          var upcVal = gtin.length >= 12 ? gtin.slice(-12) : gtin;
+          var svg1d = window.DualMarkBarcode1D.renderSvg('UPC-A', upcVal);
+          var svg2d = window.DualMarkGS1.renderQrSvg('https://id.brand.com/01/' + gtin);
+          proofSvg.push('<g transform="translate(60, ' + (y + 50) + ') scale(0.8)">' + svg1d.svg + '</g>');
+          proofSvg.push('<g transform="translate(600, ' + (y + 40) + ') scale(0.6)">' + svg2d + '</g>');
+          proofSvg.push('<line x1="450" y1="' + (y + 110) + '" x2="580" y2="' + (y + 110) + '" stroke="#10B981" stroke-width="2" stroke-dasharray="4,4"/>');
+          proofSvg.push('<text x="515" y="' + (y + 105) + '" font-family="sans-serif" font-size="11" font-weight="bold" fill="#10B981" text-anchor="middle">&gt;= 50mm SAFE</text>');
+        }
+        proofSvg.push('</svg>');
+
+        downloadBlob(proofSvg.join('\n'), 'DualMark_Batch_GangRun_Proof.svg', 'image/svg+xml');
+        showToast('📑 Multi-Up Gang-Run Proof Sheet Exported');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }

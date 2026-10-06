@@ -53,6 +53,10 @@
       // High-pitch dual barcode scanner tone (typical enterprise Zebra/Honeywell imager sound)
       playTone(2400, 'triangle', 0.09, 0.22);
     },
+    crispScan1800: function() {
+      // 1800 Hz positive scan confirmation chime
+      playTone(1800, 'sine', 0.08, 0.25);
+    },
     successChime: function() {
       // Happy major chord chime (compliant >= 50mm)
       playTone(523.25, 'sine', 0.12, 0.15); // C5
@@ -63,6 +67,17 @@
       // Low dual warning buzz (clearance collision < 50mm)
       playTone(180, 'sawtooth', 0.18, 0.2);
       setTimeout(function() { playTone(140, 'sawtooth', 0.22, 0.2); }, 120);
+    },
+    clearanceViolation300: function() {
+      // 300 Hz descending buzz for clearance violation (<50mm)
+      playTone(300, 'sawtooth', 0.15, 0.25);
+      setTimeout(function() { playTone(220, 'sawtooth', 0.18, 0.25); }, 90);
+    },
+    tripleWarningBuzz: function() {
+      // Rapid triple buzz for checksum or regulatory invalidation
+      playTone(250, 'sawtooth', 0.06, 0.2);
+      setTimeout(function() { playTone(250, 'sawtooth', 0.06, 0.2); }, 90);
+      setTimeout(function() { playTone(250, 'sawtooth', 0.08, 0.25); }, 180);
     },
     playSuccess: function() { this.successChime(); },
     playClick: function() { this.click(); },

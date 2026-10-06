@@ -24,6 +24,9 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="btn-tour" class="icon-btn" title="Interactive Guided Tour" aria-label="Take Tour">❓</button>
+      <button id="btn-outdoor" class="icon-btn" title="Toggle Outdoor Loading Dock Theme" aria-label="Outdoor Mode">☀️</button>
+      <button id="btn-diagnostics" class="icon-btn" title="Export Sanitized System Diagnostics" aria-label="Diagnostics">🛠️</button>
       <button id="btn-licensing" class="icon-btn" title="Commercial Licensing & Editions" aria-label="Licensing">👑</button>
       <button id="btn-legal" class="icon-btn" title="GS1 & FDA Part 11 Regulatory Disclaimers" aria-label="Legal Disclaimers">⚖️</button>
       <button id="btn-sound" class="icon-btn" title="Toggle Tactile Audio" aria-label="Toggle Sound">🔊</button>
@@ -33,12 +36,12 @@
 
   <!-- Navigation Scroll Tabs -->
   <nav class="nav-scroll" id="nav-tabs">
-    <button class="nav-tab active" data-tab="tab-synth">📐 1. Dual-Code Synth</button>
-    <button class="nav-tab" data-tab="tab-clearance">📏 2. 50mm Die-Line Inspector</button>
-    <button class="nav-tab" data-tab="tab-resolver">🔀 3. Dynamic Resolver (Zero-SaaS)</button>
-    <button class="nav-tab" data-tab="tab-scanner">📷 4. Optical Scanner & Dewarp</button>
-    <button class="nav-tab" data-tab="tab-fsma">📜 5. FSMA Rule 204 Traceability</button>
-    <button class="nav-tab" data-tab="tab-exports">💾 6. Prepress Export Center</button>
+    <button class="nav-tab active" data-tab="tab-synth">📐 1. Synth</button>
+    <button class="nav-tab" data-tab="tab-clearance">📏 2. 50mm Die-Line</button>
+    <button class="nav-tab" data-tab="tab-resolver">🔀 3. Resolver</button>
+    <button class="nav-tab" data-tab="tab-scanner">📷 4. Scanner</button>
+    <button class="nav-tab" data-tab="tab-fsma">📜 5. FSMA 204</button>
+    <button class="nav-tab" data-tab="tab-exports">💾 6. Prepress Exports</button>
   </nav>
 
   <!-- Main Container -->
@@ -46,12 +49,44 @@
 
     <!-- TAB 1: DUAL-CODE SYNTH -->
     <section id="tab-synth" class="tab-pane active">
+
+      <!-- 1-Click Industry Brand Presets -->
+      <div class="presets-bar">
+        <div class="presets-header">
+          <div class="presets-title-wrap">
+            <span class="presets-glow-dot"></span>
+            <span class="presets-tag">1-Click Industry Presets</span>
+            <span class="presets-sub">• Instant Packaging Profiles</span>
+          </div>
+        </div>
+        <div class="presets-scroller">
+          <button class="preset-pill" id="preset-juice">
+            <span>🧃</span>
+            <span>Cold-Pressed Juice</span>
+            <span class="preset-badge">UPC + QR</span>
+          </button>
+          <button class="preset-pill" id="preset-pharma">
+            <span>💊</span>
+            <span>Pharma Blister</span>
+            <span class="preset-badge">DataMatrix</span>
+          </button>
+          <button class="preset-pill" id="preset-shipper">
+            <span>📦</span>
+            <span>Master Shipper</span>
+            <span class="preset-badge">ITF-14</span>
+          </button>
+        </div>
+      </div>
+
       <div class="grid-2">
         <!-- 1D Barcode Form -->
         <div class="card">
           <div class="card-title">
-            <span>1D Barcode Generator (Legacy Retail POS)</span>
-            <span class="badge badge-cyan" id="barcode-type-badge">UPC-A 12</span>
+            <div class="card-title-text">
+              <span>1D Barcode Generator</span>
+              <span class="card-title-sub">Legacy POS</span>
+            </div>
+            <span class="badge badge-cyan" id="barcode-type-badge">UPC-A</span>
           </div>
 
           <div class="form-group">
@@ -65,7 +100,10 @@
           </div>
 
           <div class="form-group">
-            <label>Barcode Digits / Payload</label>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label>Barcode Digits / Payload</label>
+              <button class="btn btn-secondary btn-sm" id="btn-1d-calc-chk" style="padding: 2px 8px; font-size: 10px;" title="Auto-Calculate Modulo-10 Check Digit">✓ Auto Check Digit</button>
+            </div>
             <input type="text" id="synth-1d-input" class="mono-input" value="081234567890" maxlength="14" placeholder="Enter barcode number">
             <small id="synth-1d-prefix-info" style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">GS1 Region: United States & Canada (GS1 US)</small>
           </div>
@@ -83,8 +121,20 @@
         <!-- 2D GS1 Digital Link Form -->
         <div class="card">
           <div class="card-title">
-            <span>2D GS1 Digital Link Builder (Sunrise 2027)</span>
-            <span class="badge badge-green">ISO/IEC 18004</span>
+            <div class="card-title-text">
+              <span>2D GS1 Matrix Builder</span>
+              <span class="card-title-sub">Sunrise 2027</span>
+            </div>
+            <span class="badge badge-green" id="badge-2d-standard">ISO/IEC 18004</span>
+          </div>
+
+          <div class="form-group">
+            <label>2D Symbology Standard</label>
+            <select id="synth-2d-symbology">
+              <option value="QR" selected>GS1 Digital Link (QR Code — Consumer Retail)</option>
+              <option value="DataMatrix">GS1 DataMatrix (ISO 16022 ECC 200 — Pharma/UDI)</option>
+              <option value="DotCode">GS1 DotCode (ISO 20835 — High-Speed Inkjet/Laser)</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -108,9 +158,15 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Expiration Date (AI 17 - YYMMDD)</label>
-            <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD (e.g. 271231)">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label>Expiration Date (AI 17 - YYMMDD)</label>
+              <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD">
+            </div>
+            <div class="form-group">
+              <label>Calendar Date Picker</label>
+              <input type="date" id="synth-2d-exp-date" class="mono-input" value="2027-12-31">
+            </div>
           </div>
 
           <!-- Extended GS1 Application Identifiers (AIs) -->
@@ -131,13 +187,22 @@
               </div>
               <div class="form-group" style="margin-bottom: 0;">
                 <label style="font-size: 11px;">Country Origin (AI 422)</label>
-                <input type="text" id="synth-2d-origin" class="mono-input" value="840" placeholder="ISO 3166-1 (840=USA)">
+                <select id="synth-2d-country-select" style="font-size: 11px; padding: 6px;">
+                  <option value="840" selected>840 — United States (USA)</option>
+                  <option value="124">124 — Canada (CAN)</option>
+                  <option value="250">250 — France (FRA)</option>
+                  <option value="276">276 — Germany (DEU)</option>
+                  <option value="392">392 — Japan (JPN)</option>
+                  <option value="826">826 — United Kingdom (GBR)</option>
+                  <option value="036">036 — Australia (AUS)</option>
+                </select>
+                <input type="hidden" id="synth-2d-origin" value="840">
               </div>
             </div>
           </div>
 
           <div class="form-group">
-            <label>Synthesized Standard GS1 Digital Link URI</label>
+            <label>Synthesized Standard GS1 Payload</label>
             <div class="code-block" id="synth-2d-uri-preview">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
           </div>
 
@@ -198,12 +263,17 @@
               <option value="retail_box">Retail Folding Carton Box (220 x 160 mm)</option>
             </select>
           </div>
-          <div style="margin-top: 18px;">
+          <div style="display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap;">
             <button class="btn btn-primary" id="btn-snap-50mm">⚡ Snap to 50mm Safe Spacing</button>
+            <div class="zoom-controls-bar">
+              <button class="btn btn-secondary btn-sm" id="btn-zoom-in" title="Zoom In">🔍+ Zoom</button>
+              <button class="btn btn-secondary btn-sm" id="btn-zoom-out" title="Zoom Out">🔍- Zoom</button>
+              <button class="btn btn-secondary btn-sm" id="btn-zoom-reset" title="Reset Zoom">↺ 100%</button>
+            </div>
           </div>
         </div>
 
-        <!-- Interactive Die-Line Canvas Stage -->
+        <!-- Interactive Die-Line Canvas Stage with Touch & Pinch Zoom -->
         <div class="die-line-stage">
           <canvas id="canvas-clearance"></canvas>
         </div>
@@ -238,6 +308,7 @@
           <div class="btn-row" style="margin-bottom: 14px;">
             <button class="btn btn-primary" id="btn-run-iso-grading">🔍 Run Full ISO Optical Grading</button>
             <button class="btn btn-secondary" id="btn-nist-calibration">⚖️ NIST-Traceable Calibration Check</button>
+            <button class="btn btn-emerald" id="btn-iso-cert-pdf">📄 Printable ISO Certificate (PDF)</button>
           </div>
 
           <div id="iso-grading-results" style="display:none; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
@@ -335,14 +406,20 @@
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary" id="btn-start-camera">Start Live Camera</button>
-            <button class="btn btn-danger" id="btn-stop-camera" style="display:none;">Stop Camera</button>
-            <label class="btn btn-secondary" style="cursor: pointer;">
+            <button class="btn btn-primary glove-touch-btn" id="btn-start-camera">Start Live Camera</button>
+            <button class="btn btn-danger glove-touch-btn" id="btn-stop-camera" style="display:none;">Stop Camera</button>
+            <button class="btn btn-secondary glove-touch-btn" id="btn-toggle-torch">🔦 Toggle Light</button>
+            <label class="btn btn-secondary glove-touch-btn" style="cursor: pointer;">
               Upload Photo File <input type="file" id="input-scan-file" accept="image/*" style="display:none;">
             </label>
           </div>
 
-          <div style="margin-top: 16px;">
+          <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="chk-continuous-scan" style="width: 18px; height: 18px;">
+            <label for="chk-continuous-scan" style="font-size: 12px; cursor: pointer; color: var(--cyan); font-weight: 600;">Continuous Dual-Barcode Clearance Tracking</label>
+          </div>
+
+          <div style="margin-top: 14px;">
             <label>Decoded Barcode Result</label>
             <div class="code-block" id="scan-decoded-result">Awaiting barcode optical acquisition...</div>
           </div>
@@ -425,6 +502,10 @@
                 <label>Traceability Lot Code (TLC)</label>
                 <input type="text" id="fsma-tlc" class="mono-input" value="TLC-9924-ALM">
               </div>
+              <div class="form-group" id="fsma-parent-tlc-wrap">
+                <label>Input / Parent TLC (Transformation Genealogy Link)</label>
+                <input type="text" id="fsma-input-tlc" class="mono-input" value="TLC-RAW-ALMOND-08" placeholder="Parent Lot Code">
+              </div>
               <div class="form-group">
                 <label>Global Trade Item Number (GTIN-14)</label>
                 <input type="text" id="fsma-gtin" class="mono-input" value="00812345678901">
@@ -432,8 +513,19 @@
             </div>
             <div>
               <div class="form-group">
-                <label>Commodity Description</label>
-                <input type="text" id="fsma-commodity" value="Organic Cold-Pressed Almond Milk (Raw Almond Base)">
+                <label>FDA Food Traceability List (FTL) Commodity</label>
+                <select id="fsma-ftl-select" style="margin-bottom: 6px;">
+                  <option value="Nut Butters (peanut butter, almond butter, cashew butter)" selected>Nut Butters (almond/peanut/cashew)</option>
+                  <option value="Cheeses, other than hard cheeses (soft, semi-soft)">Soft / Semi-Soft Cheeses</option>
+                  <option value="Shell Eggs (fresh chicken eggs for consumption)">Shell Eggs</option>
+                  <option value="Leafy Greens (spinach, romaine, arugula, kale)">Leafy Greens (spinach/romaine)</option>
+                  <option value="Finfish, fresh and frozen (salmon, tuna, cod, halibut)">Finfish (fresh/frozen)</option>
+                  <option value="Cucumbers (fresh, unpickled)">Cucumbers</option>
+                  <option value="Fresh Herbs (cilantro, basil, parsley, mint)">Fresh Herbs</option>
+                  <option value="Tomatoes (roma, beefsteak, grape, cherry)">Tomatoes</option>
+                  <option value="Ready-to-Eat Deli Salads">Ready-to-Eat Deli Salads</option>
+                </select>
+                <input type="text" id="fsma-commodity" value="Organic Cold-Pressed Almond Butter (Raw Almond Base)">
               </div>
               <div class="form-group">
                 <label>Quantity & Unit of Measure</label>
@@ -452,12 +544,12 @@
               <input type="text" id="fsma-gps" class="mono-input" value="37.7749° N, 122.4194° W [Live Field GPS]" readonly>
             </div>
             <div style="margin-top: 20px;">
-              <button class="btn btn-secondary" id="btn-refresh-gps">📍 Acquire GPS</button>
+              <button class="btn btn-secondary glove-touch-btn" id="btn-refresh-gps">📍 Acquire GPS</button>
             </div>
           </div>
 
           <div class="btn-row" style="margin-top: 18px;">
-            <button class="btn btn-emerald" id="btn-commit-cte">Commit CTE &amp; Generate PDF Dossier</button>
+            <button class="btn btn-emerald glove-touch-btn" id="btn-commit-cte">Commit CTE &amp; Generate PDF Dossier</button>
           </div>
         </div>
 
@@ -467,6 +559,7 @@
           <div class="btn-row">
             <button class="btn btn-primary" id="btn-export-fda-csv">📊 Export FDA 24-Hr Sortable Spreadsheet (CSV)</button>
             <button class="btn btn-emerald" id="btn-export-epcis-jsonld">🔗 Export GS1 EPCIS 2.0 JSON-LD</button>
+            <button class="btn btn-secondary" id="btn-export-epcis-xml">📄 Export GS1 EPCIS 2.0 XML</button>
             <button class="btn btn-secondary" id="btn-sign-part11">✍️ 21 CFR Part 11 Digital Sign-Off (ECDSA)</button>
           </div>
           <div id="part11-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--cyan); margin-top: 8px;"></div>
@@ -481,6 +574,7 @@
                 <th>Event ID</th>
                 <th>Type</th>
                 <th>TLC Lot</th>
+                <th>Parent TLC</th>
                 <th>GTIN</th>
                 <th>Recorded Timestamp</th>
                 <th>SHA-256 Hash</th>
@@ -526,6 +620,29 @@
             </div>
           </div>
         </div>
+
+        <!-- Batch CSV / Multi-SKU Synthesis Card -->
+        <div class="card" style="margin-top: 18px;">
+          <div class="card-title">
+            <span>High-Throughput Batch CSV Multi-SKU Synthesis</span>
+            <span class="badge badge-emerald">ENTERPRISE BATCH ENGINE</span>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
+            Process thousands of packaging labels client-side. Upload or paste a CSV manifest (<code>SKU, GTIN, Lot, Serial, ExpDate, Weight, TargetURL</code>) to generate dual barcodes and package into a standalone ZIP archive.
+          </p>
+
+          <div class="form-group">
+            <textarea id="batch-csv-input" class="mono-input" style="height: 100px; font-size: 11px;" placeholder="SKU,GTIN,Lot,Serial,ExpDate,Weight,TargetURL&#10;SKU-101,00812345678901,LOT-A1,SN-001,271231,001500,https://id.brand.com/01/00812345678901&#10;SKU-102,00812345678918,LOT-B2,SN-002,280630,002000,https://id.brand.com/01/00812345678918"></textarea>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-emerald" id="btn-run-batch-zip">📦 Generate Batch Package (.ZIP)</button>
+            <button class="btn btn-secondary" id="btn-batch-proof-sheet">📑 Multi-Up Gang-Run Proof Sheet (PDF)</button>
+          </div>
+          <div id="batch-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--emerald); margin-top: 8px;"></div>
+        </div>
+
+        <!-- Industrial Prepress & BWR Card -->
         <div class="card" style="margin-top: 18px;">
           <div class="card-title">
             <span>Industrial Vector Prepress &amp; Barcode Width Reduction (BWR)</span>
@@ -558,10 +675,10 @@
           </div>
         </div>
 
-        <!-- Zebra ZPL II Industrial Direct Thermal Engine -->
+        <!-- Zebra ZPL II & Direct Network Socket Printing -->
         <div class="card" style="margin-top: 18px;">
           <div class="card-title">
-            <span>Zebra ZPL II Direct Thermal Label Generator</span>
+            <span>Zebra ZPL II Direct Thermal Label Generator &amp; TCP Socket Spooler</span>
             <span class="badge badge-cyan">INDUSTRIAL THERMAL PRINTING</span>
           </div>
           <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 14px;">
@@ -582,11 +699,29 @@
             </div>
           </div>
 
-          <div class="code-block" id="zpl-output-preview" style="max-height: 180px; overflow-y: auto;">Click "Generate ZPL II Stream" to produce raw printer instructions...</div>
+          <div class="code-block" id="zpl-output-preview" style="max-height: 140px; overflow-y: auto;">Click "Generate ZPL II Stream" to produce raw printer instructions...</div>
 
           <div class="btn-row" style="margin-top: 14px;">
             <button class="btn btn-emerald" id="btn-copy-zpl">📋 Copy ZPL to Clipboard</button>
             <button class="btn btn-secondary" id="btn-download-zpl">💾 Download .zpl File</button>
+          </div>
+
+          <!-- Direct Network Socket Spooler -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-top: 14px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--cyan); margin-bottom: 8px;">Direct Network Printer Socket Spooler (Raw Port 9100)</div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div style="flex: 2; min-width: 160px;">
+                <label style="font-size: 11px;">Printer IP Address / Host</label>
+                <input type="text" id="tcp-printer-ip" class="mono-input" value="192.168.1.100" placeholder="e.g. 192.168.1.100">
+              </div>
+              <div style="flex: 1; min-width: 80px;">
+                <label style="font-size: 11px;">Port (Default: 9100)</label>
+                <input type="number" id="tcp-printer-port" class="mono-input" value="9100">
+              </div>
+              <div style="margin-top: 18px;">
+                <button class="btn btn-primary" id="btn-send-tcp-socket">🖨️ Send ZPL to Network Printer</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -660,6 +795,10 @@
   <script src="js/qrcode_embedded.js"></script>
   <script src="js/barcode1d.js"></script>
   <script src="js/gs1_digitallink.js"></script>
+  <script src="js/datamatrix.js"></script>
+  <script src="js/dotcode.js"></script>
+  <script src="js/zip_packager.js"></script>
+  <script src="js/onboarding_tour.js"></script>
   <script src="js/clearance_inspector.js"></script>
   <script src="js/dynamic_resolver.js"></script>
   <script src="js/scanner_dewarp.js"></script>

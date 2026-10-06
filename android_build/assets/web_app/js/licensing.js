@@ -248,6 +248,62 @@ const DualMarkLicensing = (() => {
     });
   }
 
+  let currentRole = 'compliance'; // Default full enterprise administrator role
+
+  function getRole() {
+    try {
+      const stored = localStorage.getItem('dualmark_user_role');
+      if (stored) currentRole = stored;
+    } catch (e) {}
+    return currentRole;
+  }
+
+  function setRole(role) {
+    if (['operator', 'designer', 'compliance'].includes(role)) {
+      currentRole = role;
+      try {
+        localStorage.setItem('dualmark_user_role', role);
+      } catch (e) {}
+      if (window.DualMarkApp && typeof window.DualMarkApp.showToast === 'function') {
+        window.DualMarkApp.showToast('Active Role Switched to: ' + role.toUpperCase());
+      }
+    }
+  }
+
+  function exportDiagnosticBundle() {
+    let diag = {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      screenWidth: window.innerWidth,
+      screenHeight: window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      licenseTier: getCurrentTier(),
+      userRole: getRole(),
+      offlineReady: true,
+      dataPrivacy: 'SANITIZED - ZERO CUSTOMER PACKAGING DATA INCLUDED'
+    };
+
+    if (window.DualMarkBridge && typeof window.DualMarkBridge.getDiagnosticData === 'function') {
+      try {
+        const nativeDiag = JSON.parse(window.DualMarkBridge.getDiagnosticData());
+        diag.nativeDevice = nativeDiag;
+      } catch (e) {}
+    }
+
+    const blob = new Blob([JSON.stringify(diag, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'DualMark_Diagnostic_Bundle_' + Date.now().toString(36) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (window.DualMarkApp && typeof window.DualMarkApp.showToast === 'function') {
+      window.DualMarkApp.showToast('✓ Diagnostic Telemetry Bundle Exported (Sanitized)');
+    }
+  }
+
   function init() {
     updateUiBadges();
   }
@@ -256,6 +312,9 @@ const DualMarkLicensing = (() => {
     init,
     getTier: getCurrentTier,
     setTier: setCurrentTier,
+    getRole,
+    setRole,
+    exportDiagnosticBundle,
     isFeatureAllowed,
     checkFeatureOrPrompt,
     showPaywallModal,
@@ -264,3 +323,4 @@ const DualMarkLicensing = (() => {
 })();
 
 window.DualMarkLicensing = DualMarkLicensing;
+

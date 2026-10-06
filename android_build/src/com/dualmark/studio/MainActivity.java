@@ -32,8 +32,14 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
+import android.util.DisplayMetrics;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 
 public class MainActivity extends Activity {
     private static final String TAG = "DUALMARK_STUDIO";
@@ -308,6 +314,85 @@ public class MainActivity extends Activity {
                 }
             });
             return true;
+        }
+
+        private boolean isTorchOn = false;
+
+        @JavascriptInterface
+        public boolean setTorchMode(final boolean on) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    CameraManager camManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                    if (camManager != null) {
+                        String[] cameraIds = camManager.getCameraIdList();
+                        for (String id : cameraIds) {
+                            CameraCharacteristics chars = camManager.getCameraCharacteristics(id);
+                            Boolean hasFlash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                            Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+                            if (hasFlash != null && hasFlash && facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
+                                camManager.setTorchMode(id, on);
+                                isTorchOn = on;
+                                return true;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error setting torch mode", e);
+                }
+            }
+            return false;
+        }
+
+        @JavascriptInterface
+        public boolean toggleTorch() {
+            return setTorchMode(!isTorchOn);
+        }
+
+        @JavascriptInterface
+        public boolean isTorchOn() {
+            return isTorchOn;
+        }
+
+        @JavascriptInterface
+        public boolean printRawTcpSocket(final String host, final int port, final String zplData) {
+            new Thread(() -> {
+                try {
+                    String targetHost = (host != null && !host.trim().isEmpty()) ? host.trim() : "192.168.1.100";
+                    int targetPort = (port > 0 && port < 65536) ? port : 9100;
+                    Socket socket = new Socket();
+                    socket.connect(new InetSocketAddress(targetHost, targetPort), 4000);
+                    socket.setSoTimeout(4000);
+                    OutputStream os = socket.getOutputStream();
+                    os.write(zplData.getBytes("UTF-8"));
+                    os.flush();
+                    os.close();
+                    socket.close();
+
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "✓ ZPL Sent to " + targetHost + ":" + targetPort, Toast.LENGTH_LONG).show());
+                } catch (Exception e) {
+                    Log.e(TAG, "TCP Socket print failed", e);
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Network Printer Unreachable: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            }).start();
+            return true;
+        }
+
+        @JavascriptInterface
+        public String getDiagnosticData() {
+            try {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("deviceModel", Build.MANUFACTURER + " " + Build.MODEL);
+                obj.put("androidVersion", Build.VERSION.RELEASE);
+                obj.put("sdkInt", Build.VERSION.SDK_INT);
+                DisplayMetrics dm = getResources().getDisplayMetrics();
+                obj.put("densityDpi", dm.densityDpi);
+                obj.put("screenWidth", dm.widthPixels);
+                obj.put("screenHeight", dm.heightPixels);
+                obj.put("licenseTier", getLicenseTier());
+                return obj.toString();
+            } catch (Exception e) {
+                return "{}";
+            }
         }
     }
 
