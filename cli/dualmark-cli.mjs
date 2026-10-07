@@ -7,6 +7,14 @@
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Import headless core engines
+import MathSymbologies from '../web_app/js/core/math_symbologies.js';
+import CryptoStandards from '../web_app/js/core/crypto_standards.js';
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -17,7 +25,9 @@ function parseArgs() {
     serial: 'SN-009182',
     bwr: 0,
     format: 'cmyk-eps',
-    output: null
+    output: null,
+    verify: false,
+    sign: false
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -28,6 +38,8 @@ function parseArgs() {
     else if (args[i] === '--bwr' && args[i + 1]) options.bwr = parseInt(args[++i], 10) || 0;
     else if (args[i] === '--format' && args[i + 1]) options.format = args[++i];
     else if (args[i] === '--output' && args[i + 1]) options.output = args[++i];
+    else if (args[i] === '--verify') options.verify = true;
+    else if (args[i] === '--sign') options.sign = true;
   }
 
   return options;
@@ -76,9 +88,20 @@ showpage
 %%EOF`;
 }
 
-function main() {
+async function main() {
   const options = parseArgs();
+  
+  // Verify Modulo-10 GTIN Check Digit using headless math engine
+  const isGtinCheckValid = MathSymbologies.verifyModulo10(options.gtin);
+  if (!isGtinCheckValid) {
+    const rawGtinBase = options.gtin.slice(0, -1);
+    const expectedCheck = MathSymbologies.calcModulo10(rawGtinBase);
+    console.warn(`[DualMark CLI Warning] GTIN ${options.gtin} has invalid check digit! Expected: ${expectedCheck}`);
+  }
+
   const uri = buildDigitalLinkUri(options.gtin, options.lot, options.serial);
+  const parsedDl = CryptoStandards.parseGs1DigitalLink(uri);
+
   let result = '';
   let ext = 'txt';
 
@@ -88,15 +111,48 @@ function main() {
   } else if (options.format === 'cmyk-eps') {
     result = generateCmykEps(options.gtin, uri, options.bwr);
     ext = 'eps';
+  } else if (options.format === 'linkset') {
+    const linkset = CryptoStandards.generateRfc9264Linkset(options.gtin, uri, [
+      {
+        href: `https://brand.example.com/product/${options.gtin}`,
+        rel: 'gs1:pip',
+        type: 'text/html',
+        hreflang: ['en'],
+        title: 'Product Information Page'
+      },
+      {
+        href: `https://brand.example.com/recall/${options.gtin}`,
+        rel: 'gs1:hasRecallStatus',
+        type: 'application/json',
+        title: 'Real-Time Recall Verification Service'
+      }
+    ]);
+    result = JSON.stringify(linkset, null, 2);
+    ext = 'json';
+  } else if (options.format === 'code128') {
+    // Generate headless Code 128 dynamic subset encoding & bit patterns
+    const encoded = MathSymbologies.encodeCode128(options.gtin);
+    result = JSON.stringify(encoded, null, 2);
+    ext = 'json';
   } else if (options.format === 'json') {
-    result = JSON.stringify({
+    const payload = {
       gtin: options.gtin,
+      isGtinCheckValid,
       digitalLinkUri: uri,
+      parsedDigitalLink: parsedDl,
       type: options.type,
       bwrMicrons: options.bwr,
       generatedAt: new Date().toISOString(),
       compliance: 'GS1_SUNRISE_2027_CERTIFIED'
-    }, null, 2);
+    };
+
+    if (options.sign) {
+      const digest = await CryptoStandards.sha256Hex(JSON.stringify(payload));
+      payload.sha256Digest = digest;
+      payload.merkleProof = await CryptoStandards.computeMerkleRoot([digest, options.gtin, uri]);
+    }
+
+    result = JSON.stringify(payload, null, 2);
     ext = 'json';
   } else {
     result = generateZpl(options.gtin, uri, options.type);
@@ -107,8 +163,11 @@ function main() {
     fs.writeFileSync(options.output, result);
     console.log(`✓ DualMark CLI generated ${options.format.toUpperCase()} -> ${options.output}`);
   } else {
-    process.stdout.write(result);
+    process.stdout.write(result + '\n');
   }
 }
 
-main();
+main().catch(err => {
+  console.error('[DualMark CLI Error]', err);
+  process.exit(1);
+});

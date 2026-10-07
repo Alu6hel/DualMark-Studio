@@ -45,6 +45,8 @@ import java.util.UUID;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.ContentValues;
+import android.provider.MediaStore;
 
 public class MainActivity extends Activity {
     private static final String TAG = "DUALMARK_STUDIO";
@@ -95,7 +97,9 @@ public class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.addJavascriptInterface(new DualMarkBridge(), "DualMarkBridge");
+        DualMarkBridge bridge = new DualMarkBridge();
+        webView.addJavascriptInterface(bridge, "DualMarkBridge");
+        webView.addJavascriptInterface(bridge, "Android");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -413,6 +417,8 @@ public class MainActivity extends Activity {
                     String targetHost = (host != null && !host.trim().isEmpty()) ? host.trim() : "192.168.1.100";
                     int targetPort = (port > 0 && port < 65536) ? port : 9100;
                     Socket socket = new Socket();
+                    socket.setKeepAlive(true);
+                    socket.setTcpNoDelay(true);
                     socket.connect(new InetSocketAddress(targetHost, targetPort), 4000);
                     socket.setSoTimeout(3000);
                     OutputStream os = socket.getOutputStream();
@@ -502,6 +508,76 @@ public class MainActivity extends Activity {
                 }
             }).start();
             return true;
+        }
+
+        @JavascriptInterface
+        public String getBondedBluetoothPrinters() {
+            try {
+                BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                org.json.JSONArray arr = new org.json.JSONArray();
+                if (adapter != null && adapter.isEnabled()) {
+                    java.util.Set<BluetoothDevice> paired = adapter.getBondedDevices();
+                    if (paired != null) {
+                        for (BluetoothDevice d : paired) {
+                            org.json.JSONObject dev = new org.json.JSONObject();
+                            dev.put("name", d.getName());
+                            dev.put("address", d.getAddress());
+                            arr.put(dev);
+                        }
+                    }
+                }
+                return arr.toString();
+            } catch (Exception e) {
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean saveToMediaStore(final String base64Data, final String filename, final String mimeType) {
+            try {
+                byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                String safeName = (filename != null && !filename.isEmpty()) ? filename : "DualMark_Export.bin";
+                String safeMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "application/octet-stream";
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.MediaColumns.MIME_TYPE, safeMime);
+                    values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri != null) {
+                        try (OutputStream os = getContentResolver().openOutputStream(uri)) {
+                            if (os != null) {
+                                os.write(bytes);
+                                os.flush();
+                                runOnUiThread(() -> Toast.makeText(MainActivity.this, "💾 Saved via MediaStore: " + safeName, Toast.LENGTH_SHORT).show());
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return savePdfToStorage(base64Data, safeName);
+            } catch (Exception e) {
+                Log.e(TAG, "MediaStore save failed", e);
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public boolean hasCameraFlash() {
+            try {
+                CameraManager camManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (camManager != null) {
+                    for (String id : camManager.getCameraIdList()) {
+                        CameraCharacteristics chars = camManager.getCameraCharacteristics(id);
+                        Boolean flash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                        if (flash != null && flash) return true;
+                    }
+                }
+                return false;
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         @JavascriptInterface
