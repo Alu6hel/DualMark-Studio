@@ -20,13 +20,33 @@ const DualMarkPrepress = (() => {
     return currentBwrMicrons;
   }
 
+  function escapePdfString(str) {
+    if (!str) return '';
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      const ch = str.charAt(i);
+      if (ch === '(') out += '\\(';
+      else if (ch === ')') out += '\\)';
+      else if (ch === '\\') out += '\\\\';
+      else if (code >= 32 && code <= 126) out += ch;
+      else out += '\\' + (code & 0xFF).toString(8).padStart(3, '0');
+    }
+    return out;
+  }
+
+  function resolveDimensions(options = {}) {
+    const widthPt = options.packageWidthMm ? Math.round(options.packageWidthMm * 2.83465) : (options.widthPt || 360);
+    const heightPt = options.packageHeightMm ? Math.round(options.packageHeightMm * 2.83465) : (options.heightPt || 144);
+    return { widthPt, heightPt };
+  }
+
   /**
    * Generates pure PostScript Level 3 CMYK Encapsulated PostScript (EPS).
    * 100% Process Black (0 0 0 1 setcmykcolor), no RGB contamination.
    */
   function generateCmykEps(barcode1dData, qrMatrix, options = {}) {
-    const widthPt = options.widthPt || 360;  // 5 inches wide
-    const heightPt = options.heightPt || 144; // 2 inches tall
+    const { widthPt, heightPt } = resolveDimensions(options);
     const bwrPoints = (currentBwrMicrons / 1000) * 2.83465; // Convert µm to mm to PostScript points (1pt = 0.352778mm)
 
     let ps = `%!PS-Adobe-3.0 EPSF-3.0
@@ -90,7 +110,7 @@ b
       if (barcode1dData.text) {
         ps += `/Helvetica findfont 9 scalefont setfont\n`;
         ps += `${(startX + 10).toFixed(1)} 16 moveto\n`;
-        ps += `(${barcode1dData.text}) show\n`;
+        ps += `(${escapePdfString(barcode1dData.text)}) show\n`;
       }
     }
 
@@ -138,8 +158,7 @@ b
    * Generates High-Resolution (600/1200 DPI vector equivalent) Vector PDF document
    */
   function generateVectorPdf(barcode1dData, qrMatrix, options = {}) {
-    const widthPt = 360;
-    const heightPt = 144;
+    const { widthPt, heightPt } = resolveDimensions(options);
     const bwrPoints = (currentBwrMicrons / 1000) * 2.83465;
 
     let stream = `0 0 0 1 k\n`; // CMYK Process Black
@@ -162,7 +181,7 @@ b
       }
 
       if (barcode1dData.text) {
-        stream += `BT /F1 9 Tf ${startX + 10} 16 Td (${barcode1dData.text}) Tj ET\n`;
+        stream += `BT /F1 9 Tf ${startX + 10} 16 Td (${escapePdfString(barcode1dData.text)}) Tj ET\n`;
       }
     }
 
@@ -246,8 +265,7 @@ ${400 + streamLength}
    * Generates PostScript Level 3 Separation Spot Color EPS (Pantone Process Black C & Spot Magenta)
    */
   function generatePantoneEps(barcode1dData, qrMatrix, options = {}) {
-    const widthPt = options.widthPt || 360;
-    const heightPt = options.heightPt || 144;
+    const { widthPt, heightPt } = resolveDimensions(options);
     const bwrPoints = (currentBwrMicrons / 1000) * 2.83465;
 
     let ps = `%!PS-Adobe-3.0 EPSF-3.0
@@ -300,7 +318,7 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
       }
       if (barcode1dData.text) {
         ps += `/Helvetica findfont 9 scalefont setfont\n`;
-        ps += `${(startX + 10).toFixed(1)} 16 moveto (${barcode1dData.text}) show\n`;
+        ps += `${(startX + 10).toFixed(1)} 16 moveto (${escapePdfString(barcode1dData.text)}) show\n`;
       }
     }
 
@@ -343,8 +361,7 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
    * Generates Adobe Illustrator & Esko Compatible Layered PDF (Optional Content Groups / OCG)
    */
   function generateLayeredPdf(barcode1dData, qrMatrix, options = {}) {
-    const widthPt = 360;
-    const heightPt = 144;
+    const { widthPt, heightPt } = resolveDimensions(options);
     const bwrPoints = (currentBwrMicrons / 1000) * 2.83465;
 
     let stream = ``;
@@ -418,7 +435,7 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
     stream += `/OC /OC4 BDC\n`;
     stream += `0 0 0 1 k\n`;
     if (barcode1dData && barcode1dData.text) {
-      stream += `BT /F1 9 Tf 30 16 Td (${barcode1dData.text}) Tj ET\n`;
+      stream += `BT /F1 9 Tf 30 16 Td (${escapePdfString(barcode1dData.text)}) Tj ET\n`;
     }
     stream += `BT /F1 7 Tf 20 ${heightPt - 14} Td (DualMark Layered OCG Proof | 4 Layers: DieLine, 1D, 2D, Text | BWR: ${currentBwrMicrons} um) Tj ET\n`;
     stream += `EMC\n`;
@@ -503,7 +520,9 @@ ${850 + streamLength}
     generatePantoneEps,
     generateVectorPdf,
     generateLayeredPdf,
-    downloadFile
+    downloadFile,
+    escapePdfString,
+    resolveDimensions
   };
 })();
 

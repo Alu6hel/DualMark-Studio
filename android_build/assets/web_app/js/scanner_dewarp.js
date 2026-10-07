@@ -39,9 +39,30 @@
         this.barcodeDetector = null;
       }
     }
+
+    this.calibratedMmPerPx = 0.35;
+    this.cameraIntrinsics = null;
+    this.initIntrinsics();
   }
 
   ScannerDewarpStudio.prototype = {
+    initIntrinsics: function() {
+      if (window.DualMarkBridge && typeof window.DualMarkBridge.getCameraIntrinsics === 'function') {
+        try {
+          var data = JSON.parse(window.DualMarkBridge.getCameraIntrinsics());
+          if (data && data.focalLengthMm) {
+            this.cameraIntrinsics = data;
+          }
+        } catch (e) {}
+      }
+    },
+
+    setCalibration: function(mmPerPx) {
+      if (typeof mmPerPx === 'number' && mmPerPx > 0) {
+        this.calibratedMmPerPx = mmPerPx;
+      }
+    },
+
     // 1. Camera Lifecycle
     startCamera: function(videoElem, onScanResult, onError) {
       var self = this;
@@ -102,8 +123,12 @@
       var ctx = this.previewCtx;
 
       if (c && ctx) {
-        c.width = video.videoWidth || 640;
-        c.height = video.videoHeight || 480;
+        var targetW = video.videoWidth || 640;
+        var targetH = video.videoHeight || 480;
+        if (c.width !== targetW || c.height !== targetH) {
+          c.width = targetW;
+          c.height = targetH;
+        }
         ctx.drawImage(video, 0, 0, c.width, c.height);
 
         // Draw HUD targeting reticle & 50mm laser scan guide
@@ -154,7 +179,13 @@
         var y1d = h * 0.4;
         var y2d = boxY;
         var distPx = Math.abs(y2d - y1d);
-        var distMm = (distPx * 0.35).toFixed(1);
+
+        var mmPerPx = this.calibratedMmPerPx || 0.35;
+        if (this.cameraIntrinsics && this.cameraIntrinsics.focalLengthMm && this.cameraIntrinsics.sensorWidthMm) {
+          var workingDistMm = 180.0; // Nominal handheld barcode scan distance (180mm)
+          mmPerPx = (this.cameraIntrinsics.sensorWidthMm / w) * (workingDistMm / this.cameraIntrinsics.focalLengthMm);
+        }
+        var distMm = (distPx * mmPerPx).toFixed(1);
         var isPass = parseFloat(distMm) >= 50.0;
 
         ctx.save();

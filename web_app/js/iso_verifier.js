@@ -74,7 +74,13 @@ const DualMarkIsoVerifier = (() => {
         defects: 0.04,
         decodability: 0.78,
         gradeLetter: 'A',
-        numericGrade: 4.0
+        numericGrade: 4.0,
+        scGradeLetter: 'A',
+        ecGradeLetter: 'A',
+        modGradeLetter: 'A',
+        defectsGradeLetter: 'A',
+        decodabilityGradeLetter: 'A',
+        rminGradeLetter: 'A'
       };
     }
 
@@ -84,39 +90,178 @@ const DualMarkIsoVerifier = (() => {
       if (profile[i] < rmin) rmin = profile[i];
       if (profile[i] > rmax) rmax = profile[i];
     }
-    const sc = Math.max(0.01, rmax - rmin);
+    const sc = Math.max(0.001, rmax - rmin);
 
-    // Identify edges and minimum edge contrast
+    // 1. Symbol Contrast Grade
+    let scGrade = 4.0;
+    if (sc < 0.20) scGrade = 0.0;
+    else if (sc < 0.40) scGrade = 1.0;
+    else if (sc < 0.55) scGrade = 2.0;
+    else if (sc < 0.70) scGrade = 3.0;
+    else scGrade = 4.0;
+
+    // 2. Minimum Reflectance (Rmin) Grade: Rmin <= 0.5 * Rmax -> 4.0, else 0.0
+    const rminGrade = (rmin <= 0.5 * rmax) ? 4.0 : 0.0;
+
+    // 3. Global Threshold crossing for edge detection & element segmentation
     const globalThreshold = (rmax + rmin) / 2.0;
-    let prevIsDark = profile[0] < globalThreshold;
-    let minEdgeContrast = 1.0;
+    const edgePositions = [];
 
-    for (let i = 1; i < profile.length; i++) {
-      const isDark = profile[i] < globalThreshold;
-      if (isDark !== prevIsDark) {
-        const edgeContrast = Math.abs(profile[i] - profile[i - 1]);
-        if (edgeContrast > 0.05 && edgeContrast < minEdgeContrast) {
-          minEdgeContrast = edgeContrast;
-        }
-        prevIsDark = isDark;
+    for (let i = 0; i < profile.length - 1; i++) {
+      const v1 = profile[i];
+      const v2 = profile[i + 1];
+      if ((v1 - globalThreshold) * (v2 - globalThreshold) <= 0 && v1 !== v2) {
+        const t = (globalThreshold - v1) / (v2 - v1);
+        edgePositions.push(i + t);
       }
     }
-    if (minEdgeContrast > 1.0 || minEdgeContrast < 0.1) {
+
+    let minEdgeContrast = sc;
+    let ernMax = 0.0;
+    let decodability = 1.0;
+
+    if (edgePositions.length >= 2) {
+      // Element segmentation between adjacent edges
+      const elements = [];
+      for (let i = 0; i < edgePositions.length - 1; i++) {
+        const startX = edgePositions[i];
+        const endX = edgePositions[i + 1];
+        const width = endX - startX;
+        const midX = Math.round((startX + endX) / 2);
+        const isSpace = profile[Math.min(profile.length - 1, Math.max(0, midX))] >= globalThreshold;
+        
+        // Find internal reflectance samples within this element
+        const sStart = Math.ceil(startX);
+        const sEnd = Math.floor(endX);
+        let elemRMin = 1.0;
+        let elemRMax = 0.0;
+        let count = 0;
+
+        for (let s = sStart; s <= sEnd; s++) {
+          if (s >= 0 && s < profile.length) {
+            const val = profile[s];
+            if (val < elemRMin) elemRMin = val;
+            if (val > elemRMax) elemRMax = val;
+            count++;
+          }
+        }
+        if (count === 0) {
+          const sample = profile[Math.min(profile.length - 1, Math.max(0, midX))];
+          elemRMin = sample;
+          elemRMax = sample;
+        }
+
+        // Count internal local extrema to calculate Element Reflectance Non-uniformity (ERN)
+        // ISO 15416: ERN is difference between peak and valley in the element. If smooth / monotonic, ERN = 0.
+        let localPeaks = 0;
+        let localValleys = 0;
+        for (let s = sStart + 1; s < sEnd; s++) {
+          if (s > 0 && s < profile.length - 1) {
+            if (profile[s] > profile[s - 1] && profile[s] > profile[s + 1]) localPeaks++;
+            if (profile[s] < profile[s - 1] && profile[s] < profile[s + 1]) localValleys++;
+          }
+        }
+
+        let elemErn = 0.0;
+        if (isSpace && localValleys > 0) {
+          // Dirt / ink spot defect in space
+          elemErn = elemRMax - elemRMin;
+        } else if (!isSpace && localPeaks > 0) {
+          // Void / uninked defect in bar
+          elemErn = elemRMax - elemRMin;
+        }
+        if (elemErn > ernMax) {
+          ernMax = elemErn;
+        }
+
+        elements.push({
+          width,
+          isSpace,
+          rPeak: elemRMax,
+          rValley: elemRMin
+        });
+      }
+
+      // Compute Edge Contrast (EC) between adjacent elements
+      let lowestEc = 1.0;
+      for (let i = 0; i < elements.length - 1; i++) {
+        const el1 = elements[i];
+        const el2 = elements[i + 1];
+        const ec = el1.isSpace ? (el1.rPeak - el2.rValley) : (el2.rPeak - el1.rValley);
+        if (ec > 0 && ec < lowestEc) {
+          lowestEc = ec;
+        }
+      }
+      minEdgeContrast = Math.min(sc, Math.max(0.01, lowestEc));
+
+      // Calculate Decodability:
+      // Find nominal module width Z from the narrowest elements
+      const sortedWidths = elements.map(e => e.width).filter(w => w >= 1.0).sort((a, b) => a - b);
+      if (sortedWidths.length > 0) {
+        // Take median of lowest 25% to estimate module size Z
+        const qIdx = Math.max(0, Math.floor(sortedWidths.length * 0.25));
+        const zModule = Math.max(1.0, sortedWidths[qIdx]);
+
+        let minMargin = 1.0;
+        for (let i = 0; i < elements.length; i++) {
+          const w = elements[i].width;
+          const k = Math.max(1, Math.round(w / zModule));
+          const nominalW = k * zModule;
+          const dev = Math.abs(w - nominalW);
+          const tolerance = 0.5 * zModule;
+          const margin = Math.max(0.0, 1.0 - (dev / tolerance));
+          if (margin < minMargin) {
+            minMargin = margin;
+          }
+        }
+        decodability = minMargin;
+      }
+    } else {
       minEdgeContrast = sc * 0.75;
+      decodability = 0.90;
     }
 
-    const modulation = Math.min(1.0, Math.max(0.1, minEdgeContrast / sc));
-    const defects = Math.min(0.25, Math.max(0.01, 0.03 + (1.0 - modulation) * 0.05));
-    const decodability = Math.min(0.95, Math.max(0.5, modulation * 0.95));
+    // Modulation MOD = ECmin / SC
+    const modulation = Math.min(1.0, Math.max(0.01, minEdgeContrast / sc));
+    let modGrade = 4.0;
+    if (modulation < 0.40) modGrade = 0.0;
+    else if (modulation < 0.50) modGrade = 1.0;
+    else if (modulation < 0.60) modGrade = 2.0;
+    else if (modulation < 0.70) modGrade = 3.0;
+    else modGrade = 4.0;
 
-    let numericGrade = 4.0;
-    if (sc < 0.20 || modulation < 0.30 || defects > 0.25) numericGrade = 0.0;
-    else if (sc < 0.40 || modulation < 0.45 || defects > 0.20) numericGrade = 1.0;
-    else if (sc < 0.55 || modulation < 0.55 || defects > 0.15) numericGrade = 2.0;
-    else if (sc < 0.70 || modulation < 0.65 || defects > 0.10) numericGrade = 3.0;
-    else numericGrade = 4.0;
+    // Minimum Edge Contrast Grade: ECmin >= 0.15 -> 4.0, else 0.0
+    const ecGrade = (minEdgeContrast >= 0.15) ? 4.0 : 0.0;
 
-    const gradeLetter = numericGrade === 4.0 ? 'A' : (numericGrade === 3.0 ? 'B' : (numericGrade === 2.0 ? 'C' : (numericGrade === 1.0 ? 'D' : 'F')));
+    // Defects = ERNmax / SC
+    const defects = Math.min(1.0, Math.max(0.0, ernMax / sc));
+    let defectsGrade = 4.0;
+    if (defects > 0.30) defectsGrade = 0.0;
+    else if (defects > 0.25) defectsGrade = 1.0;
+    else if (defects > 0.20) defectsGrade = 2.0;
+    else if (defects > 0.15) defectsGrade = 3.0;
+    else defectsGrade = 4.0;
+
+    // Decodability Grade
+    let decodabilityGrade = 4.0;
+    if (decodability < 0.25) decodabilityGrade = 0.0;
+    else if (decodability < 0.37) decodabilityGrade = 1.0;
+    else if (decodability < 0.50) decodabilityGrade = 2.0;
+    else if (decodability < 0.62) decodabilityGrade = 3.0;
+    else decodabilityGrade = 4.0;
+
+    // Overall Grade is min of all parameter grades per ISO/IEC 15416
+    const numericGrade = Math.min(scGrade, ecGrade, modGrade, defectsGrade, decodabilityGrade, rminGrade);
+
+    function toLetter(g) {
+      if (g >= 3.5) return 'A';
+      if (g >= 2.5) return 'B';
+      if (g >= 1.5) return 'C';
+      if (g >= 0.5) return 'D';
+      return 'F';
+    }
+
+    const gradeLetter = toLetter(numericGrade);
 
     return {
       rmin: parseFloat(rmin.toFixed(2)),
@@ -127,7 +272,13 @@ const DualMarkIsoVerifier = (() => {
       defects: parseFloat(defects.toFixed(2)),
       decodability: parseFloat(decodability.toFixed(2)),
       gradeLetter,
-      numericGrade
+      numericGrade,
+      scGradeLetter: toLetter(scGrade),
+      ecGradeLetter: toLetter(ecGrade),
+      modGradeLetter: toLetter(modGrade),
+      defectsGradeLetter: toLetter(defectsGrade),
+      decodabilityGradeLetter: toLetter(decodabilityGrade),
+      rminGradeLetter: toLetter(rminGrade)
     };
   }
 
@@ -220,12 +371,12 @@ const DualMarkIsoVerifier = (() => {
       numericGrade: res.numericGrade,
       isCalibrated: calibration.isCalibrated,
       parameters: [
-        { name: 'Symbol Contrast (SC)', value: Math.round(res.symbolContrast * 100) + '%', grade: res.gradeLetter },
-        { name: 'Minimum Reflectance (Rmin)', value: Math.round(res.rmin * 100) + '%', grade: res.gradeLetter },
-        { name: 'Minimum Edge Contrast (ECmin)', value: Math.round(res.edgeContrastMin * 100) + '%', grade: res.gradeLetter },
-        { name: 'Modulation (MOD)', value: Math.round(res.modulation * 100) + '%', grade: res.gradeLetter },
-        { name: 'Defects (ERN/SC)', value: Math.round(res.defects * 100) + '%', grade: res.gradeLetter },
-        { name: 'Decodability (DEC)', value: Math.round(res.decodability * 100) + '%', grade: res.gradeLetter }
+        { name: 'Symbol Contrast (SC)', value: Math.round(res.symbolContrast * 100) + '%', grade: res.scGradeLetter || res.gradeLetter },
+        { name: 'Minimum Reflectance (Rmin)', value: Math.round(res.rmin * 100) + '%', grade: res.rminGradeLetter || res.gradeLetter },
+        { name: 'Minimum Edge Contrast (ECmin)', value: Math.round(res.edgeContrastMin * 100) + '%', grade: res.ecGradeLetter || res.gradeLetter },
+        { name: 'Modulation (MOD)', value: Math.round(res.modulation * 100) + '%', grade: res.modGradeLetter || res.gradeLetter },
+        { name: 'Defects (ERN/SC)', value: Math.round(res.defects * 100) + '%', grade: res.defectsGradeLetter || res.gradeLetter },
+        { name: 'Decodability (DEC)', value: Math.round(res.decodability * 100) + '%', grade: res.decodabilityGradeLetter || res.gradeLetter }
       ]
     };
   }
@@ -376,6 +527,7 @@ const DualMarkIsoVerifier = (() => {
   return {
     setCalibration,
     getCalibration,
+    analyzeScanProfile,
     evaluate1D,
     evaluate2D,
     gradeBarcode1D,

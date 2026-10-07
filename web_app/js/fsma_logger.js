@@ -47,15 +47,46 @@
 
   function FsmaLogger() {
     this.records = JSON.parse(localStorage.getItem('dualmark_fsma_records') || 'null') || [];
+    this.initDb();
   }
 
   FsmaLogger.prototype = {
+    initDb: function() {
+      var self = this;
+      if (window.DualMarkDB) {
+        window.DualMarkDB.getAll('fsma_records').then(function(records) {
+          if (records && records.length > 0) {
+            records.sort(function(a, b) {
+              return new Date(b.recordedAt) - new Date(a.recordedAt);
+            });
+            self.records = records;
+          } else if (self.records.length > 0) {
+            self.records.forEach(function(rec) {
+              window.DualMarkDB.put('fsma_records', rec);
+            });
+          }
+        }).catch(function(e) {
+          console.warn('[FsmaLogger] DualMarkDB load error', e);
+        });
+      }
+    },
+
     getFtlCommodities: function() {
       return FDA_FTL_COMMODITIES;
     },
 
     save: function() {
-      localStorage.setItem('dualmark_fsma_records', JSON.stringify(this.records));
+      try {
+        localStorage.setItem('dualmark_fsma_records', JSON.stringify(this.records));
+      } catch (e) {
+        console.warn('[FsmaLogger] LocalStorage quota exceeded, relying on IndexedDB', e);
+      }
+      if (window.DualMarkDB) {
+        var self = this;
+        this.records.forEach(function(rec) {
+          window.DualMarkDB.put('fsma_records', rec);
+        });
+      }
     },
 
     getRecords: function() {

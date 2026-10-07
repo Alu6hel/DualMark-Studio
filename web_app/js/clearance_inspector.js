@@ -280,13 +280,38 @@
         self.initialPinchDistance = 0;
       }
 
-      this.canvas.addEventListener('mousedown', handleStart);
-      window.addEventListener('mousemove', handleMove);
-      window.addEventListener('mouseup', handleEnd);
+      this._handleStart = handleStart;
+      this._handleMove = handleMove;
+      this._handleEnd = handleEnd;
 
-      this.canvas.addEventListener('touchstart', handleStart, { passive: false });
-      window.addEventListener('touchmove', handleMove, { passive: false });
-      window.addEventListener('touchend', handleEnd);
+      this.canvas.addEventListener('mousedown', this._handleStart);
+      window.addEventListener('mousemove', this._handleMove);
+      window.addEventListener('mouseup', this._handleEnd);
+
+      this.canvas.addEventListener('touchstart', this._handleStart, { passive: false });
+      window.addEventListener('touchmove', this._handleMove, { passive: false });
+      window.addEventListener('touchend', this._handleEnd);
+    },
+
+    destroy: function() {
+      if (this._handleStart && this.canvas) {
+        this.canvas.removeEventListener('mousedown', this._handleStart);
+        this.canvas.removeEventListener('touchstart', this._handleStart);
+      }
+      if (this._handleMove) {
+        window.removeEventListener('mousemove', this._handleMove);
+        window.removeEventListener('touchmove', this._handleMove);
+      }
+      if (this._handleEnd) {
+        window.removeEventListener('mouseup', this._handleEnd);
+        window.removeEventListener('touchend', this._handleEnd);
+      }
+      this.listeners = [];
+      this.activeDragging = null;
+    },
+
+    cleanup: function() {
+      this.destroy();
     },
 
     render: function() {

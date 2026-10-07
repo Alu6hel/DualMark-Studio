@@ -25,6 +25,7 @@
     }
   }
 
+  window.showToast = showToast;
   window.DualMarkApp = { showToast: showToast };
 
   // File download helper (Web or Android native bridge)
@@ -578,6 +579,9 @@
     var readout = document.getElementById('clearance-mm-readout');
     var btnSnap = document.getElementById('btn-snap-50mm');
 
+    if (window.clearanceInspector && typeof window.clearanceInspector.destroy === 'function') {
+      window.clearanceInspector.destroy();
+    }
     window.clearanceInspector = new window.DualMarkClearance.ClearanceInspector(canvas);
 
     var lastComplianceState = null;
@@ -864,6 +868,7 @@
     var resultBlock = document.getElementById('scan-decoded-result');
 
     var studio = new window.DualMarkScanner.ScannerDewarpStudio(previewCanvas, dewarpCanvas);
+    window.scannerStudio = studio;
 
     function executeStartCamera() {
       badgeState.textContent = 'CAMERA STREAMING';
@@ -1382,7 +1387,9 @@
         if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
         window.DualMarkLicensing.checkFeatureOrPrompt('vector_cmyk_eps', function() {
           var data = getActivePrepressData();
-          var eps = window.DualMarkPrepress.generateCmykEps(data.barcode1d, data.qrMatrix);
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+          var eps = window.DualMarkPrepress.generateCmykEps(data.barcode1d, data.qrMatrix, { packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(eps, 'DualMark_Prepress_CMYK.eps', 'application/postscript');
           showToast('✓ PostScript Level 3 CMYK EPS Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -1397,7 +1404,9 @@
         if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
         window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
           var data = getActivePrepressData();
-          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 600 });
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 600, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_600DPI.pdf', 'application/pdf');
           showToast('✓ High-Res Vector PDF (600 DPI Equivalent) Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -1412,7 +1421,9 @@
         if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
         window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
           var data = getActivePrepressData();
-          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 1200 });
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+          var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 1200, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_1200DPI.pdf', 'application/pdf');
           showToast('✓ Ultra High-Res Vector PDF (1200 DPI Equivalent) Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -1427,7 +1438,9 @@
         if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
         window.DualMarkLicensing.checkFeatureOrPrompt('vector_cmyk_eps', function() {
           var data = getActivePrepressData();
-          var eps = window.DualMarkPrepress.generatePantoneEps(data.barcode1d, data.qrMatrix);
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+          var eps = window.DualMarkPrepress.generatePantoneEps(data.barcode1d, data.qrMatrix, { packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(eps, 'DualMark_Pantone_Spot_Separation.eps', 'application/postscript');
           showToast('✓ Pantone Spot Separation (Process Black C & Rubine Red C) EPS Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -1442,8 +1455,10 @@
         if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
         window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
           var data = getActivePrepressData();
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
           var clearanceMm = window.clearanceInspector ? window.clearanceInspector.getMetrics().edgeDistanceMm : 52;
-          var pdf = window.DualMarkPrepress.generateLayeredPdf(data.barcode1d, data.qrMatrix, { clearanceMm: clearanceMm });
+          var pdf = window.DualMarkPrepress.generateLayeredPdf(data.barcode1d, data.qrMatrix, { clearanceMm: clearanceMm, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Layered_Illustrator_OCG.pdf', 'application/pdf');
           showToast('✓ Adobe Illustrator Layered PDF (OCG) Exported');
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -1545,6 +1560,28 @@
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
+
+    // Bi-Directional Zebra Thermal Status Callback
+    window.onPrinterStatusResult = function(status) {
+      if (!status) return null;
+      if (typeof status === 'string') {
+        try { status = JSON.parse(status); } catch (e) {}
+      }
+      var msg = '';
+      if (status.paperOut) {
+        msg = '⚠ Zebra Printer: PAPER OUT / MEDIA SENSOR ERROR';
+      } else if (status.headOpen) {
+        msg = '⚠ Zebra Printer: PRINTHEAD OPEN';
+      } else if (status.paused) {
+        msg = '⚠ Zebra Printer: PRINTER PAUSED';
+      } else if (status.ribbonOut) {
+        msg = '⚠ Zebra Printer: RIBBON OUT';
+      } else {
+        msg = '✓ Zebra Host Status: ONLINE & READY (Paper OK)';
+      }
+      showToast(msg);
+      return msg;
+    };
 
     // High-Throughput Batch CSV Multi-SKU Synthesis Engine
     var btnBatchZip = document.getElementById('btn-run-batch-zip');

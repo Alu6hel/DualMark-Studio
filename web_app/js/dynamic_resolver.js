@@ -41,11 +41,38 @@
 
   function DynamicResolver() {
     this.rules = JSON.parse(localStorage.getItem('dualmark_resolver_rules') || 'null') || DEFAULT_RULES;
+    this.initDb();
   }
 
   DynamicResolver.prototype = {
+    initDb: function() {
+      var self = this;
+      if (window.DualMarkDB) {
+        window.DualMarkDB.getAll('resolver_rules').then(function(rules) {
+          if (rules && rules.length > 0) {
+            self.rules = rules;
+          } else if (self.rules.length > 0) {
+            self.rules.forEach(function(r) {
+              window.DualMarkDB.put('resolver_rules', r);
+            });
+          }
+        }).catch(function(e) {
+          console.warn('[DynamicResolver] DualMarkDB load error', e);
+        });
+      }
+    },
+
     save: function() {
-      localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+      try {
+        localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+      } catch (e) {
+        console.warn('[DynamicResolver] LocalStorage quota exceeded, relying on IndexedDB', e);
+      }
+      if (window.DualMarkDB) {
+        this.rules.forEach(function(r) {
+          window.DualMarkDB.put('resolver_rules', r);
+        });
+      }
     },
 
     getRules: function() {

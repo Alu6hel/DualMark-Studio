@@ -37,6 +37,7 @@ import android.hardware.camera2.CameraManager;
 import android.util.DisplayMetrics;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -357,6 +358,54 @@ public class MainActivity extends Activity {
             return isTorchOn;
         }
 
+        private org.json.JSONObject parseZebraHostStatus(String response) {
+            org.json.JSONObject st = new org.json.JSONObject();
+            try {
+                boolean paperOut = false;
+                boolean headOpen = false;
+                boolean paused = false;
+                boolean ribbonOut = false;
+                if (response != null && !response.isEmpty()) {
+                    String clean = response.replace("\u0002", "").replace("\u0003", "").trim();
+                    String[] lines = clean.split("\r?\n");
+                    if (lines.length > 0) {
+                        String[] p1 = lines[0].split(",");
+                        if (p1.length >= 3) {
+                            paperOut = "1".equals(p1[1].trim());
+                            paused = "1".equals(p1[2].trim());
+                        }
+                    }
+                    if (lines.length > 1) {
+                        String[] p2 = lines[1].split(",");
+                        if (p2.length >= 2) {
+                            ribbonOut = "1".equals(p2[1].trim());
+                        }
+                    }
+                    if (lines.length > 2) {
+                        String[] p3 = lines[2].split(",");
+                        if (p3.length >= 2) {
+                            headOpen = "1".equals(p3[1].trim());
+                        }
+                    }
+                }
+                st.put("online", true);
+                st.put("paperOut", paperOut);
+                st.put("headOpen", headOpen);
+                st.put("paused", paused);
+                st.put("ribbonOut", ribbonOut);
+                st.put("raw", (response != null) ? response.trim() : "");
+            } catch (Exception ignored) {}
+            return st;
+        }
+
+        private void notifyPrinterStatus(final org.json.JSONObject status) {
+            runOnUiThread(() -> {
+                if (webView != null && status != null) {
+                    webView.evaluateJavascript("if (window.onPrinterStatusResult) { window.onPrinterStatusResult(" + status.toString() + "); }", null);
+                }
+            });
+        }
+
         @JavascriptInterface
         public boolean printRawTcpSocket(final String host, final int port, final String zplData) {
             new Thread(() -> {
@@ -365,14 +414,35 @@ public class MainActivity extends Activity {
                     int targetPort = (port > 0 && port < 65536) ? port : 9100;
                     Socket socket = new Socket();
                     socket.connect(new InetSocketAddress(targetHost, targetPort), 4000);
-                    socket.setSoTimeout(4000);
+                    socket.setSoTimeout(3000);
                     OutputStream os = socket.getOutputStream();
                     os.write(zplData.getBytes("UTF-8"));
                     os.flush();
+
+                    // Query Bi-Directional Host Status (~HS)
+                    org.json.JSONObject status = new org.json.JSONObject();
+                    try {
+                        os.write("~HS\r\n".getBytes("UTF-8"));
+                        os.flush();
+                        InputStream is = socket.getInputStream();
+                        byte[] buf = new byte[1024];
+                        int r = is.read(buf);
+                        String resp = (r > 0) ? new String(buf, 0, r, "UTF-8") : "";
+                        status = parseZebraHostStatus(resp);
+                    } catch (Exception ignored) {
+                        status.put("online", true);
+                        status.put("paperOut", false);
+                        status.put("headOpen", false);
+                    }
+                    notifyPrinterStatus(status);
+
                     os.close();
                     socket.close();
 
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "✓ ZPL Sent to " + targetHost + ":" + targetPort, Toast.LENGTH_LONG).show());
+                    final String finalMsg = (status.optBoolean("paperOut", false) ? "⚠ Paper Out! " : "") +
+                                            (status.optBoolean("headOpen", false) ? "⚠ Head Open! " : "") +
+                                            "✓ ZPL Dispatched to " + targetHost + ":" + targetPort;
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, finalMsg, Toast.LENGTH_LONG).show());
                 } catch (Exception e) {
                     Log.e(TAG, "TCP Socket print failed", e);
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Network Printer Unreachable: " + e.getMessage(), Toast.LENGTH_LONG).show());
@@ -401,15 +471,69 @@ public class MainActivity extends Activity {
                     OutputStream os = socket.getOutputStream();
                     os.write(zplData.getBytes("UTF-8"));
                     os.flush();
+
+                    // Query Bi-Directional Host Status (~HS)
+                    org.json.JSONObject status = new org.json.JSONObject();
+                    try {
+                        os.write("~HS\r\n".getBytes("UTF-8"));
+                        os.flush();
+                        InputStream is = socket.getInputStream();
+                        byte[] buf = new byte[1024];
+                        int r = is.read(buf);
+                        String resp = (r > 0) ? new String(buf, 0, r, "UTF-8") : "";
+                        status = parseZebraHostStatus(resp);
+                    } catch (Exception ignored) {
+                        status.put("online", true);
+                        status.put("paperOut", false);
+                        status.put("headOpen", false);
+                    }
+                    notifyPrinterStatus(status);
+
                     os.close();
                     socket.close();
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "✓ Sent ZPL to Bluetooth Printer: " + macAddress, Toast.LENGTH_LONG).show());
+
+                    final String finalMsg = (status.optBoolean("paperOut", false) ? "⚠ Paper Out! " : "") +
+                                            (status.optBoolean("headOpen", false) ? "⚠ Head Open! " : "") +
+                                            "✓ Sent ZPL to Bluetooth Printer: " + macAddress;
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, finalMsg, Toast.LENGTH_LONG).show());
                 } catch (Exception e) {
                     Log.e(TAG, "Bluetooth SPP print error", e);
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Bluetooth Print Failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
                 }
             }).start();
             return true;
+        }
+
+        @JavascriptInterface
+        public String getCameraIntrinsics() {
+            try {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                CameraManager camManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (camManager != null) {
+                    for (String id : camManager.getCameraIdList()) {
+                        CameraCharacteristics chars = camManager.getCameraCharacteristics(id);
+                        Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+                        if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
+                            float[] focalLengths = chars.get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                            android.util.SizeF sensorSize = chars.get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+                            float focal = (focalLengths != null && focalLengths.length > 0) ? focalLengths[0] : 4.38f;
+                            float sensorW = (sensorSize != null) ? sensorSize.getWidth() : 5.6f;
+                            float sensorH = (sensorSize != null) ? sensorSize.getHeight() : 4.2f;
+
+                            obj.put("focalLengthMm", focal);
+                            obj.put("sensorWidthMm", sensorW);
+                            obj.put("sensorHeightMm", sensorH);
+                            return obj.toString();
+                        }
+                    }
+                }
+                obj.put("focalLengthMm", 4.38);
+                obj.put("sensorWidthMm", 5.6);
+                obj.put("sensorHeightMm", 4.2);
+                return obj.toString();
+            } catch (Exception e) {
+                return "{\"focalLengthMm\":4.38,\"sensorWidthMm\":5.6,\"sensorHeightMm\":4.2}";
+            }
         }
 
         @JavascriptInterface
