@@ -24,6 +24,14 @@
       </div>
     </div>
     <div class="header-actions">
+      <select id="select-language" class="form-control" style="width: auto; padding: 2px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px;" title="Select Display Language" aria-label="Language">
+        <option value="en-US">🇺🇸 EN</option>
+        <option value="es-ES">🇪🇸 ES</option>
+        <option value="de-DE">🇩🇪 DE</option>
+        <option value="fr-FR">🇫🇷 FR</option>
+        <option value="ja-JP">🇯🇵 JA</option>
+        <option value="zh-CN">🇨🇳 ZH</option>
+      </select>
       <button id="btn-tour" class="icon-btn" title="Interactive Guided Tour" aria-label="Take Tour">❓</button>
       <button id="btn-outdoor" class="icon-btn" title="Toggle Outdoor Loading Dock Theme" aria-label="Outdoor Mode">☀️</button>
       <button id="btn-diagnostics" class="icon-btn" title="Export Sanitized System Diagnostics" aria-label="Diagnostics">🛠️</button>
@@ -748,6 +756,7 @@
   <script src="js/core/math_symbologies.js"></script>
   <script src="js/core/cv_geometry.js"></script>
   <script src="js/core/crypto_standards.js"></script>
+  <script src="js/core/truetype_cidfont.js"></script>
 
   <script src="js/storage_db.js"></script>
   <script src="js/audio.js"></script>
@@ -772,6 +781,9 @@
   <script src="js/features/touch_gestures.js"></script>
   <script src="js/features/ui_layout.js"></script>
   <script src="js/features/preset_loaders.js"></script>
+
+  <!-- Dynamic Localization Engine -->
+  <script src="js/i18n.js"></script>
 
   <script src="js/app.js"></script>
 </body>

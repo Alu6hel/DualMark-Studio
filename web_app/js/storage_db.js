@@ -66,8 +66,26 @@
       return this._initPromise;
     },
 
+    hasNativeSqlite: function() {
+      return Boolean(
+        typeof window !== 'undefined' &&
+        window.DualMarkBridge &&
+        typeof window.DualMarkBridge.sqliteInsertRecord === 'function'
+      );
+    },
+
     put: function(storeName, item) {
       var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var id = String(item.id || item.key || ('rec_' + Date.now()));
+          var ok = window.DualMarkBridge.sqliteInsertRecord(storeName, id, JSON.stringify(item));
+          if (ok) return Promise.resolve(item);
+        } catch (err) {
+          console.warn('[DualMarkDB] Native SQLite insert error, falling back to IDB', err);
+        }
+      }
+
       return this.init().then(function(db) {
         if (!db) {
           // Fallback to localStorage
@@ -93,6 +111,16 @@
 
     get: function(storeName, key) {
       var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var res = window.DualMarkBridge.sqliteQueryRecords(storeName, String(key), 1, 0);
+          var arr = JSON.parse(res || '[]');
+          if (arr && arr.length > 0) return Promise.resolve(arr[0]);
+        } catch (err) {
+          console.warn('[DualMarkDB] Native SQLite get error', err);
+        }
+      }
+
       return this.init().then(function(db) {
         if (!db) {
           try {
@@ -114,6 +142,16 @@
 
     getAll: function(storeName) {
       var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var res = window.DualMarkBridge.sqliteQueryRecords(storeName, '', 100000, 0);
+          var arr = JSON.parse(res || '[]');
+          if (arr && Array.isArray(arr)) return Promise.resolve(arr);
+        } catch (err) {
+          console.warn('[DualMarkDB] Native SQLite getAll error', err);
+        }
+      }
+
       return this.init().then(function(db) {
         if (!db) {
           try {
@@ -131,8 +169,31 @@
       });
     },
 
+    count: function(storeName) {
+      var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var c = window.DualMarkBridge.sqliteCountRecords(storeName);
+          if (typeof c === 'number') return Promise.resolve(c);
+        } catch (e) {}
+      }
+
+      return this.getAll(storeName).then(function(records) {
+        return records.length;
+      });
+    },
+
     delete: function(storeName, key) {
       var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var ok = window.DualMarkBridge.sqliteDeleteRecord(storeName, String(key));
+          if (ok) return Promise.resolve(true);
+        } catch (err) {
+          console.warn('[DualMarkDB] Native SQLite delete error', err);
+        }
+      }
+
       return this.init().then(function(db) {
         if (!db) {
           try {
@@ -155,6 +216,15 @@
 
     clear: function(storeName) {
       var self = this;
+      if (this.hasNativeSqlite()) {
+        try {
+          var ok = window.DualMarkBridge.sqliteClearTable(storeName);
+          if (ok) return Promise.resolve(true);
+        } catch (err) {
+          console.warn('[DualMarkDB] Native SQLite clear error', err);
+        }
+      }
+
       return this.init().then(function(db) {
         if (!db) {
           try {
@@ -171,6 +241,22 @@
           req.onerror = function() { resolve(false); };
         });
       });
+    },
+
+    saveFsmaRecord: function(rec) {
+      return this.put('fsma_records', rec);
+    },
+
+    getFsmaRecords: function() {
+      return this.getAll('fsma_records');
+    },
+
+    saveResolverRule: function(rule) {
+      return this.put('resolver_rules', rule);
+    },
+
+    getResolverRules: function() {
+      return this.getAll('resolver_rules');
     }
   };
 

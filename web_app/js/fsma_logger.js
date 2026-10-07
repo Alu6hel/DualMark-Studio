@@ -227,9 +227,9 @@
       ];
 
       var rows = this.records.map(function(rec) {
-        var qtyParts = (rec.quantity || '').split(' ');
+        var qtyParts = String(rec.quantity || '').split(' ');
         var qty = qtyParts[0] || '1';
-        var uom = qtyParts.slice(1).join(' ') || 'Cases';
+        var uom = rec.uom || (qtyParts.slice(1).join(' ') || 'Cases');
 
         return [
           '"' + rec.id + '"',

@@ -160,6 +160,21 @@
       });
     }
 
+    // Dynamic Language Selector (i18n)
+    var selectLang = document.getElementById('select-language');
+    if (window.DualMarkI18n) {
+      window.DualMarkI18n.init();
+      if (selectLang) {
+        selectLang.value = window.DualMarkI18n.getLanguage();
+        selectLang.addEventListener('change', function(e) {
+          var chosen = e.target.value;
+          window.DualMarkI18n.setLanguage(chosen);
+          showToast('Language updated: ' + chosen);
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
+        });
+      }
+    }
+
     // Interactive Guided Tour
     var btnTour = document.getElementById('btn-tour');
     if (btnTour) {
