@@ -310,6 +310,7 @@ async function main() {
   console.log("======================================================================\n");
 
   ws.close();
+  process.exit(0);
 }
 
 main().catch(err => {

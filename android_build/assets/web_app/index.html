@@ -357,6 +357,7 @@
           <button class="btn btn-secondary" id="btn-export-json">📄 JSON Rules</button>
           <button class="btn btn-secondary" id="btn-export-cf">⚡ Cloudflare</button>
           <button class="btn btn-secondary" id="btn-export-nginx">🌐 Nginx</button>
+          <button class="btn btn-secondary" id="btn-export-linkset">🔗 GS1 Linkset</button>
         </div>
       </div>
     </section>
@@ -619,6 +620,14 @@
               <input type="number" id="tcp-printer-port" class="mono-input" value="9100" style="font-size: 11px; padding: 6px 8px;">
             </div>
             <button class="btn btn-primary btn-sm" id="btn-send-tcp-socket" style="white-space: nowrap; padding: 6px 12px;">🖨️ Send TCP</button>
+          </div>
+
+          <!-- Bluetooth SPP Hip Printer Spooler -->
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
+            <div style="flex: 2; min-width: 150px;">
+              <input type="text" id="bt-printer-mac" class="mono-input" value="00:11:22:33:AA:BB" placeholder="Bluetooth MAC (e.g. Zebra ZQ)" style="font-size: 11px; padding: 6px 8px;">
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btn-send-bt-spp" style="white-space: nowrap; padding: 6px 12px;">📱 Send BT SPP</button>
           </div>
         </div>
 

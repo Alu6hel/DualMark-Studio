@@ -815,6 +815,16 @@
       showToast('Nginx Map Configuration Exported');
     });
 
+    var btnExportLinkset = document.getElementById('btn-export-linkset');
+    if (btnExportLinkset) {
+      btnExportLinkset.addEventListener('click', function() {
+        var gtin = (testGtin && testGtin.value.trim()) || '00812345678901';
+        var linksetJson = window.DualMarkResolver.exportLinksetJson(gtin);
+        downloadBlob(linksetJson, 'gs1_linkset_' + gtin + '.json', 'application/linkset+json');
+        showToast('RFC 9264 GS1 Linkset Exported');
+      });
+    }
+
     var btnAddRule = document.getElementById('btn-add-resolve-rule');
     if (btnAddRule) {
       btnAddRule.addEventListener('click', function() {
@@ -1513,6 +1523,24 @@
           showToast('🖨️ ZPL stream dispatched to printer socket ' + ip + ':' + port);
         } else {
           showToast('🖨️ TCP Raw Socket simulated in Web sandbox: ' + ip + ':' + port);
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // Bluetooth SPP Hip Printer Spooler
+    var btnSendBt = document.getElementById('btn-send-bt-spp');
+    var btMacInput = document.getElementById('bt-printer-mac');
+    if (btnSendBt) {
+      btnSendBt.addEventListener('click', function() {
+        var mac = (btMacInput && btMacInput.value.trim()) || '00:11:22:33:AA:BB';
+        var zpl = getActiveZpl();
+
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.printRawBluetoothSpp === 'function') {
+          window.DualMarkBridge.printRawBluetoothSpp(mac, zpl);
+          showToast('📱 ZPL stream dispatched to Bluetooth printer ' + mac);
+        } else {
+          showToast('📱 Bluetooth SPP simulated in Web sandbox: ' + mac);
         }
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });

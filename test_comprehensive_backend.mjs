@@ -368,9 +368,42 @@ async function main() {
   }
   console.log("✓ Test 11 Passed: Zebra DataMatrix ^BXN and PostScript DotCode circles verified.\n");
 
+  // --- [TEST 12] RFC 9264 GS1 Linkset & Bluetooth SPP Bridge ---
+  console.log("--- [TEST 12] RFC 9264 GS1 Linkset & Android Bluetooth SPP Bridge ---");
+  const linksetBtTest = await evalJs(`
+    (() => {
+      const linksetJson = window.DualMarkResolver.exportLinksetJson('00812345678901');
+      const parsed = JSON.parse(linksetJson);
+      const hasAnchor = parsed[0] && parsed[0].anchor.includes('/01/00812345678901');
+      const hasPip = parsed[0] && parsed[0].links.some(l => l.rel === 'gs1:pip');
+      const hasTrace = parsed[0] && parsed[0].links.some(l => l.rel === 'gs1:traceability');
+
+      const linksetHeaders = window.DualMarkResolver.exportLinksetHeaders('00812345678901');
+      const hasHeaderLink = linksetHeaders.startsWith('Link: ') && linksetHeaders.includes('gs1:pip');
+
+      const hasBtBridge = Boolean(window.DualMarkBridge && typeof window.DualMarkBridge.printRawBluetoothSpp === 'function');
+
+      return {
+        hasAnchor,
+        hasPip,
+        hasTrace,
+        hasHeaderLink,
+        hasBtBridge
+      };
+    })()
+  `);
+  console.log("Linkset & Bluetooth Bridge Results:", linksetBtTest);
+  if (!linksetBtTest.hasAnchor || !linksetBtTest.hasPip || !linksetBtTest.hasTrace || !linksetBtTest.hasHeaderLink || !linksetBtTest.hasBtBridge) {
+    throw new Error("RFC 9264 GS1 Linkset or Bluetooth SPP Native Bridge verification failed!");
+  }
+  console.log("✓ Test 12 Passed: RFC 9264 Linkset JSON/Headers and Native Bluetooth SPP Bridge verified.\n");
+
   console.log("======================================================================");
-  console.log("   🎉 ALL 11 COMPREHENSIVE BACKEND ALGORITHM TESTS PASSED 100%!   ");
+  console.log("   🎉 ALL 12 COMPREHENSIVE BACKEND ALGORITHM TESTS PASSED 100%!   ");
   console.log("======================================================================\n");
+
+  ws.close();
+  process.exit(0);
 }
 
 main().catch(err => {

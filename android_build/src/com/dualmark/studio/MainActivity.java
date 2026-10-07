@@ -40,6 +40,10 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.UUID;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 
 public class MainActivity extends Activity {
     private static final String TAG = "DUALMARK_STUDIO";
@@ -372,6 +376,37 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Log.e(TAG, "TCP Socket print failed", e);
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Network Printer Unreachable: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                }
+            }).start();
+            return true;
+        }
+
+        @JavascriptInterface
+        public boolean printRawBluetoothSpp(final String macAddress, final String zplData) {
+            new Thread(() -> {
+                try {
+                    BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+                    if (adapter == null || !adapter.isEnabled()) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Bluetooth adapter unavailable or disabled", Toast.LENGTH_LONG).show());
+                        return;
+                    }
+                    if (macAddress == null || macAddress.trim().isEmpty()) {
+                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Please provide a valid Bluetooth MAC address", Toast.LENGTH_LONG).show());
+                        return;
+                    }
+                    BluetoothDevice device = adapter.getRemoteDevice(macAddress.trim().toUpperCase());
+                    UUID sppUuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); // Standard Serial Port Profile (SPP)
+                    BluetoothSocket socket = device.createRfcommSocketToServiceRecord(sppUuid);
+                    socket.connect();
+                    OutputStream os = socket.getOutputStream();
+                    os.write(zplData.getBytes("UTF-8"));
+                    os.flush();
+                    os.close();
+                    socket.close();
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "✓ Sent ZPL to Bluetooth Printer: " + macAddress, Toast.LENGTH_LONG).show());
+                } catch (Exception e) {
+                    Log.e(TAG, "Bluetooth SPP print error", e);
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "⚠ Bluetooth Print Failed: " + e.getMessage(), Toast.LENGTH_LONG).show());
                 }
             }).start();
             return true;

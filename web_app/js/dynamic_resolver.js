@@ -348,6 +348,78 @@
       lines.push('    }');
       lines.push('}');
       return lines.join('\n');
+    },
+
+    // Export 5: GS1 Linkset (RFC 9264 / GS1 Digital Link application/linkset+json)
+    exportLinksetJson: function(gtin) {
+      var r = null;
+      if (gtin) {
+        for (var i = 0; i < this.rules.length; i++) {
+          if (this.rules[i].gtin === gtin) {
+            r = this.rules[i];
+            break;
+          }
+        }
+      }
+      if (!r) r = this.rules[0] || {};
+      var targetGtin = r.gtin || gtin || '00812345678901';
+      var baseUrl = 'https://id.dualmark.studio/01/' + targetGtin;
+      var linkset = {
+        "anchor": baseUrl,
+        "itemDescription": r.itemTitle || "DualMark Certified Packaging Item",
+        "links": [
+          {
+            "href": r.defaultUrl || (baseUrl + '/info'),
+            "rel": "gs1:pip",
+            "type": "text/html",
+            "title": "Product Information Page"
+          },
+          {
+            "href": baseUrl + '/safety',
+            "rel": "gs1:certificationInfo",
+            "type": "application/json",
+            "title": "Safety & Compliance Certifications"
+          },
+          {
+            "href": baseUrl + '/traceability',
+            "rel": "gs1:traceability",
+            "type": "application/ld+json",
+            "title": "FSMA 204 Traceability EPCIS"
+          }
+        ]
+      };
+      if (r.isRecalled) {
+        linkset.links.unshift({
+          "href": r.recallNoticeUrl || (baseUrl + '/recall'),
+          "rel": "gs1:hasRecallNotice",
+          "type": "text/html",
+          "title": "URGENT: Product Safety Recall Notice"
+        });
+      }
+      return JSON.stringify([linkset], null, 2);
+    },
+
+    exportLinksetHeaders: function(gtin) {
+      var r = null;
+      if (gtin) {
+        for (var i = 0; i < this.rules.length; i++) {
+          if (this.rules[i].gtin === gtin) {
+            r = this.rules[i];
+            break;
+          }
+        }
+      }
+      if (!r) r = this.rules[0] || {};
+      var targetGtin = r.gtin || gtin || '00812345678901';
+      var baseUrl = 'https://id.dualmark.studio/01/' + targetGtin;
+      var headers = [
+        '<' + (r.defaultUrl || (baseUrl + '/info')) + '>; rel="gs1:pip"; type="text/html"; title="Product Information Page"',
+        '<' + baseUrl + '/traceability>; rel="gs1:traceability"; type="application/ld+json"; title="FSMA 204 EPCIS"'
+      ];
+      if (r.isRecalled) {
+        headers.unshift('<' + (r.recallNoticeUrl || (baseUrl + '/recall')) + '>; rel="gs1:hasRecallNotice"; type="text/html"');
+      }
+      return 'Link: ' + headers.join(', ');
     }
   };
 
