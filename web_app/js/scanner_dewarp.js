@@ -63,6 +63,27 @@
       }
     },
 
+    calibrateWithFiducial: function(targetType) {
+      var c = this.previewCanvas;
+      if (!c) return null;
+      var ctx = this.previewCtx;
+      if (!ctx) return null;
+      var imgData = ctx.getImageData(0, 0, c.width, c.height);
+      var gray = new Uint8Array(c.width * c.height);
+      for (var i = 0; i < gray.length; i++) {
+        var idx = i * 4;
+        gray[i] = Math.round(0.2126 * imgData.data[idx] + 0.7152 * imgData.data[idx + 1] + 0.0722 * imgData.data[idx + 2]);
+      }
+      if (window.DualMarkCV && typeof window.DualMarkCV.detectFiducialTarget === 'function') {
+        var res = window.DualMarkCV.detectFiducialTarget(gray, c.width, c.height, targetType || 'standard_card', this.cameraIntrinsics || {});
+        if (res && res.scaleMmPerPx > 0) {
+          this.setCalibration(res.scaleMmPerPx);
+          return res;
+        }
+      }
+      return null;
+    },
+
     // 1. Camera Lifecycle
     startCamera: function(videoElem, onScanResult, onError) {
       var self = this;
@@ -183,7 +204,11 @@
         var mmPerPx = this.calibratedMmPerPx || 0.35;
         if (this.cameraIntrinsics && this.cameraIntrinsics.focalLengthMm && this.cameraIntrinsics.sensorWidthMm) {
           var workingDistMm = 180.0; // Nominal handheld barcode scan distance (180mm)
-          mmPerPx = (this.cameraIntrinsics.sensorWidthMm / w) * (workingDistMm / this.cameraIntrinsics.focalLengthMm);
+          if (window.DualMarkCV && typeof window.DualMarkCV.calcOpticalScale === 'function') {
+            mmPerPx = window.DualMarkCV.calcOpticalScale(workingDistMm, this.cameraIntrinsics.focalLengthMm, this.cameraIntrinsics.sensorWidthMm, w);
+          } else {
+            mmPerPx = (this.cameraIntrinsics.sensorWidthMm / w) * (workingDistMm / this.cameraIntrinsics.focalLengthMm);
+          }
         }
         var distMm = (distPx * mmPerPx).toFixed(1);
         var isPass = parseFloat(distMm) >= 50.0;

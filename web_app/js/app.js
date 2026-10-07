@@ -983,6 +983,27 @@
       });
     }
 
+    // Live Optical Fiducial Calibration (20mm Coupon or ISO ID-1 Card)
+    var btnCalibrate = document.getElementById('btn-calibrate-target');
+    if (btnCalibrate) {
+      btnCalibrate.addEventListener('click', function() {
+        var res = studio.calibrateWithFiducial('standard_card');
+        if (res && res.scaleMmPerPx > 0) {
+          showToast('📐 Calibrated Optical Scale: ' + (1 / res.scaleMmPerPx).toFixed(2) + ' px/mm (' + res.scaleMmPerPx.toFixed(4) + ' mm/px)');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        } else {
+          var resCoupon = studio.calibrateWithFiducial('coupon_20mm');
+          if (resCoupon && resCoupon.scaleMmPerPx > 0) {
+            showToast('📐 Calibrated 20mm Coupon: ' + (1 / resCoupon.scaleMmPerPx).toFixed(2) + ' px/mm');
+            if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          } else {
+            showToast('📐 Calibration: Place standard ID-1 card or 20mm coupon in frame');
+            if (window.DualMarkAudio) window.DualMarkAudio.click();
+          }
+        }
+      });
+    }
+
     // File scan input
     var scanFileInput = document.getElementById('input-scan-file');
     scanFileInput.addEventListener('change', function(e) {
@@ -1395,6 +1416,29 @@
       };
     }
 
+    // PDF/X-4 (ISO 15930-7) Master Prepress Export with ICC Output Intent & CIDFont
+    var btnPdfX4 = document.getElementById('btn-export-pdf-x4');
+    if (btnPdfX4) {
+      btnPdfX4.addEventListener('click', function() {
+        if (!window.DualMarkLicensing || !window.DualMarkPrepress) return;
+        window.DualMarkLicensing.checkFeatureOrPrompt('vector_highres_pdf', function() {
+          var data = getActivePrepressData();
+          var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+          var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+          var clearanceMm = window.clearanceInspector ? window.clearanceInspector.getMetrics().edgeDistanceMm : 52;
+          var pdf = window.DualMarkPrepress.generatePdfX4(data.barcode1d, data.qrMatrix, {
+            condition: 'FOGRA39',
+            packageWidthMm: pkgW,
+            packageHeightMm: pkgH,
+            clearanceMm: clearanceMm
+          });
+          window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Master_PDFX4_FOGRA39.pdf', 'application/pdf');
+          showToast('🏆 PDF/X-4 Master (FOGRA39 / TrueType Embedded) Exported');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        });
+      });
+    }
+
     // CMYK PostScript Level 3 EPS Export
     var btnCmykEps = document.getElementById('btn-export-cmyk-eps');
     if (btnCmykEps) {
@@ -1558,6 +1602,23 @@
       });
     }
 
+    // Zebra Status Polling (~HS)
+    var btnPollStatus = document.getElementById('btn-poll-zebra-status');
+    if (btnPollStatus) {
+      btnPollStatus.addEventListener('click', function() {
+        var ip = (tcpIpInput && tcpIpInput.value.trim()) || '192.168.1.100';
+        var port = (tcpPortInput && parseInt(tcpPortInput.value, 10)) || 9100;
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.pollZebraPrinterStatus === 'function') {
+          window.DualMarkBridge.pollZebraPrinterStatus(ip, port);
+          showToast('📊 Polling Zebra ~HS status on ' + ip + ':' + port + '...');
+        } else {
+          var simStatus = { online: true, paperOut: false, paused: false, headOpen: false, ribbonOut: false, readyToPrint: true };
+          window.onPrinterStatusResult(simStatus);
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
     // Bluetooth SPP Hip Printer Spooler
     var btnSendBt = document.getElementById('btn-send-bt-spp');
     var btMacInput = document.getElementById('bt-printer-mac');
@@ -1576,23 +1637,108 @@
       });
     }
 
-    // Bi-Directional Zebra Thermal Status Callback
+    // Bluetooth Low Energy (BLE) GATT Scanning & Transmit
+    var btnScanBle = document.getElementById('btn-scan-ble-printers');
+    var btnSendBle = document.getElementById('btn-send-ble-gatt');
+    var selectBle = document.getElementById('select-ble-discovered');
+    var bleContainer = document.getElementById('ble-printers-container');
+    if (btnScanBle) {
+      btnScanBle.addEventListener('click', function() {
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.startBleScan === 'function') {
+          window.DualMarkBridge.startBleScan();
+          showToast('🔍 Scanning for Bluetooth Low Energy printers...');
+          setTimeout(function() {
+            var listJson = window.DualMarkBridge.getDiscoveredBlePrinters();
+            var list = [];
+            try { list = JSON.parse(listJson); } catch (e) {}
+            if (selectBle) {
+              selectBle.innerHTML = '';
+              if (!list || list.length === 0) {
+                var opt = document.createElement('option');
+                opt.text = 'No BLE printers discovered (Tap Scan to retry)';
+                selectBle.appendChild(opt);
+              } else {
+                list.forEach(function(p) {
+                  var opt = document.createElement('option');
+                  opt.value = p.mac || p.address;
+                  opt.text = (p.name || 'Zebra BLE') + ' (' + (p.mac || p.address) + ')';
+                  selectBle.appendChild(opt);
+                });
+              }
+            }
+            if (bleContainer) bleContainer.style.display = 'block';
+            if (btnSendBle) btnSendBle.style.display = 'inline-block';
+          }, 1500);
+        } else {
+          showToast('🔍 BLE scanning simulated (Web sandbox)');
+          if (selectBle) {
+            selectBle.innerHTML = '<option value="AA:BB:CC:DD:EE:FF">Simulated Zebra ZQ620 BLE (AA:BB:CC:DD:EE:FF)</option>';
+          }
+          if (bleContainer) bleContainer.style.display = 'block';
+          if (btnSendBle) btnSendBle.style.display = 'inline-block';
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    if (btnSendBle) {
+      btnSendBle.addEventListener('click', function() {
+        var zpl = getActiveZpl();
+        var b64Zpl = btoa(unescape(encodeURIComponent(zpl)));
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.sendBleData === 'function') {
+          var res = window.DualMarkBridge.sendBleData(b64Zpl);
+          showToast(res ? '⚡ BLE GATT packet stream transmitted!' : '⚡ BLE transmission initiated');
+        } else {
+          showToast('⚡ BLE transmission simulated in Web sandbox');
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    // Bi-Directional Zebra Thermal Status Callback & Status Pill
     window.onPrinterStatusResult = function(status) {
       if (!status) return null;
       if (typeof status === 'string') {
         try { status = JSON.parse(status); } catch (e) {}
       }
       var msg = '';
-      if (status.paperOut) {
+      var pill = document.getElementById('zebra-status-pill');
+      if (status.online === false && status.error) {
+        msg = '⚠ Zebra Printer OFFLINE: ' + status.error;
+        if (pill) {
+          pill.className = 'badge badge-danger';
+          pill.textContent = 'STATUS: OFFLINE';
+        }
+      } else if (status.paperOut) {
         msg = '⚠ Zebra Printer: PAPER OUT / MEDIA SENSOR ERROR';
+        if (pill) {
+          pill.className = 'badge badge-danger';
+          pill.textContent = 'PAPER OUT';
+        }
       } else if (status.headOpen) {
         msg = '⚠ Zebra Printer: PRINTHEAD OPEN';
+        if (pill) {
+          pill.className = 'badge badge-danger';
+          pill.textContent = 'HEAD OPEN';
+        }
       } else if (status.paused) {
         msg = '⚠ Zebra Printer: PRINTER PAUSED';
+        if (pill) {
+          pill.className = 'badge badge-amber';
+          pill.textContent = 'PAUSED';
+        }
       } else if (status.ribbonOut) {
         msg = '⚠ Zebra Printer: RIBBON OUT';
+        if (pill) {
+          pill.className = 'badge badge-amber';
+          pill.textContent = 'RIBBON OUT';
+        }
       } else {
         msg = '✓ Zebra Host Status: ONLINE & READY (Paper OK)';
+        if (pill) {
+          pill.className = 'badge badge-emerald';
+          pill.textContent = 'STATUS: READY';
+        }
       }
       showToast(msg);
       return msg;

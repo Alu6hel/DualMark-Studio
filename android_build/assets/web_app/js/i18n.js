@@ -53,7 +53,16 @@
       'theme.outdoor': 'Outdoor Loading Dock Mode',
       'role.designer': 'Packaging Engineer',
       'role.auditor': 'Regulatory Auditor',
-      'role.pressman': 'Pressman / Operator'
+      'role.pressman': 'Pressman / Operator',
+      'nav.synth': 'Synth',
+      'nav.clearance': '50mm',
+      'nav.resolver': 'Resolver',
+      'nav.scanner': 'Scanner',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': 'Exports',
+      'btn.poll_status': 'Poll ~HS',
+      'btn.scan_ble': 'Scan BLE',
+      'btn.calibrate': 'Calibrate'
     },
     'es-ES': {
       'app.title': 'DualMark Studio',
@@ -87,7 +96,16 @@
       'theme.outdoor': 'Modo Alto Contraste para Andén',
       'role.designer': 'Ingeniero de Empaques',
       'role.auditor': 'Auditor Normativo',
-      'role.pressman': 'Operador de Prensa'
+      'role.pressman': 'Operador de Prensa',
+      'nav.synth': 'Sintetizador',
+      'nav.clearance': '50mm',
+      'nav.resolver': 'Resolutor',
+      'nav.scanner': 'Escáner',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': 'Exportaciones',
+      'btn.poll_status': 'Consultar ~HS',
+      'btn.scan_ble': 'Escanear BLE',
+      'btn.calibrate': 'Calibrar'
     },
     'de-DE': {
       'app.title': 'DualMark Studio',
@@ -121,7 +139,16 @@
       'theme.outdoor': 'Verladerampen-Modus (Hoher Kontrast)',
       'role.designer': 'Verpackungsingenieur',
       'role.auditor': 'Konformitätsprüfer',
-      'role.pressman': 'Druckmaschinenführer'
+      'role.pressman': 'Druckmaschinenführer',
+      'nav.synth': 'Synthese',
+      'nav.clearance': '50mm',
+      'nav.resolver': 'Resolver',
+      'nav.scanner': 'Scanner',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': 'Exporte',
+      'btn.poll_status': 'Status ~HS',
+      'btn.scan_ble': 'BLE Scannen',
+      'btn.calibrate': 'Kalibrieren'
     },
     'fr-FR': {
       'app.title': 'DualMark Studio',
@@ -155,7 +182,16 @@
       'theme.outdoor': 'Mode Quai de Chargement (Haut Contraste)',
       'role.designer': 'Ingénieur Emballage',
       'role.auditor': 'Auditeur Réglementaire',
-      'role.pressman': 'Conducteur de Presse'
+      'role.pressman': 'Conducteur de Presse',
+      'nav.synth': 'Synthèse',
+      'nav.clearance': '50mm',
+      'nav.resolver': 'Résolveur',
+      'nav.scanner': 'Scanner',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': 'Exports',
+      'btn.poll_status': 'Sonder ~HS',
+      'btn.scan_ble': 'Scanner BLE',
+      'btn.calibrate': 'Étalonner'
     },
     'ja-JP': {
       'app.title': 'DualMark Studio',
@@ -189,7 +225,16 @@
       'theme.outdoor': '荷受場高コントラストモード',
       'role.designer': 'パッケージ設計者',
       'role.auditor': '法規制監査員',
-      'role.pressman': '印刷オペレーター'
+      'role.pressman': '印刷オペレーター',
+      'nav.synth': 'シンセサイザ',
+      'nav.clearance': '50mm',
+      'nav.resolver': 'リゾルバ',
+      'nav.scanner': 'スキャナ',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': '出力',
+      'btn.poll_status': '状態取得 ~HS',
+      'btn.scan_ble': 'BLE スキャン',
+      'btn.calibrate': '光学校正'
     },
     'zh-CN': {
       'app.title': 'DualMark Studio',
@@ -223,7 +268,16 @@
       'theme.outdoor': '仓库装卸区高对比度模式',
       'role.designer': '包装工程师',
       'role.auditor': '法规审计员',
-      'role.pressman': '印刷机机长'
+      'role.pressman': '印刷机机长',
+      'nav.synth': '双码合成',
+      'nav.clearance': '50mm',
+      'nav.resolver': '解析器',
+      'nav.scanner': '扫描仪',
+      'nav.fsma': 'FSMA 204',
+      'nav.exports': '印前导出',
+      'btn.poll_status': '查询 ~HS',
+      'btn.scan_ble': '扫描低功耗蓝牙',
+      'btn.calibrate': '光学校准'
     }
   };
 

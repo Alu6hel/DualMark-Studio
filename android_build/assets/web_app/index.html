@@ -386,9 +386,10 @@
           </div>
 
           <div class="tool-bar" style="margin-top: 10px;">
-            <button class="btn btn-primary glove-touch-btn" id="btn-start-camera">📷 Start Camera</button>
+            <button class="btn btn-primary glove-touch-btn" id="btn-start-camera" data-i18n="btn.scan">📷 Start Camera</button>
             <button class="btn btn-danger glove-touch-btn" id="btn-stop-camera" style="display:none;">🛑 Stop</button>
             <button class="btn btn-secondary glove-touch-btn" id="btn-toggle-torch">🔦 Light</button>
+            <button class="btn btn-secondary glove-touch-btn" id="btn-calibrate-target" data-i18n="btn.calibrate" title="Calibrate Optical Scale with 20mm Coupon or ID-1 Card">📐 Calibrate</button>
             <label class="btn btn-secondary glove-touch-btn" style="cursor: pointer; margin: 0;">
               📁 Upload <input type="file" id="input-scan-file" accept="image/*" style="display:none;">
             </label>
@@ -518,7 +519,7 @@
           </div>
 
           <div class="tool-bar" style="margin-top: 12px;">
-            <button class="btn btn-emerald" id="btn-commit-cte" style="width: 100%;">⚡ Commit CTE Record &amp; Chain Hash</button>
+            <button class="btn btn-emerald" id="btn-commit-cte" data-i18n="btn.add_cte" style="width: 100%;">⚡ Commit CTE Record &amp; Chain Hash</button>
           </div>
         </div>
 
@@ -584,7 +585,8 @@
           </div>
 
           <div class="tool-bar" style="margin-top: 8px;">
-            <button class="btn btn-primary" id="btn-export-cmyk-eps">📄 CMYK EPS</button>
+            <button class="btn btn-primary" id="btn-export-pdf-x4" data-i18n="btn.export_pdf">🏆 PDF/X-4 Master</button>
+            <button class="btn btn-primary" id="btn-export-cmyk-eps" data-i18n="btn.export_eps">📄 CMYK EPS</button>
             <button class="btn btn-secondary" id="btn-export-pantone-eps">🎨 Pantone Spot</button>
             <button class="btn btn-emerald" id="btn-export-layered-pdf">📑 Layered PDF</button>
             <button class="btn btn-secondary" id="btn-export-pdf-600">📐 600 DPI</button>
@@ -597,7 +599,10 @@
         <!-- Zebra ZPL II & Direct Network Socket Printing -->
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
           <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
-            <span>Zebra ZPL II Thermal Printer &amp; Socket Spooler</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>Zebra ZPL II Thermal Printer &amp; Socket Spooler</span>
+              <span id="zebra-status-pill" class="badge badge-emerald" style="font-size: 10px;">STATUS: READY</span>
+            </div>
             <span class="badge badge-cyan">RAW PORT 9100</span>
           </div>
 
@@ -628,14 +633,20 @@
               <input type="number" id="tcp-printer-port" class="mono-input" value="9100" style="font-size: 11px; padding: 6px 8px;">
             </div>
             <button class="btn btn-primary btn-sm" id="btn-send-tcp-socket" style="white-space: nowrap; padding: 6px 12px;">🖨️ Send TCP</button>
+            <button class="btn btn-secondary btn-sm" id="btn-poll-zebra-status" data-i18n="btn.poll_status" style="white-space: nowrap; padding: 6px 12px;">📊 Poll ~HS</button>
           </div>
 
-          <!-- Bluetooth SPP Hip Printer Spooler -->
+          <!-- Bluetooth Low Energy (BLE) & SPP Hip Printer Spooler -->
           <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
             <div style="flex: 2; min-width: 150px;">
               <input type="text" id="bt-printer-mac" class="mono-input" value="00:11:22:33:AA:BB" placeholder="Bluetooth MAC (e.g. Zebra ZQ)" style="font-size: 11px; padding: 6px 8px;">
             </div>
             <button class="btn btn-secondary btn-sm" id="btn-send-bt-spp" style="white-space: nowrap; padding: 6px 12px;">📱 Send BT SPP</button>
+            <button class="btn btn-emerald btn-sm" id="btn-scan-ble-printers" data-i18n="btn.scan_ble" style="white-space: nowrap; padding: 6px 12px;">🔍 Scan BLE</button>
+            <button class="btn btn-primary btn-sm" id="btn-send-ble-gatt" style="white-space: nowrap; padding: 6px 12px; display: none;">⚡ Send BLE</button>
+          </div>
+          <div id="ble-printers-container" style="display:none; margin-top: 6px; font-size: 11px;">
+            <select id="select-ble-discovered" class="mono-input" style="font-size: 11px; padding: 4px 8px; width: 100%;"></select>
           </div>
         </div>
 
@@ -666,27 +677,27 @@
   <nav class="bottom-nav" id="bottom-nav">
     <button class="bottom-nav-item active" data-tab="tab-synth" title="1D/2D Barcode Generator">
       <span class="bottom-nav-icon">📐</span>
-      <span class="bottom-nav-label">Synth</span>
+      <span class="bottom-nav-label" data-i18n="nav.synth">Synth</span>
     </button>
     <button class="bottom-nav-item" data-tab="tab-clearance" title="50mm Die-Line Clearance">
       <span class="bottom-nav-icon">📏</span>
-      <span class="bottom-nav-label">50mm</span>
+      <span class="bottom-nav-label" data-i18n="nav.clearance">50mm</span>
     </button>
     <button class="bottom-nav-item" data-tab="tab-resolver" title="Zero-SaaS Dynamic Resolver">
       <span class="bottom-nav-icon">🔀</span>
-      <span class="bottom-nav-label">Resolver</span>
+      <span class="bottom-nav-label" data-i18n="nav.resolver">Resolver</span>
     </button>
     <button class="bottom-nav-item" data-tab="tab-scanner" title="Optical Scanner & Dewarp">
       <span class="bottom-nav-icon">📷</span>
-      <span class="bottom-nav-label">Scanner</span>
+      <span class="bottom-nav-label" data-i18n="nav.scanner">Scanner</span>
     </button>
     <button class="bottom-nav-item" data-tab="tab-fsma" title="FSMA 204 Food Traceability">
       <span class="bottom-nav-icon">📜</span>
-      <span class="bottom-nav-label">FSMA 204</span>
+      <span class="bottom-nav-label" data-i18n="nav.fsma">FSMA 204</span>
     </button>
     <button class="bottom-nav-item" data-tab="tab-exports" title="Prepress Export Center">
       <span class="bottom-nav-icon">💾</span>
-      <span class="bottom-nav-label">Exports</span>
+      <span class="bottom-nav-label" data-i18n="nav.exports">Exports</span>
     </button>
   </nav>
 
