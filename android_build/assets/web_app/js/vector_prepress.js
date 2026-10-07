@@ -49,6 +49,11 @@ const DualMarkPrepress = (() => {
   neg 0 rlineto
   closepath fill
 } bind def
+/circle {
+  newpath
+  3 1 roll 0 360 arc
+  closepath fill
+} bind def
 %%EndProlog
 
 %%Page: 1 1
@@ -89,21 +94,32 @@ b
       }
     }
 
-    // 2. Render 2D QR Code / GS1 Digital Link Matrix
-    if (qrMatrix && Array.isArray(qrMatrix)) {
-      const qrSize = 90;
-      const startX = widthPt - qrSize - 25;
+    // 2. Render 2D Matrix (QR, DataMatrix, DotCode)
+    if (qrMatrix && Array.isArray(qrMatrix) && qrMatrix.length > 0) {
+      const numRows = qrMatrix.length;
+      const numCols = qrMatrix[0] ? qrMatrix[0].length : numRows;
+      const qrWidth = options.width2d || 90;
+      const qrHeight = options.height2d || (numRows === numCols ? 90 : Math.round(90 * (numRows / numCols)));
+      const startX = widthPt - qrWidth - 25;
       const startY = 25;
-      const moduleCount = qrMatrix.length;
-      const modSize = qrSize / moduleCount;
+      const modSizeX = qrWidth / numCols;
+      const modSizeY = qrHeight / numRows;
+      const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
 
-      ps += `\n% 2D GS1 Digital Link Matrix\n`;
-      for (let r = 0; r < moduleCount; r++) {
-        for (let c = 0; c < moduleCount; c++) {
+      ps += `\n% 2D Matrix (${isDotCode ? 'DotCode' : (numRows !== numCols ? 'Rect DataMatrix' : 'Square')})\n`;
+      for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
-            const mx = startX + (c * modSize);
-            const my = startY + ((moduleCount - 1 - r) * modSize);
-            ps += `${mx.toFixed(3)} ${my.toFixed(3)} ${modSize.toFixed(3)} ${modSize.toFixed(3)} rect\n`;
+            const mx = startX + (c * modSizeX);
+            const my = startY + ((numRows - 1 - r) * modSizeY);
+            if (isDotCode) {
+              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const cx = mx + modSizeX / 2;
+              const cy = my + modSizeY / 2;
+              ps += `${radius.toFixed(3)} ${cx.toFixed(3)} ${cy.toFixed(3)} circle\n`;
+            } else {
+              ps += `${mx.toFixed(3)} ${my.toFixed(3)} ${modSizeX.toFixed(3)} ${modSizeY.toFixed(3)} rect\n`;
+            }
           }
         }
       }
@@ -151,19 +167,35 @@ b
     }
 
     // 2D Matrix Stream
-    if (qrMatrix && Array.isArray(qrMatrix)) {
-      const qrSize = 90;
-      const startX = widthPt - qrSize - 25;
+    if (qrMatrix && Array.isArray(qrMatrix) && qrMatrix.length > 0) {
+      const numRows = qrMatrix.length;
+      const numCols = qrMatrix[0] ? qrMatrix[0].length : numRows;
+      const qrWidth = options.width2d || 90;
+      const qrHeight = options.height2d || (numRows === numCols ? 90 : Math.round(90 * (numRows / numCols)));
+      const startX = widthPt - qrWidth - 25;
       const startY = 25;
-      const moduleCount = qrMatrix.length;
-      const modSize = qrSize / moduleCount;
+      const modSizeX = qrWidth / numCols;
+      const modSizeY = qrHeight / numRows;
+      const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
 
-      for (let r = 0; r < moduleCount; r++) {
-        for (let c = 0; c < moduleCount; c++) {
+      for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
-            const mx = startX + (c * modSize);
-            const my = startY + ((moduleCount - 1 - r) * modSize);
-            stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSize.toFixed(2)} ${modSize.toFixed(2)} re f\n`;
+            const mx = startX + (c * modSizeX);
+            const my = startY + ((numRows - 1 - r) * modSizeY);
+            if (isDotCode) {
+              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const cx = mx + modSizeX / 2;
+              const cy = my + modSizeY / 2;
+              const k = radius * 0.55228475;
+              stream += `${(cx - radius).toFixed(2)} ${cy.toFixed(2)} m ` +
+                `${(cx - radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx - k).toFixed(2)} ${(cy + radius).toFixed(2)} ${cx.toFixed(2)} ${(cy + radius).toFixed(2)} c ` +
+                `${(cx + k).toFixed(2)} ${(cy + radius).toFixed(2)} ${(cx + radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx + radius).toFixed(2)} ${cy.toFixed(2)} c ` +
+                `${(cx + radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx + k).toFixed(2)} ${(cy - radius).toFixed(2)} ${cx.toFixed(2)} ${(cy - radius).toFixed(2)} c ` +
+                `${(cx - k).toFixed(2)} ${(cy - radius).toFixed(2)} ${(cx - radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cy.toFixed(2)} c f\n`;
+            } else {
+              stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSizeX.toFixed(2)} ${modSizeY.toFixed(2)} re f\n`;
+            }
           }
         }
       }
@@ -232,6 +264,9 @@ ${400 + streamLength}
 /rect {
   newpath 4 2 roll moveto 1 index 0 rlineto 0 exch rlineto neg 0 rlineto closepath fill
 } bind def
+/circle {
+  newpath 3 1 roll 0 360 arc closepath fill
+} bind def
 %%EndProlog
 
 %%Page: 1 1
@@ -269,18 +304,30 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
       }
     }
 
-    if (qrMatrix && Array.isArray(qrMatrix)) {
-      const qrSize = 90;
-      const startX = widthPt - qrSize - 25;
+    if (qrMatrix && Array.isArray(qrMatrix) && qrMatrix.length > 0) {
+      const numRows = qrMatrix.length;
+      const numCols = qrMatrix[0] ? qrMatrix[0].length : numRows;
+      const qrWidth = options.width2d || 90;
+      const qrHeight = options.height2d || (numRows === numCols ? 90 : Math.round(90 * (numRows / numCols)));
+      const startX = widthPt - qrWidth - 25;
       const startY = 25;
-      const moduleCount = qrMatrix.length;
-      const modSize = qrSize / moduleCount;
-      for (let r = 0; r < moduleCount; r++) {
-        for (let c = 0; c < moduleCount; c++) {
+      const modSizeX = qrWidth / numCols;
+      const modSizeY = qrHeight / numRows;
+      const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
+
+      for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
-            const mx = startX + (c * modSize);
-            const my = startY + ((moduleCount - 1 - r) * modSize);
-            ps += `${mx.toFixed(3)} ${my.toFixed(3)} ${modSize.toFixed(3)} ${modSize.toFixed(3)} rect\n`;
+            const mx = startX + (c * modSizeX);
+            const my = startY + ((numRows - 1 - r) * modSizeY);
+            if (isDotCode) {
+              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const cx = mx + modSizeX / 2;
+              const cy = my + modSizeY / 2;
+              ps += `${radius.toFixed(3)} ${cx.toFixed(3)} ${cy.toFixed(3)} circle\n`;
+            } else {
+              ps += `${mx.toFixed(3)} ${my.toFixed(3)} ${modSizeX.toFixed(3)} ${modSizeY.toFixed(3)} rect\n`;
+            }
           }
         }
       }
@@ -332,18 +379,35 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
     // Layer 3: 2D GS1 Digital Link Matrix (/OC /OC3)
     stream += `/OC /OC3 BDC\n`;
     stream += `0 0 0 1 k\n`;
-    if (qrMatrix && Array.isArray(qrMatrix)) {
-      const qrSize = 90;
-      const startX = widthPt - qrSize - 25;
+    if (qrMatrix && Array.isArray(qrMatrix) && qrMatrix.length > 0) {
+      const numRows = qrMatrix.length;
+      const numCols = qrMatrix[0] ? qrMatrix[0].length : numRows;
+      const qrWidth = options.width2d || 90;
+      const qrHeight = options.height2d || (numRows === numCols ? 90 : Math.round(90 * (numRows / numCols)));
+      const startX = widthPt - qrWidth - 25;
       const startY = 25;
-      const moduleCount = qrMatrix.length;
-      const modSize = qrSize / moduleCount;
-      for (let r = 0; r < moduleCount; r++) {
-        for (let c = 0; c < moduleCount; c++) {
+      const modSizeX = qrWidth / numCols;
+      const modSizeY = qrHeight / numRows;
+      const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
+
+      for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
-            const mx = startX + (c * modSize);
-            const my = startY + ((moduleCount - 1 - r) * modSize);
-            stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSize.toFixed(2)} ${modSize.toFixed(2)} re f\n`;
+            const mx = startX + (c * modSizeX);
+            const my = startY + ((numRows - 1 - r) * modSizeY);
+            if (isDotCode) {
+              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const cx = mx + modSizeX / 2;
+              const cy = my + modSizeY / 2;
+              const k = radius * 0.55228475;
+              stream += `${(cx - radius).toFixed(2)} ${cy.toFixed(2)} m ` +
+                `${(cx - radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx - k).toFixed(2)} ${(cy + radius).toFixed(2)} ${cx.toFixed(2)} ${(cy + radius).toFixed(2)} c ` +
+                `${(cx + k).toFixed(2)} ${(cy + radius).toFixed(2)} ${(cx + radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx + radius).toFixed(2)} ${cy.toFixed(2)} c ` +
+                `${(cx + radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx + k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cx.toFixed(2)} ${(cx - radius).toFixed(2)} c ` +
+                `${(cx - k).toFixed(2)} ${(cy - radius).toFixed(2)} ${(cx - radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cy.toFixed(2)} c f\n`;
+            } else {
+              stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSizeX.toFixed(2)} ${modSizeY.toFixed(2)} re f\n`;
+            }
           }
         }
       }

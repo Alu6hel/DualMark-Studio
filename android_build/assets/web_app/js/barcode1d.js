@@ -210,17 +210,45 @@
     '11010010000','11010011100','1100011101011' // 106 = Stop
   ];
 
-  function getCode128Bitstream(text) {
+  function getCode128Bitstream(text, isGs1) {
     if (!text) text = "DUALMARK-2027";
-    var values = [104]; // Start Code B (104)
-    var checksum = 104;
+    var cleanDigits = text.replace(/\D/g, '');
+    var isAllDigits = /^\d+$/.test(text);
+    // Use Code C if numeric and even length >= 4 digits, or for GS1 GTINs
+    var useCodeC = isAllDigits && text.length >= 4 && (text.length % 2 === 0);
 
-    for (var i = 0; i < text.length; i++) {
-      var code = text.charCodeAt(i) - 32;
-      if (code < 0 || code > 95) code = 0;
-      values.push(code);
-      checksum += code * (i + 1);
+    var values = [];
+    var checksum = 0;
+
+    if (useCodeC) {
+      values.push(105); // Start Code C
+      checksum = 105;
+      var pos = 1;
+      if (isGs1 || text.indexOf('(01)') === 0) {
+        values.push(102); // FNC1 for GS1-128
+        checksum += 102 * pos++;
+      }
+      for (var i = 0; i < text.length; i += 2) {
+        var pair = parseInt(text.substr(i, 2), 10);
+        values.push(pair);
+        checksum += pair * pos++;
+      }
+    } else {
+      values.push(104); // Start Code B
+      checksum = 104;
+      var posB = 1;
+      if (isGs1 || text.indexOf('(01)') === 0) {
+        values.push(102); // FNC1 for GS1-128
+        checksum += 102 * posB++;
+      }
+      for (var j = 0; j < text.length; j++) {
+        var code = text.charCodeAt(j) - 32;
+        if (code < 0 || code > 95) code = 0;
+        values.push(code);
+        checksum += code * posB++;
+      }
     }
+
     var checkDigit = checksum % 103;
     values.push(checkDigit);
     values.push(106); // Stop pattern
@@ -229,7 +257,34 @@
     for (var v = 0; v < values.length; v++) {
       bitstream += C128_PATTERNS[values[v]];
     }
-    return { bitstream: bitstream, fullCode: text };
+    return { bitstream: bitstream, fullCode: text, isCodeC: useCodeC };
+  }
+
+  // 3b. Synthesize EAN-8 Bitstream (67 modules)
+  function getEan8Bitstream(ean8) {
+    var raw = (ean8 || '').toString().trim().replace(/\D/g, '');
+    if (raw.length === 7) {
+      raw += calculateMod10(raw);
+    } else if (raw.length < 7 && raw.length > 0) {
+      while (raw.length < 7) raw = '0' + raw;
+      raw += calculateMod10(raw);
+    } else if (raw.length > 8) {
+      raw = raw.substring(0, 8);
+    }
+    if (raw.length !== 8) raw = '00000000';
+
+    var bitstream = '101'; // Start guard
+    for (var i = 0; i < 4; i++) {
+      var d = parseInt(raw.charAt(i), 10);
+      bitstream += L_CODES[d];
+    }
+    bitstream += '01010'; // Center guard
+    for (var j = 4; j < 8; j++) {
+      var d2 = parseInt(raw.charAt(j), 10);
+      bitstream += R_CODES[d2];
+    }
+    bitstream += '101'; // Stop guard
+    return { bitstream: bitstream, fullCode: raw, isEan8: true };
   }
 
   // 4. Synthesize ITF-14 (Interleaved 2 of 5, 14 digits)
@@ -280,7 +335,9 @@
     var result;
     if (type === 'UPC-A') result = getUpcABitstream(rawValue);
     else if (type === 'EAN-13') result = getEan13Bitstream(rawValue);
+    else if (type === 'EAN-8') result = getEan8Bitstream(rawValue);
     else if (type === 'ITF-14') result = getItf14Bitstream(rawValue);
+    else if (type === 'GS1-128') result = getCode128Bitstream(rawValue, true);
     else result = getCode128Bitstream(rawValue);
 
     var bitstream = result.bitstream;
@@ -314,8 +371,8 @@
       if (bitstream.charAt(b) === '1') {
         // Extend guard bars for UPC/EAN
         var isGuard = false;
-        if (type === 'UPC-A' || type === 'EAN-13') {
-          if (b < 3 || (b >= 45 && b < 50) || b >= bitstream.length - 3) {
+        if (type === 'UPC-A' || type === 'EAN-13' || type === 'EAN-8') {
+          if (b < 3 || (b >= 45 && b < 50 && type !== 'EAN-8') || (type === 'EAN-8' && b >= 31 && b < 36) || b >= bitstream.length - 3) {
             isGuard = true;
           }
         }
@@ -338,6 +395,9 @@
       } else if (type === 'EAN-13') {
         var e = result.fullCode;
         ctx.fillText(e.charAt(0) + ' ' + e.substring(1, 7) + ' ' + e.substring(7, 13), width / 2, textY);
+      } else if (type === 'EAN-8') {
+        var e8 = result.fullCode;
+        ctx.fillText(e8.substring(0, 4) + '  ' + e8.substring(4, 8), width / 2, textY);
       } else {
         ctx.fillText(result.fullCode, width / 2, textY);
       }
@@ -358,7 +418,9 @@
     var result;
     if (type === 'UPC-A') result = getUpcABitstream(rawValue);
     else if (type === 'EAN-13') result = getEan13Bitstream(rawValue);
+    else if (type === 'EAN-8') result = getEan8Bitstream(rawValue);
     else if (type === 'ITF-14') result = getItf14Bitstream(rawValue);
+    else if (type === 'GS1-128') result = getCode128Bitstream(rawValue, true);
     else result = getCode128Bitstream(rawValue);
 
     var bitstream = result.bitstream;
@@ -382,8 +444,8 @@
     for (var b = 0; b < bitstream.length; b++) {
       if (bitstream.charAt(b) === '1') {
         var isGuard = false;
-        if (type === 'UPC-A' || type === 'EAN-13') {
-          if (b < 3 || (b >= 45 && b < 50) || b >= bitstream.length - 3) isGuard = true;
+        if (type === 'UPC-A' || type === 'EAN-13' || type === 'EAN-8') {
+          if (b < 3 || (b >= 45 && b < 50 && type !== 'EAN-8') || (type === 'EAN-8' && b >= 31 && b < 36) || b >= bitstream.length - 3) isGuard = true;
         }
         var h = (isGuard && showText) ? barHeight + 8 : barHeight;
         var y = result.isItf ? 8 : 4;
@@ -400,6 +462,8 @@
         txt = txt.charAt(0) + '  ' + txt.substring(1, 6) + '  ' + txt.substring(6, 11) + '  ' + txt.charAt(11);
       } else if (type === 'EAN-13') {
         txt = txt.charAt(0) + ' ' + txt.substring(1, 7) + ' ' + txt.substring(7, 13);
+      } else if (type === 'EAN-8') {
+        txt = txt.substring(0, 4) + '  ' + txt.substring(4, 8);
       }
       svg.push('<text x="' + (width / 2) + '" y="' + textY + '" font-family="monospace" font-size="' + fontSize + '" font-weight="bold" text-anchor="middle" fill="' + darkColor + '">' + txt + '</text>');
     }
@@ -414,11 +478,18 @@
     };
   }
 
-  function getBitstream(type, rawValue) {
+  function getBarcodeData(type, rawValue) {
     if (type === 'UPC-A') return getUpcABitstream(rawValue);
-    if (type === 'EAN-13') return getEan13Bitstream(rawValue);
-    if (type === 'ITF-14') return getItf14Bitstream(rawValue);
-    return getCode128Bitstream(rawValue);
+    else if (type === 'EAN-13') return getEan13Bitstream(rawValue);
+    else if (type === 'EAN-8') return getEan8Bitstream(rawValue);
+    else if (type === 'ITF-14') return getItf14Bitstream(rawValue);
+    else if (type === 'GS1-128') return getCode128Bitstream(rawValue, true);
+    return getCode128Bitstream(rawValue, false);
+  }
+
+  function getBitstream(type, rawValue) {
+    var res = getBarcodeData(type, rawValue);
+    return res ? res.bitstream : '';
   }
 
   window.DualMarkBarcode1D = {
@@ -427,7 +498,8 @@
     lookupPrefix: lookupPrefix,
     renderCanvas: renderCanvas,
     renderSvg: renderSvg,
-    getBitstream: getBitstream
+    getBitstream: getBitstream,
+    getBarcodeData: getBarcodeData
   };
 
 })(window);

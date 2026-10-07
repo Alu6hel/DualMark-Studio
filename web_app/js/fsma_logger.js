@@ -157,7 +157,22 @@
       lines.push(xrefOffset);
       lines.push('%%EOF');
 
-      return lines.join('\n');
+      var rawPdf = lines.join('\n');
+      var base64 = '';
+      try {
+        base64 = btoa(unescape(encodeURIComponent(rawPdf)));
+      } catch (e) {
+        if (typeof Buffer !== 'undefined') {
+          base64 = Buffer.from(rawPdf).toString('base64');
+        }
+      }
+      var filename = 'DualMark_FSMA_Dossier_' + (record.id || 'CTE') + '.pdf';
+      return {
+        base64: base64,
+        filename: filename,
+        rawPdf: rawPdf,
+        toString: function() { return rawPdf; }
+      };
     },
 
     // FDA 24-Hour Sortable Electronic Spreadsheet (CSV format per § 1.1455)
@@ -281,10 +296,16 @@
     },
 
     // 21 CFR Part 11 Web Crypto API Digital Signature Sign-Off
-    signRecord21CfrPart11: async function(recordId, auditorName, auditorTitle) {
+    signRecord21CfrPart11: async function(recordOrId, auditorName, auditorTitle) {
+      var recordId = (typeof recordOrId === 'object' && recordOrId) ? recordOrId.id : recordOrId;
       var rec = this.records.find(function(r) { return r.id === recordId; });
+      if (!rec && typeof recordOrId === 'object' && recordOrId) rec = recordOrId;
       if (!rec) throw new Error('Record ' + recordId + ' not found');
 
+      if (typeof auditorName === 'object' && auditorName) {
+        auditorTitle = auditorName.auditorTitle || auditorName.title;
+        auditorName = auditorName.auditorName || auditorName.name;
+      }
       auditorName = auditorName || 'Certified Quality Auditor';
       auditorTitle = auditorTitle || 'QA Lead / FDA Compliance Manager';
 
@@ -304,7 +325,7 @@
       if (window.crypto && window.crypto.subtle) {
         keyPair = await window.crypto.subtle.generateKey(
           { name: 'ECDSA', namedCurve: 'P-256' },
-          false,
+          true,
           ['sign', 'verify']
         );
 
@@ -318,14 +339,80 @@
         var sigHex = Array.from(new Uint8Array(rawSig)).map(b => b.toString(16).padStart(2, '0')).join('');
         signatureManifest.signatureHex = sigHex;
         signatureManifest.algorithm = 'ECDSA-P256-SHA256';
+
+        // Export public key in standard SPKI format for external independent verification
+        try {
+          var spkiBuffer = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
+          var spkiHex = Array.from(new Uint8Array(spkiBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+          signatureManifest.publicKeySpki = spkiHex;
+        } catch (e) {}
       } else {
         signatureManifest.signatureHex = 'ECDSA_SIMULATED_' + Date.now().toString(16);
         signatureManifest.algorithm = 'LOCAL-HMAC-SHA256';
       }
 
       rec.signature = signatureManifest;
+      rec.part11Signature = signatureManifest;
       this.save();
       return signatureManifest;
+    },
+
+    // Verify cryptographic signature of any CTE record
+    verifyRecordSignature: async function(recordId) {
+      var rec = this.records.find(function(r) { return r.id === recordId; });
+      if (!rec) return { verified: false, error: 'Record not found' };
+      var sig = rec.part11Signature || rec.signature;
+      if (!sig || !sig.signatureHex || !sig.publicKeySpki) {
+        return { verified: false, error: 'No cryptographic signature manifest or public key found' };
+      }
+
+      if (!window.crypto || !window.crypto.subtle) {
+        return { verified: true, simulated: true, algorithm: sig.algorithm };
+      }
+
+      try {
+        var rawSigBytes = new Uint8Array(sig.signatureHex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        var spkiBytes = new Uint8Array(sig.publicKeySpki.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+
+        var pubKey = await window.crypto.subtle.importKey(
+          'spki',
+          spkiBytes.buffer,
+          { name: 'ECDSA', namedCurve: 'P-256' },
+          false,
+          ['verify']
+        );
+
+        var manifestForVerification = {
+          recordId: sig.recordId,
+          sha256Hash: sig.sha256Hash,
+          auditorName: sig.auditorName,
+          auditorTitle: sig.auditorTitle,
+          signingReason: sig.signingReason,
+          signedAt: sig.signedAt
+        };
+        var dataToVerify = new TextEncoder().encode(JSON.stringify(manifestForVerification));
+
+        var isValid = await window.crypto.subtle.verify(
+          { name: 'ECDSA', hash: { name: 'SHA-256' } },
+          pubKey,
+          rawSigBytes.buffer,
+          dataToVerify
+        );
+
+        return {
+          verified: isValid,
+          auditor: sig.auditorName,
+          title: sig.auditorTitle,
+          signedAt: sig.signedAt,
+          algorithm: sig.algorithm
+        };
+      } catch (err) {
+        return { verified: false, error: err.message };
+      }
+    },
+
+    signRecordPart11: function() {
+      return this.signRecord21CfrPart11.apply(this, arguments);
     }
   };
 

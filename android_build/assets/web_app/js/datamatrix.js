@@ -7,16 +7,23 @@
   'use strict';
 
   // Supported square matrix sizes: rows, cols, data CWs, error CWs
+  // Supported matrix sizes (square and ISO/IEC 16022 rectangular): rows, cols, data CWs, error CWs, isRect
   var MATRIX_SIZES = [
     { rows: 10, cols: 10, dataCW: 3, ecCW: 5 },
     { rows: 12, cols: 12, dataCW: 5, ecCW: 7 },
+    { rows: 8, cols: 18, dataCW: 5, ecCW: 7, isRect: true },
     { rows: 14, cols: 14, dataCW: 8, ecCW: 10 },
+    { rows: 8, cols: 32, dataCW: 10, ecCW: 11, isRect: true },
     { rows: 16, cols: 16, dataCW: 12, ecCW: 12 },
+    { rows: 12, cols: 26, dataCW: 16, ecCW: 14, isRect: true },
     { rows: 18, cols: 18, dataCW: 18, ecCW: 14 },
     { rows: 20, cols: 20, dataCW: 22, ecCW: 18 },
+    { rows: 12, cols: 36, dataCW: 22, ecCW: 18, isRect: true },
     { rows: 22, cols: 22, dataCW: 30, ecCW: 20 },
+    { rows: 16, cols: 36, dataCW: 32, ecCW: 24, isRect: true },
     { rows: 24, cols: 24, dataCW: 36, ecCW: 24 },
     { rows: 26, cols: 26, dataCW: 44, ecCW: 28 },
+    { rows: 16, cols: 48, dataCW: 49, ecCW: 28, isRect: true },
     { rows: 32, cols: 32, dataCW: 62, ecCW: 36 },
     { rows: 36, cols: 36, dataCW: 86, ecCW: 42 },
     { rows: 40, cols: 40, dataCW: 114, ecCW: 48 },
@@ -179,13 +186,29 @@
   }
 
   // Construct final DataMatrix with L-Finder and Alternating Timing Patterns
-  function buildMatrix(text, isGS1) {
+  function buildMatrix(text, isGS1, options) {
+    options = options || {};
     var rawCW = encodeGS1Data(text, isGS1);
     var size = null;
-    for (var s = 0; s < MATRIX_SIZES.length; s++) {
-      if (MATRIX_SIZES[s].dataCW >= rawCW.length) {
-        size = MATRIX_SIZES[s];
-        break;
+    var preferRect = Boolean(options.preferRect || options.rectangular || options.format === 'rect');
+
+    if (preferRect) {
+      for (var s = 0; s < MATRIX_SIZES.length; s++) {
+        if (MATRIX_SIZES[s].isRect && MATRIX_SIZES[s].dataCW >= rawCW.length) {
+          size = MATRIX_SIZES[s];
+          break;
+        }
+      }
+    }
+
+    if (!size) {
+      for (var s2 = 0; s2 < MATRIX_SIZES.length; s2++) {
+        if (preferRect ? true : !MATRIX_SIZES[s2].isRect) {
+          if (MATRIX_SIZES[s2].dataCW >= rawCW.length) {
+            size = MATRIX_SIZES[s2];
+            break;
+          }
+        }
       }
     }
     if (!size) size = MATRIX_SIZES[MATRIX_SIZES.length - 1];
@@ -227,7 +250,7 @@
   function renderCanvas(canvas, text, options) {
     options = options || {};
     var isGS1 = (options.isGS1 !== false);
-    var res = buildMatrix(text, isGS1);
+    var res = buildMatrix(text, isGS1, options);
     var cellSize = options.cellSize || 6;
     var margin = (options.margin !== undefined ? options.margin : 2) * cellSize;
 
@@ -257,7 +280,7 @@
   function renderSvg(text, options) {
     options = options || {};
     var isGS1 = (options.isGS1 !== false);
-    var res = buildMatrix(text, isGS1);
+    var res = buildMatrix(text, isGS1, options);
     var cellSize = options.cellSize || 6;
     var margin = (options.margin !== undefined ? options.margin : 2) * cellSize;
 
@@ -279,9 +302,17 @@
     return { svg: svg, info: res };
   }
 
+  function getModuleMatrix(text, options) {
+    options = options || {};
+    var isGS1 = (options.isGS1 !== false);
+    var res = buildMatrix(text, isGS1, options);
+    return res.matrix;
+  }
+
   window.DualMarkDataMatrix = {
     buildMatrix: buildMatrix,
     renderCanvas: renderCanvas,
-    renderSvg: renderSvg
+    renderSvg: renderSvg,
+    getModuleMatrix: getModuleMatrix
   };
 })(window);

@@ -48,11 +48,17 @@ const DualMarkZPL = (() => {
     zpl += `^FO${dividerX},${dividerY}^GB${Math.max(2, Math.round(0.3 * dpmm))},${dividerH},3^FS\n`;
     zpl += `^FO${dividerX - Math.round(10 * dpmm)},${dividerY + dividerH + Math.round(1 * dpmm)}^A0N,${Math.round(2.2 * dpmm)},${Math.round(2.2 * dpmm)}^FD>= 50mm SAFE^FS\n`;
 
-    // 3. 2D GS1 Digital Link QR Code on Right
+    // 3. 2D GS1 Digital Link Matrix on Right
     const x2d = Math.round(64 * dpmm);
     const y2d = Math.round(10 * dpmm);
-    const qrMagnification = dpi === 600 ? 8 : (dpi === 300 ? 5 : 4);
-    zpl += `^FO${x2d},${y2d}^BQN,2,${qrMagnification},M,7^FDMA,${digitalLinkUri}^FS\n`;
+    const symbology2d = options.symbology2d || options.symbology || 'QR';
+    if (symbology2d === 'DataMatrix' || symbology2d === 'datamatrix') {
+      const dmModuleSize = dpi === 600 ? 8 : (dpi === 300 ? 5 : 4);
+      zpl += `^FO${x2d},${y2d}^BXN,${dmModuleSize},200^FD${digitalLinkUri}^FS\n`;
+    } else {
+      const qrMagnification = dpi === 600 ? 8 : (dpi === 300 ? 5 : 4);
+      zpl += `^FO${x2d},${y2d}^BQN,2,${qrMagnification},M,7^FDMA,${digitalLinkUri}^FS\n`;
+    }
 
     // Footer Certification Text
     const footerY = Math.round(44 * dpmm);

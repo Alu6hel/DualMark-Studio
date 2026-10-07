@@ -30,8 +30,16 @@
   // File download helper (Web or Android native bridge)
   function downloadBlob(content, filename, mimeType) {
     // If native Android Bridge is available
-    if (window.DualMarkBridge && typeof window.DualMarkBridge.savePdfToStorage === 'function' && filename.endsWith('.pdf')) {
-      window.DualMarkBridge.savePdfToStorage(content, filename);
+    if (window.DualMarkBridge && typeof window.DualMarkBridge.savePdfToStorage === 'function' && filename && filename.endsWith('.pdf')) {
+      var base64 = content;
+      if (typeof content === 'string' && content.indexOf('%PDF') === 0) {
+        try {
+          base64 = btoa(unescape(encodeURIComponent(content)));
+        } catch (e) {
+          base64 = content;
+        }
+      }
+      window.DualMarkBridge.savePdfToStorage(base64, filename);
       return;
     }
 
@@ -576,7 +584,15 @@
 
     window.clearanceInspector.onUpdate(function(metrics) {
       readout.textContent = metrics.edgeDistanceMm + ' mm';
-      if (metrics.isCompliant) {
+      if (metrics.impossibleFit) {
+        statusBox.className = 'status-meter fail';
+        statusText.innerHTML = '<span>⚠</span> <span>IMPOSSIBLE FIT (PACKAGE TOO NARROW)</span>';
+        statusSub.textContent = 'Package width (' + (window.clearanceInspector.packageWidthMm) + 'mm) cannot fit 50mm clearance. Multi-panel layout recommended (place 1D on front, 2D on back/side).';
+        if (lastComplianceState !== false) {
+          window.DualMarkAudio.warningBuzz();
+        }
+        lastComplianceState = false;
+      } else if (metrics.isCompliant) {
         statusBox.className = 'status-meter pass';
         statusText.innerHTML = '<span>✓</span> <span>COMPLIANT (≥ 50.0 mm)</span>';
         statusSub.textContent = 'Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements (' + metrics.marginDeltaMm + ' mm safety margin).';
@@ -1059,8 +1075,9 @@
       tableBody.innerHTML = '';
       records.forEach(function(rec) {
         var tr = document.createElement('tr');
-        var sigBadge = rec.part11Signature
-          ? '<span class="badge badge-green" title="' + (rec.part11Signature.signerName || 'Signed') + '">✓ ECDSA P-256</span>'
+        var sig = rec.part11Signature || rec.signature;
+        var sigBadge = sig
+          ? '<span class="badge badge-green" title="' + (sig.auditorName || sig.signerName || 'Signed') + '">✓ ECDSA P-256</span>'
           : '<span class="badge badge-cyan" style="opacity:0.6;">Unsigned</span>';
 
         tr.innerHTML = [
@@ -1074,6 +1091,7 @@
           '<td>' + sigBadge + '</td>',
           '<td>' +
             '<button class="btn btn-secondary btn-sm pdf-btn" data-id="' + rec.id + '">📄 PDF Dossier</button> ' +
+            '<button class="btn btn-secondary btn-sm share-btn" data-id="' + rec.id + '">📤 Share</button> ' +
             '<button class="btn btn-danger btn-sm del-btn" data-id="' + rec.id + '">×</button>' +
           '</td>'
         ].join('');
@@ -1087,9 +1105,41 @@
           var target = records.find(function(r) { return r.id === id; });
           if (target) {
             var dossier = await window.DualMarkFsma.generatePdfDossier(target);
-            downloadBlob(dossier.base64, dossier.filename, 'application/pdf');
-            showToast('📄 Courtroom PDF Dossier Saved: ' + dossier.filename);
+            var pdfData = dossier.rawPdf || dossier;
+            var fname = dossier.filename || ('DualMark_FSMA_Dossier_' + id + '.pdf');
+            downloadBlob(pdfData, fname, 'application/pdf');
+            showToast('📄 Courtroom PDF Dossier Saved: ' + fname);
             window.DualMarkAudio.successChime();
+          }
+        });
+      });
+
+      document.querySelectorAll('.share-btn').forEach(function(b) {
+        b.addEventListener('click', async function() {
+          var id = this.getAttribute('data-id');
+          var records = window.DualMarkFsma.getRecords();
+          var target = records.find(function(r) { return r.id === id; });
+          if (target) {
+            var dossier = await window.DualMarkFsma.generatePdfDossier(target);
+            var b64 = dossier.base64 || btoa(unescape(encodeURIComponent(dossier.rawPdf || dossier)));
+            var fname = dossier.filename || ('DualMark_FSMA_Dossier_' + id + '.pdf');
+            if (window.DualMarkBridge && typeof window.DualMarkBridge.sharePdf === 'function') {
+              window.DualMarkBridge.sharePdf(b64, fname);
+              showToast('📤 Shared via Native Android Sheet: ' + fname);
+            } else if (navigator.share) {
+              try {
+                var byteChars = atob(b64);
+                var byteNums = new Array(byteChars.length);
+                for (var i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+                var file = new File([new Uint8Array(byteNums)], fname, { type: 'application/pdf' });
+                navigator.share({ title: fname, files: [file] });
+              } catch(e) {
+                downloadBlob(dossier.rawPdf || dossier, fname, 'application/pdf');
+              }
+            } else {
+              downloadBlob(dossier.rawPdf || dossier, fname, 'application/pdf');
+            }
+            if (window.DualMarkAudio) window.DualMarkAudio.successChime();
           }
         });
       });
@@ -1207,8 +1257,42 @@
       window.DualMarkAudio.successChime();
 
       var dossier = await window.DualMarkFsma.generatePdfDossier(committed);
-      downloadBlob(dossier.base64, dossier.filename, 'application/pdf');
+      var pdfData = dossier.rawPdf || dossier;
+      var fname = dossier.filename || ('DualMark_FSMA_Dossier_' + committed.id + '.pdf');
+      downloadBlob(pdfData, fname, 'application/pdf');
     });
+
+    var btnShareLatest = document.getElementById('btn-share-latest-dossier');
+    if (btnShareLatest) {
+      btnShareLatest.addEventListener('click', async function() {
+        var records = window.DualMarkFsma.getRecords();
+        if (!records || records.length === 0) {
+          showToast('⚠ No CTE records available to share');
+          return;
+        }
+        var latest = records[records.length - 1];
+        var dossier = await window.DualMarkFsma.generatePdfDossier(latest);
+        var b64 = dossier.base64 || btoa(unescape(encodeURIComponent(dossier.rawPdf || dossier)));
+        var fname = dossier.filename || ('DualMark_FSMA_Dossier_' + latest.id + '.pdf');
+        if (window.DualMarkBridge && typeof window.DualMarkBridge.sharePdf === 'function') {
+          window.DualMarkBridge.sharePdf(b64, fname);
+          showToast('📤 Dispatched to Native Share Sheet: ' + fname);
+        } else if (navigator.share) {
+          try {
+            var byteChars = atob(b64);
+            var byteNums = new Array(byteChars.length);
+            for (var i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
+            var file = new File([new Uint8Array(byteNums)], fname, { type: 'application/pdf' });
+            navigator.share({ title: fname, files: [file] });
+          } catch(e) {
+            downloadBlob(dossier.rawPdf || dossier, fname, 'application/pdf');
+          }
+        } else {
+          downloadBlob(dossier.rawPdf || dossier, fname, 'application/pdf');
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
 
     renderRecordsTable();
   }

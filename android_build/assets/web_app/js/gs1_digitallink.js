@@ -13,17 +13,48 @@
     return clean;
   }
 
+  function formatSscc18(raw) {
+    if (!raw) return '000000000000000000';
+    var clean = raw.replace(/\D/g, '');
+    while (clean.length < 18) clean = '0' + clean;
+    if (clean.length > 18) clean = clean.substring(clean.length - 18);
+    return clean;
+  }
+
+  function formatGln13(raw) {
+    if (!raw) return '0000000000000';
+    var clean = raw.replace(/\D/g, '');
+    while (clean.length < 13) clean = '0' + clean;
+    if (clean.length > 13) clean = clean.substring(clean.length - 13);
+    return clean;
+  }
+
   function buildDigitalLinkUri(options) {
     options = options || {};
     var domain = (options.domain || 'https://id.dualmark.studio').replace(/\/+$/, '');
-    var gtin = formatGtin14(options.gtin || '00812345678901');
-    var lot = options.lot ? encodeURIComponent(options.lot.trim()) : '';
-    var serial = options.serial ? encodeURIComponent(options.serial.trim()) : '';
-    var expiration = options.expiration ? encodeURIComponent(options.expiration.replace(/\D/g, '').slice(0, 6)) : '';
+    var path = domain;
+    var primaryKeyType = options.primaryKeyType || (options.sscc ? '00' : (options.gln ? '414' : (options.grai ? '8004' : '01')));
 
-    var path = domain + '/01/' + gtin;
-    if (lot) path += '/10/' + lot;
-    if (serial) path += '/21/' + serial;
+    if (primaryKeyType === '00') {
+      var sscc = formatSscc18(options.sscc || options.gtin || '000000000000000000');
+      path += '/00/' + sscc;
+    } else if (primaryKeyType === '414') {
+      var gln = formatGln13(options.gln || options.gtin || '0000000000000');
+      path += '/414/' + gln;
+      if (options.locExt) path += '/254/' + encodeURIComponent(options.locExt.trim());
+    } else if (primaryKeyType === '8004') {
+      var grai = encodeURIComponent((options.grai || options.gtin || '').trim());
+      path += '/8004/' + grai;
+    } else {
+      var gtin = formatGtin14(options.gtin || '00812345678901');
+      var lot = options.lot ? encodeURIComponent(options.lot.trim()) : '';
+      var serial = options.serial ? encodeURIComponent(options.serial.trim()) : '';
+      path += '/01/' + gtin;
+      if (lot) path += '/10/' + lot;
+      if (serial) path += '/21/' + serial;
+    }
+
+    var expiration = options.expiration ? encodeURIComponent(options.expiration.replace(/\D/g, '').slice(0, 6)) : '';
 
     var queryParams = [];
     if (expiration) queryParams.push('17=' + expiration);
@@ -64,10 +95,22 @@
   }
 
   function buildHriString(options) {
-    var gtin = formatGtin14(options.gtin || '00812345678901');
-    var parts = ['(01) ' + gtin];
-    if (options.lot) parts.push('(10) ' + options.lot.trim());
-    if (options.serial) parts.push('(21) ' + options.serial.trim());
+    options = options || {};
+    var primaryKeyType = options.primaryKeyType || (options.sscc ? '00' : (options.gln ? '414' : (options.grai ? '8004' : '01')));
+    var parts = [];
+    if (primaryKeyType === '00') {
+      parts.push('(00) ' + formatSscc18(options.sscc || options.gtin || '000000000000000000'));
+    } else if (primaryKeyType === '414') {
+      parts.push('(414) ' + formatGln13(options.gln || options.gtin || '0000000000000'));
+      if (options.locExt) parts.push('(254) ' + options.locExt.trim());
+    } else if (primaryKeyType === '8004') {
+      parts.push('(8004) ' + (options.grai || options.gtin || ''));
+    } else {
+      var gtin = formatGtin14(options.gtin || '00812345678901');
+      parts.push('(01) ' + gtin);
+      if (options.lot) parts.push('(10) ' + options.lot.trim());
+      if (options.serial) parts.push('(21) ' + options.serial.trim());
+    }
     if (options.expiration) parts.push('(17) ' + options.expiration.replace(/\D/g, '').slice(0, 6));
     if (options.weightKg) parts.push('(3102) ' + options.weightKg + ' kg');
     if (options.poNumber) parts.push('(400) ' + options.poNumber.trim());
@@ -83,7 +126,12 @@
       var segments = pathname.split('/').filter(Boolean);
       var result = {
         domain: url.origin,
+        primaryKeyType: '01',
+        primaryKey: '',
         gtin: '',
+        sscc: '',
+        gln: '',
+        grai: '',
         lot: '',
         serial: '',
         expiration: '',
@@ -94,9 +142,29 @@
       for (var i = 0; i < segments.length; i += 2) {
         var ai = segments[i];
         var val = segments[i + 1] || '';
-        if (ai === '01') result.gtin = val;
-        else if (ai === '10') result.lot = decodeURIComponent(val);
-        else if (ai === '21') result.serial = decodeURIComponent(val);
+        if (ai === '01') {
+          result.gtin = val;
+          result.primaryKeyType = '01';
+          result.primaryKey = val;
+        } else if (ai === '00') {
+          result.sscc = val;
+          result.primaryKeyType = '00';
+          result.primaryKey = val;
+        } else if (ai === '414') {
+          result.gln = val;
+          result.primaryKeyType = '414';
+          result.primaryKey = val;
+        } else if (ai === '8004') {
+          result.grai = decodeURIComponent(val);
+          result.primaryKeyType = '8004';
+          result.primaryKey = result.grai;
+        } else if (ai === '10') {
+          result.lot = decodeURIComponent(val);
+        } else if (ai === '21') {
+          result.serial = decodeURIComponent(val);
+        } else if (ai === '254') {
+          result.locationExtension = decodeURIComponent(val);
+        }
       }
 
       // Check all query parameters
@@ -160,22 +228,43 @@
     });
     if (!isHttps) score -= 25;
 
-    // Check 2: Valid Identification Key (/01/ GTIN)
+    // Check 2: Valid Identification Key (/01/ GTIN, /00/ SSCC, /414/ GLN, /8004/ GRAI)
     var parsed = parseDigitalLinkUri(uri);
-    var hasValidGtin = parsed && parsed.gtin && parsed.gtin.length === 14;
+    var hasValidKey = false;
+    var keyDetail = '';
+    var testTitle = 'Primary Identification Key (/01/ GTIN-14)';
+    if (parsed) {
+      if (parsed.gtin && parsed.gtin.length === 14) {
+        hasValidKey = true;
+        testTitle = 'Primary Identification Key (/01/ GTIN-14)';
+        keyDetail = 'Valid 14-digit GTIN identified: ' + parsed.gtin;
+      } else if (parsed.sscc && parsed.sscc.length === 18) {
+        hasValidKey = true;
+        testTitle = 'Primary Identification Key (/00/ SSCC-18)';
+        keyDetail = 'Valid 18-digit SSCC identified: ' + parsed.sscc;
+      } else if (parsed.gln && parsed.gln.length === 13) {
+        hasValidKey = true;
+        testTitle = 'Primary Identification Key (/414/ GLN-13)';
+        keyDetail = 'Valid 13-digit GLN identified: ' + parsed.gln;
+      } else if (parsed.grai && parsed.grai.length >= 14) {
+        hasValidKey = true;
+        testTitle = 'Primary Identification Key (/8004/ GRAI)';
+        keyDetail = 'Valid GRAI identified: ' + parsed.grai;
+      }
+    }
     checks.push({
-      test: 'Primary Identification Key (/01/ GTIN-14)',
-      passed: Boolean(hasValidGtin),
-      detail: hasValidGtin ? 'Valid 14-digit GTIN identified: ' + parsed.gtin : 'FAIL: Missing or invalid GTIN-14'
+      test: testTitle,
+      passed: Boolean(hasValidKey),
+      detail: hasValidKey ? keyDetail : 'FAIL: Missing or invalid primary GS1 identification key'
     });
-    if (!hasValidGtin) score -= 35;
+    if (!hasValidKey) score -= 35;
 
     // Check 3: Canonical AI Ordering
-    var hasCanonicalPath = uri.indexOf('/01/') !== -1;
+    var hasCanonicalPath = Boolean(parsed && (parsed.gtin || parsed.sscc || parsed.gln || parsed.grai));
     checks.push({
       test: 'Canonical Key Path Structure',
       passed: hasCanonicalPath,
-      detail: hasCanonicalPath ? 'Path segment starts with primary key /01/' : 'FAIL: Non-canonical path structure'
+      detail: hasCanonicalPath ? 'Path segment starts with primary key /' + (parsed ? parsed.primaryKeyType : '01') + '/' : 'FAIL: Non-canonical path structure'
     });
     if (!hasCanonicalPath) score -= 20;
 
@@ -274,6 +363,8 @@
 
   window.DualMarkGS1 = {
     formatGtin14: formatGtin14,
+    formatSscc18: formatSscc18,
+    formatGln13: formatGln13,
     buildDigitalLinkUri: buildDigitalLinkUri,
     buildHriString: buildHriString,
     parseDigitalLinkUri: parseDigitalLinkUri,

@@ -119,11 +119,16 @@
 
       var distance = Math.sqrt(dx * dx + dy * dy);
       var isCompliant = distance >= 50.0;
+      var totalNeededWidth = this.barcode1d.w + this.barcode2d.w + 50.0;
+      var impossibleFit = this.packageWidthMm < (totalNeededWidth + 8.0); // including 4mm side margins
 
       return {
         distanceMm: parseFloat(distance.toFixed(1)),
         edgeDistanceMm: parseFloat(distance.toFixed(1)),
         isCompliant: isCompliant,
+        impossibleFit: impossibleFit,
+        multiPanelRecommended: impossibleFit,
+        recommendation: impossibleFit ? 'MULTI_PANEL_LAYOUT' : 'COPLANAR_OK',
         marginDeltaMm: (distance - 50.0).toFixed(1),
         dxMm: parseFloat(dx.toFixed(1)),
         dyMm: parseFloat(dy.toFixed(1)),
@@ -149,14 +154,36 @@
 
     snapTo50mm: function() {
       var metrics = this.calculateDistanceMm();
-      if (!metrics.isCompliant) {
-        var needed = 52.0;
-        // Shift 2D to the right if space allows
+      var needed = 52.0;
+      var totalNeededWidth = this.barcode1d.w + this.barcode2d.w + needed + 8.0;
+
+      if (this.packageWidthMm < totalNeededWidth) {
+        // Physical dimensions cannot fit 50mm coplanar clearance
+        this.barcode1d.x = this.barcode1d.w / 2 + 4;
+        this.barcode2d.x = this.packageWidthMm - this.barcode2d.w / 2 - 4;
+        this.impossibleFit = true;
+        this.multiPanelRecommended = true;
+        this.render();
+        if (window.DualMarkAudio && typeof window.DualMarkAudio.warningBuzz === 'function') {
+          window.DualMarkAudio.warningBuzz();
+        }
+        return {
+          impossibleFit: true,
+          multiPanelRecommended: true,
+          recommendation: 'MULTI_PANEL_LAYOUT',
+          distanceMm: this.calculateDistanceMm().distanceMm,
+          isCompliant: false
+        };
+      }
+
+      this.impossibleFit = false;
+      this.multiPanelRecommended = false;
+
+      if (!metrics.isCompliant || metrics.distanceMm < 50.0) {
         var newX2 = this.barcode1d.x + (this.barcode1d.w / 2) + needed + (this.barcode2d.w / 2);
         if (newX2 + this.barcode2d.w / 2 <= this.packageWidthMm - 4) {
           this.barcode2d.x = newX2;
         } else {
-          // Otherwise shift 1D left as much as possible
           this.barcode1d.x = this.barcode1d.w / 2 + 4;
           this.barcode2d.x = this.barcode1d.x + (this.barcode1d.w / 2) + needed + (this.barcode2d.w / 2);
         }
@@ -165,10 +192,16 @@
       if (window.DualMarkAudio && typeof window.DualMarkAudio.successChime === 'function') {
         window.DualMarkAudio.successChime();
       }
+      return {
+        impossibleFit: false,
+        multiPanelRecommended: false,
+        distanceMm: this.calculateDistanceMm().distanceMm,
+        isCompliant: true
+      };
     },
 
     snapToSafe50mm: function() {
-      this.snapTo50mm();
+      return this.snapTo50mm();
     },
 
     initEvents: function() {

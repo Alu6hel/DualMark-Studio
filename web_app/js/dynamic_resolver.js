@@ -86,6 +86,47 @@
       return null;
     },
 
+    matchesSerial: function(ruleSerial, inputSerial) {
+      if (!ruleSerial || ruleSerial === '*') return true;
+      if (!inputSerial) return true;
+      ruleSerial = ruleSerial.trim();
+      inputSerial = inputSerial.trim();
+      if (ruleSerial === inputSerial) return true;
+
+      // Range matching: "SN-00100..SN-00500" or "100..500"
+      if (ruleSerial.indexOf('..') !== -1) {
+        var parts = ruleSerial.split('..');
+        var start = parts[0].trim();
+        var end = parts[1].trim();
+        var matchStart = start.match(/^(.*?)(\d+)$/);
+        var matchEnd = end.match(/^(.*?)(\d+)$/);
+        var matchInput = inputSerial.match(/^(.*?)(\d+)$/);
+        if (matchStart && matchEnd && matchInput) {
+          if (matchStart[1] === matchInput[1] && matchEnd[1] === matchInput[1]) {
+            var numStart = parseInt(matchStart[2], 10);
+            var numEnd = parseInt(matchEnd[2], 10);
+            var numInput = parseInt(matchInput[2], 10);
+            return numInput >= numStart && numInput <= numEnd;
+          }
+        }
+        return inputSerial >= start && inputSerial <= end;
+      }
+
+      // Comma-separated list
+      if (ruleSerial.indexOf(',') !== -1) {
+        var list = ruleSerial.split(',').map(function(s) { return s.trim(); });
+        return list.indexOf(inputSerial) !== -1;
+      }
+
+      // Wildcard
+      if (ruleSerial.indexOf('*') !== -1) {
+        var regex = new RegExp('^' + ruleSerial.replace(/\*/g, '.*') + '$');
+        return regex.test(inputSerial);
+      }
+
+      return false;
+    },
+
     // Resolve URL for incoming request
     resolve: function(gtin, lot, serial, countryCode) {
       countryCode = (countryCode || 'US').toUpperCase();
@@ -94,6 +135,9 @@
         if (r.gtin === gtin) {
           // Check lot match if specified
           if (r.lot && r.lot !== '*' && lot && r.lot !== lot) continue;
+
+          // Check serial match if specified
+          if (r.serial && r.serial !== '*' && serial && !this.matchesSerial(r.serial, serial)) continue;
 
           // 1. Instant Recall Kill-Switch overrides everything
           if (r.isRecalled) {
@@ -271,16 +315,35 @@
       for (var i = 0; i < this.rules.length; i++) {
         var r = this.rules[i];
         var target = r.isRecalled ? r.recallNoticeUrl : r.defaultUrl;
-        lines.push('    "~^/01/' + r.gtin + '"    ' + target + ';');
+        var pattern = '~^/01/' + r.gtin;
+        if (r.lot && r.lot !== '*') {
+          pattern += '/10/' + r.lot;
+        }
+        lines.push('    "' + pattern + '"    ' + target + ';');
       }
 
       lines.push('    default    https://id.dualmark.studio/not-found;');
+      lines.push('}');
+      lines.push('');
+      lines.push('map $geoip_country_code $gs1_geo_redirect {');
+      for (var j = 0; j < this.rules.length; j++) {
+        var r2 = this.rules[j];
+        if (r2.geoRules && r2.geoRules.length > 0) {
+          for (var g = 0; g < r2.geoRules.length; g++) {
+            lines.push('    "' + r2.geoRules[g].country + '"    ' + r2.geoRules[g].targetUrl + ';');
+          }
+        }
+      }
+      lines.push('    default    "";');
       lines.push('}');
       lines.push('');
       lines.push('server {');
       lines.push('    listen 80;');
       lines.push('    server_name id.brand.com;');
       lines.push('    location /01/ {');
+      lines.push('        if ($gs1_geo_redirect != "") {');
+      lines.push('            return 302 $gs1_geo_redirect;');
+      lines.push('        }');
       lines.push('        return 302 $gs1_redirect_target;');
       lines.push('    }');
       lines.push('}');

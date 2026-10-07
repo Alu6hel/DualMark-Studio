@@ -462,6 +462,24 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 100 && webView != null) {
+            boolean allGranted = true;
+            for (int res : grantResults) {
+                if (res != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            final boolean granted = allGranted;
+            runOnUiThread(() -> {
+                webView.evaluateJavascript("if (window.onNativePermissionsResult) window.onNativePermissionsResult(" + granted + ");", null);
+            });
+        }
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             if (filePathCallback == null) return;
