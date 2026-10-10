@@ -6,6 +6,12 @@
   <title>DualMark Studio — Packaging Pre-Flight & Field Traceability</title>
   <meta name="description" content="Air-gapped workstation for 1D UPC-A barcode generation, dynamic 2D GS1 Digital Link routing, 50mm clearance validation, and FSMA Rule 204 traceability documentation.">
   <link rel="icon" type="image/svg+xml" href="logos/dualmark_logo.svg">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00F0FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DualMark">
+  <link rel="apple-touch-icon" href="logos/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,22 +105,27 @@
             <span id="badge-rive-engine-status" class="badge badge-emerald" style="font-size: 10px; padding: 2px 6px;">⚡ Procedural (Air-Gapped)</span>
           </div>
           <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 8px 0; line-height: 1.4;">
-            Dual-mode engine running offline procedural vector physics. Load custom .riv binary assets or inspect active state machine status.
+            Dual-mode engine running offline procedural vector physics with WASM runtime support. Drag and drop compiled <code>.riv</code> binary assets directly from Rive Studio to test live.
           </p>
-          <div style="display: flex; gap: 8px;">
-            <select id="select-rive-target" class="form-control" style="flex: 1; padding: 6px 8px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Rive Animation Target">
-              <option value="mascot">Marky Mascot (Header)</option>
-              <option value="clearance">50mm Clearance Dial (Tab 2)</option>
-              <option value="scanner">Scanner HUD (Tab 4)</option>
-              <option value="printer">Zebra Printer (Tab 6)</option>
-              <option value="seal">Cryptographic Seal (Tab 5)</option>
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 10.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Target Interactive Animation</label>
+            <select id="select-rive-target" class="form-control" style="width: 100%; padding: 6px 8px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Rive Animation Target">
+              <option value="mascot">Marky Mascot (App Header Companion)</option>
+              <option value="clearance">50mm Clearance Dial (Tab 2 Virtual Die-Line)</option>
+              <option value="scanner">Scanner HUD Reticle (Tab 4 Camera HUD)</option>
+              <option value="printer">Zebra ZPL Printer Status (Tab 6 Thermal Proof)</option>
+              <option value="seal">Cryptographic Part 11 Seal (Tab 5 CTE Record)</option>
             </select>
-            <label class="btn btn-secondary" style="margin: 0; padding: 6px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;" title="Upload custom .riv binary asset">
-              <span>📁</span> <span>Load .riv</span>
-              <input type="file" id="input-custom-riv" accept=".riv" style="display: none;">
-            </label>
           </div>
-          <div id="status-rive-upload" style="display: none; font-size: 10.5px; margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 240, 255, 0.2);"></div>
+          
+          <!-- Interactive Drag-and-Drop Zone -->
+          <div id="dropzone-custom-riv" style="border: 2px dashed rgba(0, 240, 255, 0.35); border-radius: 8px; padding: 14px 10px; text-align: center; background: rgba(0, 240, 255, 0.03); cursor: pointer; transition: all 0.2s ease;">
+            <div style="font-size: 20px; margin-bottom: 4px;">🎨</div>
+            <div style="font-size: 11.5px; font-weight: 700; color: var(--text-primary);">Drag &amp; Drop .riv Binary File</div>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">or click to browse local files</div>
+            <input type="file" id="input-custom-riv" accept=".riv" style="display: none;">
+          </div>
+          <div id="status-rive-upload" style="display: none; font-size: 10.5px; margin-top: 6px; padding: 6px 8px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 240, 255, 0.2); word-break: break-all;"></div>
         </div>
       </div>
     </div>
@@ -971,5 +982,20 @@
   <script src="js/rive_integration.js"></script>
 
   <script src="js/app.js"></script>
+
+  <!-- Progressive Web App Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js')
+          .then(function(reg) {
+            console.info('[DualMark PWA] Service Worker registered in scope:', reg.scope);
+          })
+          .catch(function(err) {
+            console.warn('[DualMark PWA] Service Worker registration failed:', err);
+          });
+      });
+    }
+  </script>
 </body>
 </html>

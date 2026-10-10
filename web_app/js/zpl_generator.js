@@ -241,7 +241,16 @@ const DualMarkZPL = (() => {
     return zpl;
   }
 
-  function generateDualMarkZpl(opts = {}) {
+  function generateDualMarkZpl(optsOrGtin = {}, maybeUri, maybeOpts = {}) {
+    let opts;
+    if (typeof optsOrGtin === 'string') {
+      opts = Object.assign({}, maybeOpts, {
+        gtin: optsOrGtin,
+        digitalLinkUri: maybeUri
+      });
+    } else {
+      opts = optsOrGtin || {};
+    }
     return generateZpl(
       opts.type || 'UPC-A',
       opts.gtin || '081234567890',

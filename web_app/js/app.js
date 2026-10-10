@@ -267,40 +267,78 @@
     }
     updateRiveEngineBadge();
 
-    if (inputCustomRiv) {
-      inputCustomRiv.addEventListener('change', async function(e) {
-        var file = e.target.files && e.target.files[0];
-        if (!file) return;
-        var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
-        if (statusRiveUpload) {
-          statusRiveUpload.style.display = 'block';
-          statusRiveUpload.textContent = 'Loading ' + file.name + ' into [' + target + ']...';
-        }
+    async function handleRivFileUpload(file) {
+      if (!file) return;
+      var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
+      if (statusRiveUpload) {
+        statusRiveUpload.style.display = 'block';
+        statusRiveUpload.textContent = 'Loading ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB) into [' + target + ']...';
+      }
 
-        try {
-          if (window.DualMarkRive && typeof window.DualMarkRive.loadCustomRiv === 'function') {
-            var success = await window.DualMarkRive.loadCustomRiv(target, file);
-            if (success) {
-              if (statusRiveUpload) {
-                statusRiveUpload.textContent = '✓ ' + file.name + ' mounted to ' + target + ' via WASM runtime!';
-                statusRiveUpload.style.color = 'var(--emerald)';
-              }
-              showToast('✨ Custom .riv loaded for ' + target.toUpperCase());
-              updateRiveEngineBadge();
-            } else {
-              if (statusRiveUpload) {
-                statusRiveUpload.textContent = 'ℹ Procedural vector engine active (offline fallback).';
-                statusRiveUpload.style.color = 'var(--cyan)';
-              }
-              showToast('ℹ Procedural vector engine active (air-gapped)');
+      try {
+        if (window.DualMarkRive && typeof window.DualMarkRive.loadCustomRiv === 'function') {
+          var success = await window.DualMarkRive.loadCustomRiv(target, file);
+          if (success) {
+            if (statusRiveUpload) {
+              statusRiveUpload.textContent = '✓ ' + file.name + ' mounted to ' + target + ' via WASM runtime!';
+              statusRiveUpload.style.color = 'var(--emerald)';
             }
-          }
-        } catch (err) {
-          if (statusRiveUpload) {
-            statusRiveUpload.textContent = 'Error: ' + err.message;
-            statusRiveUpload.style.color = 'var(--danger)';
+            showToast('✨ Custom .riv loaded for ' + target.toUpperCase());
+            updateRiveEngineBadge();
+          } else {
+            if (statusRiveUpload) {
+              statusRiveUpload.textContent = 'ℹ Procedural vector engine active (offline fallback).';
+              statusRiveUpload.style.color = 'var(--cyan)';
+            }
+            showToast('ℹ Procedural vector engine active (air-gapped)');
           }
         }
+      } catch (err) {
+        if (statusRiveUpload) {
+          statusRiveUpload.textContent = 'Error: ' + err.message;
+          statusRiveUpload.style.color = 'var(--danger)';
+        }
+      }
+    }
+
+    var dropzoneCustomRiv = document.getElementById('dropzone-custom-riv');
+    if (dropzoneCustomRiv && inputCustomRiv) {
+      dropzoneCustomRiv.addEventListener('click', function() {
+        inputCustomRiv.click();
+      });
+
+      dropzoneCustomRiv.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzoneCustomRiv.style.borderColor = 'var(--cyan)';
+        dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.12)';
+      });
+
+      ['dragleave', 'dragend'].forEach(function(evt) {
+        dropzoneCustomRiv.addEventListener(evt, function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzoneCustomRiv.style.borderColor = 'rgba(0, 240, 255, 0.35)';
+          dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.03)';
+        });
+      });
+
+      dropzoneCustomRiv.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzoneCustomRiv.style.borderColor = 'rgba(0, 240, 255, 0.35)';
+        dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.03)';
+        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) {
+          handleRivFileUpload(file);
+        }
+      });
+    }
+
+    if (inputCustomRiv) {
+      inputCustomRiv.addEventListener('change', function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (file) handleRivFileUpload(file);
       });
     }
 

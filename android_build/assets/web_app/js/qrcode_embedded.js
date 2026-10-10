@@ -558,4 +558,8 @@
     }
   };
 
-})(window);
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = typeof DualMarkQR !== 'undefined' ? DualMarkQR : (typeof globalThis !== 'undefined' ? globalThis.DualMarkQR : null);
+}

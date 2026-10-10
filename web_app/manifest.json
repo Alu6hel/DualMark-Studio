@@ -1,0 +1,63 @@
+{
+  "name": "DualMark Studio — Packaging Pre-Flight & Field Traceability",
+  "short_name": "DualMark",
+  "description": "Air-gapped workstation for 1D UPC-A barcode generation, dynamic 2D GS1 Digital Link routing, 50mm clearance validation, and FSMA Rule 204 traceability documentation.",
+  "id": "com.dualmark.studio",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07080A",
+  "theme_color": "#00F0FF",
+  "categories": ["utilities", "business", "productivity"],
+  "icons": [
+    {
+      "src": "logos/dualmark_logo_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logos/dualmark_logo_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logos/dualmark_logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Packaging Proof Synthesizer",
+      "short_name": "Synthesizer",
+      "description": "Create dual-code UPC-A and GS1 Digital Link layouts",
+      "url": "./index.html#tab1",
+      "icons": [{ "src": "logos/dualmark_logo_192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "50mm Die-Line Clearance",
+      "short_name": "Clearance",
+      "description": "Audit physical clearance and 3D curvilinear arc spacing",
+      "url": "./index.html#tab2",
+      "icons": [{ "src": "logos/dualmark_logo_192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Field Scanner & Dewarping",
+      "short_name": "Scanner",
+      "description": "Perspective correction and optical dual barcode scanning",
+      "url": "./index.html#tab4",
+      "icons": [{ "src": "logos/dualmark_logo_192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Prepress & Zebra Thermal",
+      "short_name": "Prepress",
+      "description": "Export Vector PDF/X-4, CMYK EPS and ZPL streams",
+      "url": "./index.html#tab6",
+      "icons": [{ "src": "logos/dualmark_logo_192.png", "sizes": "192x192" }]
+    }
+  ]
+}

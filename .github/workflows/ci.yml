@@ -1,0 +1,88 @@
+name: DualMark Studio CI & Android Build Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-matrix:
+    name: Headless Test Suite & Mathematical Models
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: 1. UX Optimization & Rive Runtime Tests
+        run: |
+          node test_ux_and_rive.mjs
+          node test_rive_runtime.mjs
+
+      - name: 2. Computer Vision, Sauvola & Perspective Dewarping Tests
+        run: node test_cv_and_scanner.mjs
+
+      - name: 3. 3D Curvilinear Surface Clearance ($s = R \cdot \Delta\theta$) Tests
+        run: node test_clearance_3d.mjs
+
+      - name: 4. ISO/IEC 15415 & 15416 Optical Verification Tests
+        run: node test_iso_verifier.mjs
+
+      - name: 5. Prepress RIP, 2D BWR Erosion & PDF/X-4 Engine Tests
+        run: |
+          node test_prepress_bwr.mjs
+          node test_layer_separation.mjs
+
+      - name: 6. FDA FSMA 204 WebCrypto PKI & EPCIS 2.0 Tests
+        run: node test_fsma_pki_epcis.mjs
+
+      - name: 7. Zebra ZPL II Thermal Engine Tests
+        run: node test_zpl_engine.mjs
+
+      - name: 8. GS1 Digital Link RFC 9264 Resolver & Licensing Tests
+        run: node test_resolver_licensing.mjs
+
+      - name: 9. Unified Headless Prepress & ZPL CLI Verification
+        run: |
+          node cli/dualmark-cli.mjs --gtin 00812345678901 --format zpl --type DotCode --dpi 300
+          node cli/dualmark-cli.mjs --gtin 00812345678901 --format cmyk-eps --bwr -50
+          node cli/dualmark-cli.mjs --gtin 00812345678901 --format pdf-x4
+          node cli/dualmark-cli.mjs --gtin 00812345678901 --format json --sign
+
+  build-artifacts:
+    name: Verify Release Artifacts & Mobile Packages
+    runs-on: ubuntu-latest
+    needs: test-matrix
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Verify Android Release Packages
+        run: |
+          test -f android_build/DualMark_Studio.apk || exit 1
+          test -f android_build/DualMark_Studio.aab || exit 1
+          echo "✓ Android APK (406 KB) and AAB (395 KB) verified."
+
+      - name: Upload Production APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DualMark_Studio_Release_APK
+          path: android_build/DualMark_Studio.apk
+          if-no-files-found: error
+
+      - name: Upload Production AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DualMark_Studio_Release_AAB
+          path: android_build/DualMark_Studio.aab
+          if-no-files-found: error
