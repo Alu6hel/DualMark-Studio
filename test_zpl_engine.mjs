@@ -105,4 +105,24 @@ console.log('Testing Zebra ZPL II Engine...');
   console.log('✓ Passed: Zebra ~HS Host Status Bi-directional Parser');
 }
 
-console.log('All 5 Zebra ZPL Engine tests passed successfully!');
+// 6. Native buildZplDotCode Helper
+{
+  const dotZpl = DualMarkZPL.buildZplDotCode('https://id.brand.com/01/00812345678901', 500, 150, 4, 300);
+  assert.ok(dotZpl.includes('^FO500,150^BDN,4,0,0^FDhttps://id.brand.com/01/00812345678901^FS'), 'Matches native ^BD syntax');
+  console.log('✓ Passed: Native buildZplDotCode formatter');
+}
+
+// 7. compileLayoutToZpl Dynamic Die-Line Compiler
+{
+  const b1 = { x: 20, y: 15, h: 25, text: '081234567890' };
+  const b2 = { x: 75, y: 15, uri: 'https://id.brand.com/01/00812345678901', isDotCode: true };
+  const fullZpl = DualMarkZPL.compileLayoutToZpl(b1, b2, 8, 800, 400);
+
+  assert.ok(fullZpl.includes('^PW800^LL400'), 'Includes print dimensions');
+  assert.ok(fullZpl.includes(`^FO${20 * 8},${15 * 8}^BY2,3,${25 * 8}^BUN,`), 'Includes 1D placement at (160, 120)');
+  assert.ok(fullZpl.includes(`^FO${75 * 8},${15 * 8}^BDN,`), 'Includes 2D DotCode placement at (600, 120)');
+  console.log('✓ Passed: compileLayoutToZpl Dynamic Compiler');
+}
+
+console.log('All 7 Zebra ZPL Engine tests passed successfully!');
+

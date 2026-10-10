@@ -128,9 +128,33 @@ async function runLicensingTests() {
   console.log('✓ Passed: Cryptographic License Token Generation, Tamper Detection & Feature Unlocking');
 }
 
-runLicensingTests().then(() => {
+// 5. Worker handleGs1DigitalLink Method Execution
+async function runWorkerHandlerTest() {
+  const gtin = '00812345678901';
+  // Mock Request with Accept: application/linkset+json
+  const reqLinkset = new Request(`https://id.brand.com/01/${gtin}`, {
+    headers: { 'Accept': 'application/linkset+json' }
+  });
+  const resLinkset = await DualMarkResolver.handleGs1DigitalLink(reqLinkset);
+  assert.strictEqual(resLinkset.status, 200);
+  assert.strictEqual(resLinkset.headers.get('Content-Type'), 'application/linkset+json');
+  const body = await resLinkset.json();
+  assert.ok(body.linkset && Array.isArray(body.linkset));
+  assert.strictEqual(body.linkset[0].anchor, `https://id.brand.com/01/${gtin}`);
+
+  // Mock Request with ?linkType=epcis
+  const reqEpcis = new Request(`https://id.brand.com/01/${gtin}?linkType=epcis`);
+  const resEpcis = await DualMarkResolver.handleGs1DigitalLink(reqEpcis);
+  assert.strictEqual(resEpcis.status, 307);
+  assert.ok(resEpcis.headers.get('Location').includes('/traceability'));
+
+  console.log('✓ Passed: handleGs1DigitalLink Edge Worker Execution');
+}
+
+Promise.all([runLicensingTests(), runWorkerHandlerTest()]).then(() => {
   console.log('All Dynamic Resolver & Licensing tests passed successfully!');
 }).catch(err => {
-  console.error('Licensing test error:', err);
+  console.error('Resolver/Licensing test error:', err);
   process.exit(1);
 });
+

@@ -212,6 +212,35 @@ const DualMarkZPL = (() => {
     return result;
   }
 
+  // Native ZPL DotCode (^BD) Formatter & Dynamic Placement
+  function buildZplDotCode(digitalLinkUri, xDots, yDots, dotSizeDots, targetWidthDots) {
+    dotSizeDots = dotSizeDots || 4;
+    return `^FO${xDots},${yDots}^BDN,${dotSizeDots},0,0^FD${digitalLinkUri}^FS\n`;
+  }
+
+  // Dynamic Millimeter-to-Dot Layout Compiler
+  function compileLayoutToZpl(barcode1d, barcode2d, dpmm, printWidthDots, printLengthDots) {
+    dpmm = dpmm || 8;
+    printWidthDots = printWidthDots || Math.round(101.6 * dpmm);
+    printLengthDots = printLengthDots || Math.round(50.8 * dpmm);
+
+    const x1d = Math.round(barcode1d.x * dpmm);
+    const y1d = Math.round(barcode1d.y * dpmm);
+    const x2d = Math.round(barcode2d.x * dpmm);
+    const y2d = Math.round(barcode2d.y * dpmm);
+    const barHeight = Math.round((barcode1d.h || 25) * dpmm);
+
+    let zpl = `^XA\n^PW${printWidthDots}^LL${printLengthDots}^LH0,0^CI28\n`;
+    zpl += `^FO${x1d},${y1d}^BY2,3,${barHeight}^BUN,${barHeight},Y,N,Y^FD${barcode1d.text || barcode1d.gtin || '081234567890'}^FS\n`;
+    if (barcode2d && (barcode2d.symbology === 'dotcode' || barcode2d.isDotCode)) {
+      zpl += buildZplDotCode(barcode2d.uri || barcode2d.digitalLinkUri, x2d, y2d, Math.round(dpmm * 0.4));
+    } else {
+      zpl += `^FO${x2d},${y2d}^BQN,2,5,M,7^FDMA,${barcode2d ? (barcode2d.uri || barcode2d.digitalLinkUri) : ''}^FS\n`;
+    }
+    zpl += `^XZ\n`;
+    return zpl;
+  }
+
   function generateDualMarkZpl(opts = {}) {
     return generateZpl(
       opts.type || 'UPC-A',
@@ -224,6 +253,8 @@ const DualMarkZPL = (() => {
   return {
     generateZpl,
     generateDualMarkZpl,
+    buildZplDotCode,
+    compileLayoutToZpl,
     downloadZplFile,
     copyZpl,
     parseZebraHostStatus

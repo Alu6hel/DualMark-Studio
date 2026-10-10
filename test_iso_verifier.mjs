@@ -89,6 +89,22 @@ assert.ok(pdfStr.includes('ISO/IEC 15416:2016 & ISO/IEC 15415:2011'), 'Contains 
 assert.ok(pdfStr.includes('00812345678901'), 'Contains target GTIN');
 console.log('  ✓ PASS: PDF/X compliance certificate rendered with ISO audit trail');
 
+// 5. Raw Pixel Buffer ISO 15415 Grading
+console.log('\n--- 5. Direct gradeMatrixIso15415 with Raw Pixel Buffer ---');
+const rawPixels = new Uint8Array(200 * 200).fill(240);
+for (let y = 0; y < 100; y++) {
+  for (let x = 0; x < 100; x++) {
+    rawPixels[y * 200 + x] = 20;
+  }
+}
+const isoGradeRaw = verifier.gradeMatrixIso15415(rawPixels, 200, 200, 25, 25);
+assert.ok(isoGradeRaw.symbolContrast >= 0.80, 'Symbol Contrast >= 0.80');
+assert.strictEqual(isoGradeRaw.axialNonUniformity, 0, 'Square matrix ANU is 0');
+assert.ok(typeof isoGradeRaw.unusedErrorCorrection === 'number', 'UEC computed');
+assert.ok(isoGradeRaw.letterGrade, 'Letter grade returned');
+console.log(`  ✓ PASS: Direct pixel buffer ISO 15415: SC=${isoGradeRaw.symbolContrast}, ANU=${isoGradeRaw.axialNonUniformity}, UEC=${isoGradeRaw.unusedErrorCorrection} -> Grade ${isoGradeRaw.letterGrade}`);
+
 console.log('\n===============================================================');
 console.log('ALL ISO/IEC 15415 & 15416 VERIFIER TESTS PASSED SUCCESSFULLY!');
 console.log('===============================================================');
+

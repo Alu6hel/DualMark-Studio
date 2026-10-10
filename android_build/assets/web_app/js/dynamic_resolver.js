@@ -431,47 +431,91 @@
     },
 
     // Export 3: Cloudflare Workers Script (Zero-SaaS edge server)
+    // RFC 9264 Compliant GS1 Digital Link Worker Content-Negotiation Engine
+    handleGs1DigitalLink: async function(request, rules) {
+      rules = rules || this.rules;
+      const url = new URL(request.url);
+      const linkType = url.searchParams.get('linkType');
+      const acceptHeader = request.headers.get('Accept') || '';
+      const match = url.pathname.match(/\/01\/(\d{14})(?:\/10\/([^/]+))?(?:\/21\/([^/]+))?/);
+      if (!match) return new Response('GTIN Not Found', { status: 404 });
+      const gtin = match[1];
+
+      let rule = null;
+      for (let i = 0; i < rules.length; i++) {
+        if (rules[i].gtin === gtin) { rule = rules[i]; break; }
+      }
+      if (!rule) return new Response('GTIN Not Found: ' + gtin, { status: 404 });
+
+      const epcisUrl = rule.traceabilityUrl || (url.origin + '/01/' + gtin + '/traceability');
+      const recallUrl = rule.recallNoticeUrl || (url.origin + '/01/' + gtin + '/recall');
+
+      // 1. Linkset Manifest Request
+      if (linkType === 'all' || linkType === 'linkset' || acceptHeader.includes('application/linkset+json')) {
+        return new Response(JSON.stringify({
+          linkset: [
+            { anchor: url.href, 'https://gs1.org/voc/pip': [{ href: rule.defaultUrl, type: 'text/html' }] },
+            { anchor: url.href, 'https://gs1.org/voc/epcis': [{ href: epcisUrl, type: 'application/ld+json' }] },
+            { anchor: url.href, 'https://gs1.org/voc/recall': [{ href: recallUrl, type: 'text/html' }] }
+          ]
+        }, null, 2), { headers: { 'Content-Type': 'application/linkset+json' } });
+      }
+
+      // 2. Specific Link Type Dispatch
+      if (linkType === 'epcis' || linkType === 'traceability' || acceptHeader.includes('application/ld+json')) {
+        return Response.redirect(epcisUrl, 307);
+      }
+      if (linkType === 'pip') {
+        return Response.redirect(rule.defaultUrl, 307);
+      }
+
+      // 3. Default Consumer Redirect
+      return Response.redirect(rule.isRecalled ? recallUrl : rule.defaultUrl, 302);
+    },
+
+    // Export 3: Cloudflare Workers Script (Zero-SaaS edge server)
     exportCloudflareWorker: function() {
       return [
         '/**',
         ' * DualMark Studio — Cloudflare Worker Edge Resolver',
-        ' * Zero-SaaS Dynamic Link Resolver for GS1 Digital Link Sunrise 2027',
+        ' * Zero-SaaS Dynamic Link Resolver for GS1 Digital Link Sunrise 2027 (RFC 9264)',
         ' */',
         'const ROUTES = ' + JSON.stringify(this.rules, null, 2) + ';',
         '',
         'addEventListener("fetch", event => {',
-        '  event.respondWith(handleRequest(event.request));',
+        '  event.respondWith(handleGs1DigitalLink(event.request, ROUTES));',
         '});',
         '',
-        'async function handleRequest(request) {',
+        'async function handleGs1DigitalLink(request, rules) {',
         '  const url = new URL(request.url);',
-        '  const country = request.headers.get("cf-ipcountry") || "US";',
+        '  const linkType = url.searchParams.get("linkType");',
+        '  const acceptHeader = request.headers.get("Accept") || "";',
         '  const match = url.pathname.match(/^\\/01\\/(\\d{14})(?:\\/10\\/([^/]+))?(?:\\/21\\/([^/]+))?/);',
-        '',
-        '  if (!match) {',
-        '    return new Response("DualMark Edge Resolver: Scan a valid GS1 Digital Link", { status: 404 });',
-        '  }',
-        '',
+        '  if (!match) return new Response("GTIN Not Found", { status: 404 });',
         '  const gtin = match[1];',
-        '  const lot = match[2] || "";',
-        '  const serial = match[3] || "";',
-        '',
-        '  for (const rule of ROUTES) {',
-        '    if (rule.gtin === gtin) {',
-        '      // Recall kill-switch takes immediate precedence',
-        '      if (rule.isRecalled) {',
-        '        return Response.redirect(rule.recallNoticeUrl, 302);',
-        '      }',
-        '      // Geo-target rules',
-        '      if (rule.geoRules) {',
-        '        const geo = rule.geoRules.find(g => g.country === country);',
-        '        if (geo) return Response.redirect(geo.targetUrl, 302);',
-        '      }',
-        '      return Response.redirect(rule.defaultUrl, 302);',
-        '    }',
+        '  const rule = rules.find(r => r.gtin === gtin);',
+        '  if (!rule) return new Response("GTIN Not Found: " + gtin, { status: 404 });',
+        '  const epcisUrl = url.origin + "/01/" + gtin + "/traceability";',
+        '  const recallUrl = rule.recallNoticeUrl || (url.origin + "/01/" + gtin + "/recall");',
+        '  // 1. Linkset Manifest Request',
+        '  if (linkType === "all" || linkType === "linkset" || acceptHeader.includes("application/linkset+json")) {',
+        '    return new Response(JSON.stringify({',
+        '      linkset: [',
+        '        { anchor: url.href, "https://gs1.org/voc/pip": [{ href: rule.defaultUrl, type: "text/html" }] },',
+        '        { anchor: url.href, "https://gs1.org/voc/epcis": [{ href: epcisUrl, type: "application/ld+json" }] },',
+        '        { anchor: url.href, "https://gs1.org/voc/recall": [{ href: recallUrl, type: "text/html" }] }',
+        '      ]',
+        '    }, null, 2), { headers: { "Content-Type": "application/linkset+json" } });',
         '  }',
-        '',
-        '  return new Response("GTIN not found in local routing table: " + gtin, { status: 404 });',
+        '  // 2. Specific Link Type Dispatch',
+        '  if (linkType === "epcis" || acceptHeader.includes("application/ld+json")) {',
+        '    return Response.redirect(epcisUrl, 307);',
+        '  }',
+        '  if (linkType === "pip") {',
+        '    return Response.redirect(rule.defaultUrl, 307);',
+        '  }',
+        '  // 3. Default Consumer Redirect',
+        '  return Response.redirect(rule.isRecalled ? recallUrl : rule.defaultUrl, 302);',
         '}'
       ].join('\n');
     },

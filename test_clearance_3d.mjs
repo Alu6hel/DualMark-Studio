@@ -103,6 +103,21 @@ assert.strictEqual(smallCyl.cylinderDiameterMm, 33);
 assert.strictEqual(smallCyl.radiusMm, 16.5);
 console.log(`  ✓ PASS: Small cylinder (33mm Ø) updates radius to 16.5mm with Δθ = ${smallCyl.deltaThetaDeg}°`);
 
+// 6. Direct Functional Signature calculateCylindricalClearance(b1, b2, dia, fov)
+console.log('\n--- 6. Direct calculateCylindricalClearance(b1, b2, dia, fov) ---');
+const b1_direct = { x: 25, y: 30, w: 35, h: 25 };
+const b2_direct = { x: 80, y: 30, w: 22, h: 22 };
+const directResult = mockWindow.DualMarkClearance.calculateCylindricalClearance(b1_direct, b2_direct, 66.0, 65.0);
+assert.ok(typeof directResult.true3dClearanceMm === 'number', 'true3dClearanceMm computed');
+assert.ok(typeof directResult.arcClearanceMm === 'number', 'arcClearanceMm computed');
+assert.ok(typeof directResult.deltaThetaDeg === 'string' || typeof directResult.deltaThetaDeg === 'number', 'deltaThetaDeg computed');
+assert.ok(typeof directResult.isCompliant50mm === 'boolean', 'isCompliant50mm computed');
+assert.ok(typeof directResult.isOccludedByCurvature === 'boolean', 'isOccludedByCurvature computed');
+assert.ok(typeof directResult.opticalForeshorteningFactor === 'number', 'opticalForeshorteningFactor computed');
+assert.ok(typeof directResult.scannerSafe === 'boolean', 'scannerSafe computed');
+console.log(`  ✓ PASS: Direct functional clearance: true3d=${directResult.true3dClearanceMm}mm, deltaTheta=${directResult.deltaThetaDeg}°, scannerSafe=${directResult.scannerSafe}`);
+
 console.log('\n===============================================================');
 console.log('ALL 3D CURVILINEAR CLEARANCE TESTS PASSED SUCCESSFULLY!');
 console.log('===============================================================');
+

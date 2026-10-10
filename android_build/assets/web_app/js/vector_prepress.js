@@ -41,6 +41,30 @@ const DualMarkPrepress = (() => {
     return { widthPt, heightPt };
   }
 
+  // Prepress 2D Bar Gain / BWR Module Erosion
+  function render2dModuleWithBwr(stream, x, y, modW, modH, bwrPoints, isDotCode) {
+    if (isDotCode) {
+      // DotCode: Shrink dot radius directly by half-BWR
+      const rNominal = Math.min(modW, modH) * 0.45;
+      const rEroded = Math.max(0.2, rNominal - (Math.abs(bwrPoints) / 2.0));
+      const cx = x + modW / 2;
+      const cy = y + modH / 2;
+      const k = rEroded * 0.55228475;
+      return stream + `${(cx - rEroded).toFixed(3)} ${cy.toFixed(3)} m ` +
+        `${(cx - rEroded).toFixed(3)} ${(cy + k).toFixed(3)} ${(cx - k).toFixed(3)} ${(cy + rEroded).toFixed(3)} ${cx.toFixed(3)} ${(cy + rEroded).toFixed(3)} c ` +
+        `${(cx + k).toFixed(3)} ${(cy + rEroded).toFixed(3)} ${(cx + rEroded).toFixed(3)} ${(cy + k).toFixed(3)} ${(cx + rEroded).toFixed(3)} ${cy.toFixed(3)} c ` +
+        `${(cx + rEroded).toFixed(3)} ${(cy - k).toFixed(3)} ${(cx + k).toFixed(3)} ${(cx - rEroded).toFixed(3)} ${cx.toFixed(3)} ${(cx - rEroded).toFixed(3)} c ` +
+        `${(cx - k).toFixed(3)} ${(cy - rEroded).toFixed(3)} ${(cx - rEroded).toFixed(3)} ${(cy - k).toFixed(3)} ${(cx - rEroded).toFixed(3)} ${cy.toFixed(3)} c f\n`;
+    }
+    // QR & Data Matrix: Inward erosion of module boundaries
+    const erosion = Math.min(modW * 0.35, Math.abs(bwrPoints) / 2.0);
+    const erodedX = x + erosion;
+    const erodedY = y + erosion;
+    const erodedW = Math.max(0.2, modW - (2.0 * erosion));
+    const erodedH = Math.max(0.2, modH - (2.0 * erosion));
+    return stream + `${erodedX.toFixed(3)} ${erodedY.toFixed(3)} ${erodedW.toFixed(3)} ${erodedH.toFixed(3)} re f\n`;
+  }
+
   /**
    * Generates pure PostScript Level 3 CMYK Encapsulated PostScript (EPS).
    * 100% Process Black (0 0 0 1 setcmykcolor), no RGB contamination.
@@ -425,19 +449,7 @@ newpath 200 20 moveto 200 120 lineto [4 4] 0 setdash 2 setlinewidth stroke
           if (qrMatrix[r][c]) {
             const mx = startX + (c * modSizeX);
             const my = startY + ((numRows - 1 - r) * modSizeY);
-            if (isDotCode) {
-              const radius = Math.min(modSizeX, modSizeY) * 0.45;
-              const cx = mx + modSizeX / 2;
-              const cy = my + modSizeY / 2;
-              const k = radius * 0.55228475;
-              stream += `${(cx - radius).toFixed(2)} ${cy.toFixed(2)} m ` +
-                `${(cx - radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx - k).toFixed(2)} ${(cy + radius).toFixed(2)} ${cx.toFixed(2)} ${(cy + radius).toFixed(2)} c ` +
-                `${(cx + k).toFixed(2)} ${(cy + radius).toFixed(2)} ${(cx + radius).toFixed(2)} ${(cy + k).toFixed(2)} ${(cx + radius).toFixed(2)} ${cy.toFixed(2)} c ` +
-                `${(cx + radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx + k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cx.toFixed(2)} ${(cx - radius).toFixed(2)} c ` +
-                `${(cx - k).toFixed(2)} ${(cy - radius).toFixed(2)} ${(cx - radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cy.toFixed(2)} c f\n`;
-            } else {
-              stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSizeX.toFixed(2)} ${modSizeY.toFixed(2)} re f\n`;
-            }
+            stream = render2dModuleWithBwr(stream, mx, my, modSizeX, modSizeY, bwrPoints, isDotCode);
           }
         }
       }
@@ -586,19 +598,14 @@ ${850 + streamLength}
       const startY = 25;
       const modSizeX = qrWidth / numCols;
       const modSizeY = qrHeight / numRows;
-
-      const bwr2d = Math.min(modSizeX * 0.35, Math.abs(bwrPoints) / 2);
+      const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
 
       for (let r = 0; r < numRows; r++) {
         for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
             const mx = startX + (c * modSizeX);
             const my = startY + ((numRows - 1 - r) * modSizeY);
-            const adjMx = mx + bwr2d;
-            const adjMy = my + bwr2d;
-            const adjSizeX = Math.max(0.2, modSizeX - (2 * bwr2d));
-            const adjSizeY = Math.max(0.2, modSizeY - (2 * bwr2d));
-            stream += `${adjMx.toFixed(2)} ${adjMy.toFixed(2)} ${adjSizeX.toFixed(2)} ${adjSizeY.toFixed(2)} re f\n`;
+            stream = render2dModuleWithBwr(stream, mx, my, modSizeX, modSizeY, bwrPoints, isDotCode);
           }
         }
       }
@@ -805,6 +812,7 @@ ${4900 + streamLength}
   return {
     setBwrMicrons,
     getBwrMicrons,
+    render2dModuleWithBwr,
     generateCmykEps,
     generatePantoneEps,
     generateVectorPdf,

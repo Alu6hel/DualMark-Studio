@@ -120,49 +120,77 @@
     },
 
     // 3D Curvilinear Cylinder Clearance Model
-    calculateCylindricalClearance: function(diameterMm, imagerFovDeg) {
-      var dMm = diameterMm || this.cylinderDiameterMm || 66.0;
-      var fov = imagerFovDeg || this.imagerFovDeg || 75.0;
+    calculateCylindricalClearance: function(arg1, arg2, arg3, arg4) {
+      var b1_obj, b2_obj, dMm, fov;
+      if (arg1 && typeof arg1 === 'object' && arg2 && typeof arg2 === 'object') {
+        b1_obj = arg1;
+        b2_obj = arg2;
+        dMm = arg3 || (this && this.cylinderDiameterMm) || 66.0;
+        fov = arg4 || (this && this.imagerFovDeg) || 75.0;
+      } else {
+        dMm = arg1 || (this && this.cylinderDiameterMm) || 66.0;
+        fov = arg2 || (this && this.imagerFovDeg) || 75.0;
+        b1_obj = this ? this.barcode1d : { x: 30, y: 50, w: 38, h: 25 };
+        b2_obj = this ? this.barcode2d : { x: 90, y: 50, w: 22, h: 22 };
+      }
       var R = dMm / 2.0;
+      var circumference = Math.PI * dMm;
 
       var b1 = {
-        left: this.barcode1d.x - this.barcode1d.w / 2,
-        right: this.barcode1d.x + this.barcode1d.w / 2,
-        top: this.barcode1d.y - this.barcode1d.h / 2,
-        bottom: this.barcode1d.y + this.barcode1d.h / 2
+        x: (typeof b1_obj.x === 'number') ? b1_obj.x : (b1_obj.left + (b1_obj.right - b1_obj.left) / 2),
+        y: (typeof b1_obj.y === 'number') ? b1_obj.y : (b1_obj.top + (b1_obj.bottom - b1_obj.top) / 2),
+        left: (typeof b1_obj.left === 'number') ? b1_obj.left : (b1_obj.x - (b1_obj.w || 38) / 2),
+        right: (typeof b1_obj.right === 'number') ? b1_obj.right : (b1_obj.x + (b1_obj.w || 38) / 2),
+        top: (typeof b1_obj.top === 'number') ? b1_obj.top : (b1_obj.y - (b1_obj.h || 25) / 2),
+        bottom: (typeof b1_obj.bottom === 'number') ? b1_obj.bottom : (b1_obj.y + (b1_obj.h || 25) / 2)
       };
 
       var b2 = {
-        left: this.barcode2d.x - this.barcode2d.w / 2,
-        right: this.barcode2d.x + this.barcode2d.w / 2,
-        top: this.barcode2d.y - this.barcode2d.h / 2,
-        bottom: this.barcode2d.y + this.barcode2d.h / 2
+        x: (typeof b2_obj.x === 'number') ? b2_obj.x : (b2_obj.left + (b2_obj.right - b2_obj.left) / 2),
+        y: (typeof b2_obj.y === 'number') ? b2_obj.y : (b2_obj.top + (b2_obj.bottom - b2_obj.top) / 2),
+        left: (typeof b2_obj.left === 'number') ? b2_obj.left : (b2_obj.x - (b2_obj.w || 22) / 2),
+        right: (typeof b2_obj.right === 'number') ? b2_obj.right : (b2_obj.x + (b2_obj.w || 22) / 2),
+        top: (typeof b2_obj.top === 'number') ? b2_obj.top : (b2_obj.y - (b2_obj.h || 22) / 2),
+        bottom: (typeof b2_obj.bottom === 'number') ? b2_obj.bottom : (b2_obj.y + (b2_obj.h || 22) / 2)
       };
 
       var dx = Math.max(0, Math.max(b1.left - b2.right, b2.left - b1.right));
       var dy = Math.max(0, Math.max(b1.top - b2.bottom, b2.top - b1.bottom));
 
-      // Angular separation along cylindrical surface in radians & degrees
+      // Center-to-center angular separation
+      var theta1 = (b1.x / circumference) * 2 * Math.PI;
+      var theta2 = (b2.x / circumference) * 2 * Math.PI;
+      var deltaThetaCenter = Math.abs(theta1 - theta2);
+
+      // Edge-to-edge angular separation
       var deltaThetaRad = dx / R;
       var deltaThetaDeg = (deltaThetaRad * 180.0) / Math.PI;
 
       // Geodesic surface arc clearance
+      var arcClearanceMm = R * deltaThetaCenter;
+      var axialDeltaMm = Math.abs(b1.y - b2.y);
+      var true3dClearanceMm = Math.sqrt(Math.pow(arcClearanceMm, 2) + Math.pow(axialDeltaMm, 2));
+
       var arcDistanceMm = Math.sqrt(dx * dx + dy * dy);
 
-      // Line-of-sight occlusion: If angular separation exceeds 90 degrees or imager FOV,
-      // the barcodes wrap around the cylinder so a single scanner cannot observe both concurrently.
-      var losOccluded = (deltaThetaDeg >= 90.0 || deltaThetaDeg > fov);
+      var isOccludedByCurvature = (deltaThetaCenter > (Math.PI / 2.0)) || (deltaThetaDeg >= 90.0 || deltaThetaDeg > fov);
+      var losOccluded = isOccludedByCurvature;
+
+      var opticalForeshorteningFactor = Math.cos(deltaThetaCenter / 2.0);
+      var isModuleUnreadable = opticalForeshorteningFactor < 0.50;
 
       // Projective cosine foreshortening from cylinder center line
-      var packageCenter = this.packageWidthMm / 2.0;
-      var theta1Rad = Math.abs(this.barcode1d.x - packageCenter) / R;
-      var theta2Rad = Math.abs(this.barcode2d.x - packageCenter) / R;
+      var packageCenter = (this && this.packageWidthMm) ? (this.packageWidthMm / 2.0) : (dMm * Math.PI / 2);
+      var theta1Rad = Math.abs(b1.x - packageCenter) / R;
+      var theta2Rad = Math.abs(b2.x - packageCenter) / R;
       var foreshortening1 = Math.max(0, Math.cos(theta1Rad));
       var foreshortening2 = Math.max(0, Math.cos(theta2Rad));
       var minForeshortening = Math.min(foreshortening1, foreshortening2);
-      var isForeshortened = (minForeshortening < 0.70);
+      var isForeshortened = (minForeshortening < 0.70) || isModuleUnreadable;
 
       var isCompliant = arcDistanceMm >= 50.0 || losOccluded;
+      var isCompliant50mm = true3dClearanceMm >= 50.0 || arcDistanceMm >= 50.0;
+      var scannerSafe = !isOccludedByCurvature && isCompliant50mm;
 
       var rec = 'COPLANAR_OK';
       if (losOccluded) {
@@ -177,12 +205,19 @@
         surfaceType: 'cylindrical',
         cylinderDiameterMm: dMm,
         radiusMm: R,
-        deltaThetaDeg: parseFloat(deltaThetaDeg.toFixed(1)),
+        deltaThetaDeg: (deltaThetaDeg).toFixed(1),
         deltaThetaRad: parseFloat(deltaThetaRad.toFixed(3)),
-        arcDistanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        arcClearanceMm: parseFloat(arcClearanceMm.toFixed(1)),
+        true3dClearanceMm: parseFloat(true3dClearanceMm.toFixed(1)),
         distanceMm: parseFloat(arcDistanceMm.toFixed(1)),
         edgeDistanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        arcDistanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        isOccludedByCurvature: isOccludedByCurvature,
         losOccluded: losOccluded,
+        opticalForeshorteningFactor: opticalForeshorteningFactor,
+        isModuleUnreadable: isModuleUnreadable,
+        scannerSafe: scannerSafe,
+        isCompliant50mm: isCompliant50mm,
         foreshortening1: parseFloat(foreshortening1.toFixed(2)),
         foreshortening2: parseFloat(foreshortening2.toFixed(2)),
         minForeshortening: parseFloat(minForeshortening.toFixed(2)),
@@ -587,8 +622,21 @@
     }
   };
 
-  window.ClearanceInspector = ClearanceInspector;
-  window.DualMarkClearance = {
-    ClearanceInspector: ClearanceInspector
+  ClearanceInspector.calculateCylindricalClearance = function(b1, b2, cylinderDiameterMm, imagerFovDeg) {
+    return ClearanceInspector.prototype.calculateCylindricalClearance(b1, b2, cylinderDiameterMm, imagerFovDeg);
   };
-})(window);
+
+  if (typeof window !== 'undefined') {
+    window.ClearanceInspector = ClearanceInspector;
+    window.DualMarkClearance = {
+      ClearanceInspector: ClearanceInspector,
+      calculateCylindricalClearance: ClearanceInspector.calculateCylindricalClearance
+    };
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ClearanceInspector;
+    module.exports.ClearanceInspector = ClearanceInspector;
+    module.exports.calculateCylindricalClearance = ClearanceInspector.calculateCylindricalClearance;
+  }
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+
