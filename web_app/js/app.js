@@ -207,6 +207,33 @@
         }
       });
     }
+
+    // Consolidated Workstation Quick Settings Drawer / Slide-Over Sheet
+    var btnQuickSettings = document.getElementById('btn-quick-settings');
+    var sheetQuickSettings = document.getElementById('sheet-quick-settings');
+    var btnCloseSettings = document.getElementById('btn-close-settings');
+
+    if (btnQuickSettings && sheetQuickSettings) {
+      btnQuickSettings.addEventListener('click', function() {
+        sheetQuickSettings.style.display = 'flex';
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    if (btnCloseSettings && sheetQuickSettings) {
+      btnCloseSettings.addEventListener('click', function() {
+        sheetQuickSettings.style.display = 'none';
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    if (sheetQuickSettings) {
+      sheetQuickSettings.addEventListener('click', function(e) {
+        if (e.target === sheetQuickSettings) {
+          sheetQuickSettings.style.display = 'none';
+        }
+      });
+    }
   }
 
   // 2. Module 1: Dual-Code Synth
@@ -318,6 +345,13 @@
         }
 
         input1d.value = root + chk;
+        var chkSync = document.getElementById('chk-sync-codes');
+        if (chkSync && chkSync.checked) {
+          var syncGtin = (root + chk).replace(/\D/g, '');
+          while (syncGtin.length < 14) syncGtin = '0' + syncGtin;
+          gtin2d.value = syncGtin;
+          update2D();
+        }
         update1D();
         showToast('✓ Modulo-10 Check Digit Calculated: ' + chk);
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
@@ -442,9 +476,38 @@
       });
     }
 
+    var chkSync = document.getElementById('chk-sync-codes');
+
     typeSelect.addEventListener('change', update1D);
-    input1d.addEventListener('input', update1D);
+    input1d.addEventListener('input', function() {
+      if (chkSync && chkSync.checked) {
+        var rawDigits = input1d.value.trim().replace(/\D/g, '');
+        if (rawDigits.length >= 10) {
+          var padded = rawDigits;
+          while (padded.length < 14) padded = '0' + padded;
+          gtin2d.value = padded;
+          update2D();
+        }
+      }
+      update1D();
+    });
+
     if (symbologySelect) symbologySelect.addEventListener('change', update2D);
+
+    if (gtin2d) {
+      gtin2d.addEventListener('input', function() {
+        if (chkSync && chkSync.checked) {
+          var gtinDigits = gtin2d.value.trim().replace(/\D/g, '');
+          if (gtinDigits.length === 14 && gtinDigits.substring(0, 2) === '00') {
+            input1d.value = gtinDigits.substring(2);
+            update1D();
+          } else if (gtinDigits.length === 14 && gtinDigits.charAt(0) === '0') {
+            input1d.value = gtinDigits.substring(1);
+            update1D();
+          }
+        }
+      });
+    }
 
     [domain2d, gtin2d, lot2d, serial2d, exp2d, weight2d, price2d, po2d, origin2d].forEach(function(el) {
       if (el) el.addEventListener('input', update2D);
@@ -603,6 +666,10 @@
 
     window.clearanceInspector.onUpdate(function(metrics) {
       readout.textContent = metrics.edgeDistanceMm + ' mm';
+      var distVal = parseFloat(metrics.edgeDistanceMm) || 0;
+      if (window.DualMarkRive) {
+        window.DualMarkRive.triggerClearanceUpdate(distVal, metrics.isCompliant, false);
+      }
       if (metrics.impossibleFit) {
         statusBox.className = 'status-meter fail';
         statusText.innerHTML = '<span>⚠</span> <span>IMPOSSIBLE FIT (PACKAGE TOO NARROW)</span>';
@@ -636,6 +703,9 @@
 
     btnSnap.addEventListener('click', function() {
       window.clearanceInspector.snapToSafe50mm();
+      if (window.DualMarkRive) {
+        window.DualMarkRive.triggerClearanceUpdate(52.0, true, true);
+      }
       showToast('⚡ Snapped to 52mm Safe Distance');
       window.DualMarkAudio.successChime();
     });
@@ -900,6 +970,11 @@
             'Decoded Value: <span style="color:#00F0FF;">' + first.rawValue + '</span>',
             first.isGs1DigitalLink ? '<span style="color:#10B981;">[GS1 DIGITAL LINK VALIDATED] GTIN: ' + (first.gs1Data ? first.gs1Data.gtin : '') + '</span>' : ''
           ].join('<br>');
+
+          if (window.DualMarkRive) {
+            window.DualMarkRive.triggerScannerAcquired(true, true, first.format === 'qr_code' ? 1 : 0, true);
+          }
+          handleScannedForQuickCte(first);
         }
       }, function(err) {
         badgeState.textContent = 'CAMERA UNAVAILABLE';
@@ -961,12 +1036,65 @@
       });
     }
 
+    var cardQuickCte = document.getElementById('card-scan-quick-cte');
+    var summaryQuickCte = document.getElementById('quick-cte-summary');
+    var btnQuickLogCte = document.getElementById('btn-quick-log-cte');
+    var btnViewFsmaCte = document.getElementById('btn-view-fsma-cte');
+    var lastScannedCteData = null;
+
+    function handleScannedForQuickCte(item) {
+      if (!cardQuickCte) return;
+      var gtin = (item.gs1Data && item.gs1Data.gtin) ? item.gs1Data.gtin : (item.rawValue ? item.rawValue.replace(/\D/g, '').slice(0, 14) : '00812345678901');
+      var lot = (item.gs1Data && item.gs1Data.lot) ? item.gs1Data.lot : ('LOT-' + new Date().getFullYear() + '-SCAN');
+      var serial = (item.gs1Data && item.gs1Data.serial) ? item.gs1Data.serial : ('SN-' + Math.floor(10000 + Math.random() * 90000));
+
+      lastScannedCteData = {
+        gtin: gtin || '00812345678901',
+        tlc: lot,
+        serial: serial,
+        eventType: 'RECEIVING CTE',
+        commodity: 'Scanned Commercial Item',
+        quantity: '1 Unit / Scanned',
+        gln: 'GLN 0812345000012 — Receiving Bay #1',
+        gps: (document.getElementById('fsma-gps') ? document.getElementById('fsma-gps').value : 'Live Field GPS')
+      };
+
+      if (summaryQuickCte) {
+        summaryQuickCte.textContent = 'GTIN: ' + lastScannedCteData.gtin + ' | Lot: ' + lot + ' (' + (item.format || '2D').toUpperCase() + ')';
+      }
+      cardQuickCte.style.display = 'block';
+    }
+
+    if (btnQuickLogCte) {
+      btnQuickLogCte.addEventListener('click', function() {
+        if (!lastScannedCteData) return;
+        if (window.DualMarkFsma && typeof window.DualMarkFsma.addRecord === 'function') {
+          var rec = window.DualMarkFsma.addRecord(lastScannedCteData);
+          showToast('✓ Committed to FSMA Chain: ' + rec.id);
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkRive) window.DualMarkRive.triggerSealSigned(true);
+          cardQuickCte.style.display = 'none';
+        }
+      });
+    }
+
+    if (btnViewFsmaCte) {
+      btnViewFsmaCte.addEventListener('click', function() {
+        var tabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-fsma"]');
+        if (tabBtn) tabBtn.click();
+      });
+    }
+
     btnStop.addEventListener('click', function() {
       studio.stopCamera();
+      if (window.DualMarkRive) {
+        window.DualMarkRive.triggerScannerAcquired(false, false, 0, false);
+      }
       badgeState.textContent = 'CAMERA OFFLINE';
       badgeState.className = 'badge badge-cyan';
       btnStart.style.display = 'inline-flex';
       btnStop.style.display = 'none';
+      if (cardQuickCte) cardQuickCte.style.display = 'none';
     });
 
     // Torch / Flashlight Toggle
@@ -1270,6 +1398,7 @@
         }
         showToast('✍️ 21 CFR Part 11 Cryptographic Sign-Off Applied');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkRive) window.DualMarkRive.triggerSealSigned(true);
       });
     }
 
@@ -1306,6 +1435,7 @@
       renderRecordsTable();
       showToast('CTE Committed! Generating FDA Compliance Dossier...');
       window.DualMarkAudio.successChime();
+      if (window.DualMarkRive) window.DualMarkRive.triggerSealSigned(true);
 
       var dossier = await window.DualMarkFsma.generatePdfDossier(committed);
       var pdfData = dossier.rawPdf || dossier;
@@ -1350,6 +1480,43 @@
 
   // 7. Module 6: Prepress Export Center
   function initExportsModule() {
+    // Segmented Export Control & Master Prepress Bundle
+    var exportSegmentSwitch = document.getElementById('export-segment-switch');
+    if (exportSegmentSwitch) {
+      var segmentButtons = exportSegmentSwitch.querySelectorAll('.segmented-item');
+      var panes = {
+        'pane-prepress': document.getElementById('pane-prepress'),
+        'pane-zebra': document.getElementById('pane-zebra'),
+        'pane-batch': document.getElementById('pane-batch')
+      };
+
+      segmentButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          segmentButtons.forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          var targetPane = btn.getAttribute('data-export-pane');
+          Object.keys(panes).forEach(function(k) {
+            if (panes[k]) {
+              panes[k].style.display = (k === targetPane) ? 'block' : 'none';
+            }
+          });
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
+        });
+      });
+    }
+
+    var btnMasterPackage = document.getElementById('btn-export-master-package');
+    if (btnMasterPackage) {
+      btnMasterPackage.addEventListener('click', function() {
+        var btnPdfX4 = document.getElementById('btn-export-pdf-x4');
+        var btnSvg = document.getElementById('btn-export-combined-svg');
+        if (btnPdfX4) btnPdfX4.click();
+        if (btnSvg) btnSvg.click();
+        showToast('🏆 1-Click Master Prepress Bundle Generated');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
     document.getElementById('btn-export-combined-svg').addEventListener('click', function() {
       // Export full SVG with 1D and 2D placed side-by-side with 50mm clearance marker
       var type1d = (document.getElementById('synth-1d-type') && document.getElementById('synth-1d-type').value) || 'UPC-A';
@@ -1554,6 +1721,12 @@
       btnGenZpl.addEventListener('click', function() {
         var zpl = getActiveZpl();
         zplOutputPreview.textContent = zpl;
+        if (window.DualMarkRive) {
+          window.DualMarkRive.triggerPrinterState(2);
+          setTimeout(function() {
+            window.DualMarkRive.triggerPrinterState(4);
+          }, 800);
+        }
         showToast('⚡ Zebra ZPL II Command Stream Generated');
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
@@ -1592,6 +1765,12 @@
         var port = (tcpPortInput && parseInt(tcpPortInput.value, 10)) || 9100;
         var zpl = getActiveZpl();
 
+        if (window.DualMarkRive) {
+          window.DualMarkRive.triggerPrinterState(1);
+          setTimeout(function() { window.DualMarkRive.triggerPrinterState(2); }, 300);
+          setTimeout(function() { window.DualMarkRive.triggerPrinterState(4); }, 900);
+        }
+
         if (window.DualMarkBridge && typeof window.DualMarkBridge.printRawTcpSocket === 'function') {
           window.DualMarkBridge.printRawTcpSocket(ip, port, zpl);
           showToast('🖨️ ZPL stream dispatched to printer socket ' + ip + ':' + port);
@@ -1626,6 +1805,12 @@
       btnSendBt.addEventListener('click', function() {
         var mac = (btMacInput && btMacInput.value.trim()) || '00:11:22:33:AA:BB';
         var zpl = getActiveZpl();
+
+        if (window.DualMarkRive) {
+          window.DualMarkRive.triggerPrinterState(1);
+          setTimeout(function() { window.DualMarkRive.triggerPrinterState(2); }, 300);
+          setTimeout(function() { window.DualMarkRive.triggerPrinterState(4); }, 900);
+        }
 
         if (window.DualMarkBridge && typeof window.DualMarkBridge.printRawBluetoothSpp === 'function') {
           window.DualMarkBridge.printRawBluetoothSpp(mac, zpl);
