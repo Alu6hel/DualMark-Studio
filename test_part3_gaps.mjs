@@ -19,11 +19,11 @@ import CvGeometry from './web_app/js/core/cv_geometry.js';
 import ZplGenerator from './web_app/js/zpl_generator.js';
 import I18nEngine from './web_app/js/i18n.js';
 
-const ARTIFACT_DIR = '/home/davidalujones/.gemini/antigravity/brain/9a8f1a6c-5d9f-4eb1-9390-3620279d8138';
+const ARTIFACT_DIR = '/home/davidalujones/.gemini/antigravity/brain/703d9f5c-fd7c-4033-b0fa-dc6cc892b4da';
 
 function takeScreenshot(filename) {
   try {
-    execSync(`adb -s arc:5555 exec-out screencap -p > "${ARTIFACT_DIR}/${filename}"`);
+    execSync(`adb exec-out screencap -p > "${ARTIFACT_DIR}/${filename}"`);
     console.log(`📸 Screenshot saved: ${filename}`);
   } catch (err) {
     console.error(`Failed to take screenshot ${filename}:`, err);

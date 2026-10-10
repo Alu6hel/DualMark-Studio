@@ -419,11 +419,17 @@ const DualMarkLicensing = (() => {
       } catch (e) {}
     }
 
+    var filename = 'DualMark_Diagnostic_Bundle_' + Date.now().toString(36) + '.json';
+    if (window.DualMarkApp && typeof window.DualMarkApp.downloadBlob === 'function') {
+      window.DualMarkApp.downloadBlob(JSON.stringify(diag, null, 2), filename, 'application/json');
+      return;
+    }
+
     const blob = new Blob([JSON.stringify(diag, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'DualMark_Diagnostic_Bundle_' + Date.now().toString(36) + '.json';
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

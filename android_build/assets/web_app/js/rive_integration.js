@@ -729,6 +729,7 @@
     var isPaused = false;
     var animFrame = null;
 
+    state.persona = state.persona || (typeof localStorage !== 'undefined' && localStorage.getItem('dualmark_mascot_style')) || 'marky_scanner';
     state.lookX = state.lookX || 0;
     state.lookY = state.lookY || 0;
     state.targetLookX = 0;
@@ -775,6 +776,11 @@
       var h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
+      if (state.persona === 'mascot_off') {
+        animFrame = requestAnimationFrame(render);
+        return;
+      }
+
       state.tick += 0.05;
       state.bobOffset = Math.sin(state.tick) * (1.2 * dpr);
       state.lookX += (state.targetLookX - state.lookX) * 0.15;
@@ -804,6 +810,130 @@
       var cy = h / 2 + state.bobOffset;
       var r = Math.min(w, h) * 0.40;
 
+      // Persona 1: Cyber Reticle (Futuristic Optical HUD)
+      if (state.persona === 'cyber_reticle') {
+        ctx.save();
+        var reticleColor = isCelebrating ? '#10B981' : '#00F0FF';
+        ctx.strokeStyle = reticleColor;
+        ctx.lineWidth = 1.6 * dpr;
+
+        // Outer rotating dashed ring
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(state.tick * 0.4);
+        ctx.beginPath();
+        ctx.setLineDash([4 * dpr, 4 * dpr]);
+        ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Inner counter-rotating ring
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-state.tick * 0.6);
+        ctx.beginPath();
+        ctx.setLineDash([2 * dpr, 3 * dpr]);
+        ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Crosshairs
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.4, cy); ctx.lineTo(cx + r * 0.4, cy);
+        ctx.moveTo(cx, cy - r * 0.4); ctx.lineTo(cx, cy + r * 0.4);
+        ctx.stroke();
+
+        // Center targeting pulse dot
+        var pX = cx + state.lookX * (2.0 * dpr);
+        var pY = cy + state.lookY * (2.0 * dpr);
+        ctx.fillStyle = reticleColor;
+        ctx.shadowColor = reticleColor;
+        ctx.shadowBlur = (isCelebrating ? 10 : 5) * dpr;
+        ctx.beginPath();
+        ctx.arc(pX, pY, 2.5 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        animFrame = requestAnimationFrame(render);
+        return;
+      }
+
+      // Persona 2: Minimalist Cleanroom LED Pulse
+      if (state.persona === 'minimal_pulse') {
+        ctx.save();
+        var ledHue = isCelebrating ? '#10B981' : '#00F0FF';
+        var pulseScale = 1.0 + 0.15 * Math.sin(state.tick * (isCelebrating ? 4 : 1.5));
+        var glowR = r * 0.7 * pulseScale;
+
+        var radGrad = ctx.createRadialGradient(cx, cy, 2 * dpr, cx, cy, glowR);
+        radGrad.addColorStop(0, ledHue);
+        radGrad.addColorStop(0.5, isCelebrating ? 'rgba(16, 185, 129, 0.4)' : 'rgba(0, 240, 255, 0.35)');
+        radGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
+        ctx.fillStyle = radGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = ledHue;
+        ctx.shadowBlur = 8 * dpr;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.2 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        animFrame = requestAnimationFrame(render);
+        return;
+      }
+
+      // Persona 3: Packaging Compliance Specialist (Friendly Industrial Engineer)
+      if (state.persona === 'specialist_avatar') {
+        ctx.save();
+        // Industrial Safety Cap / Hardhat
+        ctx.fillStyle = '#F59E0B';
+        ctx.beginPath();
+        ctx.arc(cx, cy - r * 0.3, r * 0.9, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#D97706';
+        ctx.fillRect(cx - r * 0.95, cy - r * 0.3, r * 1.9, 3.5 * dpr);
+
+        // Face
+        ctx.fillStyle = '#FED7AA';
+        ctx.beginPath();
+        ctx.arc(cx, cy + r * 0.2, r * 0.75, 0, Math.PI);
+        ctx.fill();
+
+        // Safety Visor / Protective Glasses
+        var gw = r * 1.3, gh = r * 0.5;
+        var gx = cx - gw / 2, gy = cy - r * 0.2;
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 1.2 * dpr;
+        ctx.fillRect(gx, gy, gw, gh);
+        ctx.strokeRect(gx, gy, gw, gh);
+
+        // Barcode reflection lines on visor
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        for (var bi = 0; bi < 4; bi++) {
+          ctx.fillRect(gx + 3 * dpr + bi * 4 * dpr, gy + 2 * dpr, 1.2 * dpr, gh - 4 * dpr);
+        }
+
+        // Eyes / Smile
+        if (isCelebrating) {
+          ctx.strokeStyle = '#10B981';
+          ctx.lineWidth = 1.5 * dpr;
+          ctx.beginPath();
+          ctx.arc(cx, cy + r * 0.45, 3 * dpr, 0, Math.PI);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        animFrame = requestAnimationFrame(render);
+        return;
+      }
+
+      // Persona 4: Marky Scanner Bot (Default)
       // Aura / Shield Glow
       ctx.save();
       var glowColor = isCelebrating ? 'rgba(16, 185, 129, 0.4)' : 'rgba(0, 240, 255, 0.25)';
@@ -860,7 +990,6 @@
         var ey = cy + state.lookY * (1.8 * dpr);
 
         if (isCelebrating) {
-          // Cheerful "^ ^" anime eyes
           ctx.lineWidth = 1.8 * dpr;
           ctx.strokeStyle = '#10B981';
           ctx.beginPath();
@@ -893,6 +1022,9 @@
     animFrame = requestAnimationFrame(render);
 
     return {
+      setPersona: function(p) {
+        state.persona = p;
+      },
       setBoolean: function(name, val) {
         if (name === 'isCelebrating') {
           state.celebrateTimer = val ? 90 : 0;
@@ -976,14 +1108,57 @@
     },
 
     initMarkyMascot: function() {
+      var savedPersona = this.getMascotStyle();
       this.instances.mascot = new DualMarkRiveRuntime({
         targetName: 'mascot',
         canvasId: 'canvas-rive-mascot',
         stateMachineName: 'SM_Mascot',
-        initialState: { isCelebrating: false },
+        initialState: { persona: savedPersona, isCelebrating: false },
         onFallbackInit: createMarkyMascotFallback
       });
+      var wrap = (typeof document !== 'undefined') ? document.getElementById('mascot-companion-wrap') : null;
+      if (wrap) {
+        wrap.style.display = (savedPersona === 'mascot_off') ? 'none' : 'flex';
+      }
       return this.instances.mascot;
+    },
+
+    setMascotStyle: function(style) {
+      this._mascotStyle = style;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('dualmark_mascot_style', style);
+      }
+      if (this.instances.mascot && this.instances.mascot.fallbackController && typeof this.instances.mascot.fallbackController.setPersona === 'function') {
+        this.instances.mascot.fallbackController.setPersona(style);
+      }
+      var wrap = (typeof document !== 'undefined') ? document.getElementById('mascot-companion-wrap') : null;
+      if (wrap) {
+        wrap.style.display = (style === 'mascot_off') ? 'none' : 'flex';
+      }
+      if (this.instances.mascotPreview && this.instances.mascotPreview.fallbackController && typeof this.instances.mascotPreview.fallbackController.setPersona === 'function') {
+        this.instances.mascotPreview.fallbackController.setPersona(style);
+      }
+    },
+
+    getMascotStyle: function() {
+      if (this._mascotStyle) return this._mascotStyle;
+      if (typeof localStorage !== 'undefined') {
+        var s = localStorage.getItem('dualmark_mascot_style');
+        if (s) return s;
+      }
+      return 'marky_scanner';
+    },
+
+    initMascotPreview: function(canvasId) {
+      var cId = canvasId || 'canvas-mascot-preview';
+      var initialStyle = this.getMascotStyle();
+      this.instances.mascotPreview = new DualMarkRiveRuntime({
+        targetName: 'mascot_preview',
+        canvasId: cId,
+        initialState: { persona: initialStyle, isCelebrating: false },
+        onFallbackInit: createMarkyMascotFallback
+      });
+      return this.instances.mascotPreview;
     },
 
     init: function() {

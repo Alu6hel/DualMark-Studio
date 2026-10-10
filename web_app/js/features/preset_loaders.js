@@ -177,6 +177,10 @@
    * Unified File Downloader (handles Web Browser and Native Android Bridge)
    */
   function downloadBlob(content, filename, mimeType = 'application/octet-stream') {
+    if (typeof window !== 'undefined' && window.DualMarkApp && typeof window.DualMarkApp.downloadBlob === 'function') {
+      window.DualMarkApp.downloadBlob(content, filename, mimeType);
+      return true;
+    }
     // 1. Android Native Bridge integration
     if (typeof window !== 'undefined' && window.DualMarkBridge) {
       if (typeof window.DualMarkBridge.saveToMediaStore === 'function') {

@@ -5,3 +5,4 @@ android_build/build/
 # System files
 .DS_Store
 Thumbs.db
+node_modules/

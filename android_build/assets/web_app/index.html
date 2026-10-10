@@ -45,8 +45,8 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <span style="font-size:18px;">⚙️</span>
           <div>
-            <h3 style="font-size:15px; font-weight:800; margin:0;">Workstation Settings</h3>
-            <small style="color:var(--text-secondary); font-size:11px;">Environment, Audio & Legal Controls</small>
+            <h3 style="font-size:15px; font-weight:800; margin:0;" data-i18n="settings.title">Workstation Settings</h3>
+            <small style="color:var(--text-secondary); font-size:11px;" data-i18n="settings.sub">Environment, Audio &amp; Legal Controls</small>
           </div>
         </div>
         <button class="icon-btn" id="btn-close-settings" title="Close Settings">✕</button>
@@ -55,7 +55,7 @@
       <div class="settings-drawer-body">
         <!-- Language Selector -->
         <div class="settings-group">
-          <label class="settings-group-title">Display Language (i18n)</label>
+          <label class="settings-group-title" data-i18n="settings.language_label">Display Language (i18n)</label>
           <select id="select-language" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Display Language" aria-label="Language">
             <option value="en-US">🇺🇸 English (United States)</option>
             <option value="es-ES">🇪🇸 Español (España)</option>
@@ -66,66 +66,61 @@
           </select>
         </div>
 
+        <!-- Mascot Persona & Interactive Companion -->
+        <div class="settings-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="settings-group-title" style="margin: 0;" data-i18n="settings.mascot_title">Header Mascot &amp; Companion</label>
+            <span id="badge-mascot-status" class="badge badge-cyan" style="font-size: 10px; padding: 2px 6px;">Active</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.4;" data-i18n="settings.mascot_desc">
+            Choose your real-time vector assistant persona displayed in the header.
+          </p>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="width: 44px; height: 44px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Live Mascot Preview">
+              <canvas id="canvas-mascot-preview" width="38" height="38" style="width: 38px; height: 38px;"></canvas>
+            </div>
+            <div style="flex: 1;">
+              <select id="select-mascot-style" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 12px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Mascot Persona" aria-label="Mascot Persona">
+                <option value="marky_scanner" data-i18n="settings.mascot_opt_marky">🤖 Marky Bot (Cybernetic Assistant)</option>
+                <option value="cyber_reticle" data-i18n="settings.mascot_opt_reticle">🎯 Optical Reticle HUD</option>
+                <option value="minimal_pulse" data-i18n="settings.mascot_opt_pulse">💡 Cleanroom Status LED</option>
+                <option value="specialist_avatar" data-i18n="settings.mascot_opt_specialist">👷 Packaging Specialist</option>
+                <option value="mascot_off" data-i18n="settings.mascot_opt_off">🚫 Disabled (Minimalist)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Environment & Themes -->
         <div class="settings-group">
-          <label class="settings-group-title">Environment & Audio</label>
+          <label class="settings-group-title" data-i18n="settings.environment_title">Environment &amp; Audio</label>
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <button id="btn-theme" class="btn btn-secondary settings-action-btn">
-              <span>🌓</span> <span>Clean Room Theme (Light / Dark)</span>
+              <span>🌓</span> <span data-i18n="settings.theme_toggle">Clean Room Theme (Light / Dark)</span>
             </button>
             <button id="btn-outdoor" class="btn btn-secondary settings-action-btn">
-              <span>☀️</span> <span>Outdoor High-Contrast Dock Mode</span>
+              <span>☀️</span> <span data-i18n="settings.outdoor_toggle">Outdoor High-Contrast Dock Mode</span>
             </button>
             <button id="btn-sound" class="btn btn-secondary settings-action-btn">
-              <span id="sound-icon">🔊</span> <span>Tactile Audio Feedback</span>
+              <span id="sound-icon">🔊</span> <span data-i18n="settings.audio_toggle">Tactile Audio Feedback</span>
             </button>
           </div>
         </div>
 
         <!-- Compliance & Diagnostics -->
         <div class="settings-group">
-          <label class="settings-group-title">System & Regulatory</label>
+          <label class="settings-group-title" data-i18n="settings.regulatory_title">System &amp; Regulatory</label>
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <button id="btn-licensing" class="btn btn-secondary settings-action-btn">
-              <span>👑</span> <span>Commercial Licensing & Editions</span>
+              <span>👑</span> <span data-i18n="settings.btn_licensing">Commercial Licensing &amp; Editions</span>
             </button>
             <button id="btn-diagnostics" class="btn btn-secondary settings-action-btn">
-              <span>🛠️</span> <span>Export System Diagnostics</span>
+              <span>🛠️</span> <span data-i18n="settings.btn_diagnostics">Export System Diagnostics</span>
             </button>
             <button id="btn-legal" class="btn btn-secondary settings-action-btn">
-              <span>⚖️</span> <span>GS1 & FDA Part 11 Disclaimers</span>
+              <span>⚖️</span> <span data-i18n="settings.btn_legal">GS1 &amp; FDA Part 11 Disclaimers</span>
             </button>
           </div>
-        </div>
-
-        <!-- Vector Animation Engine Diagnostics & Custom .riv Loader -->
-        <div class="settings-group">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="settings-group-title" style="margin: 0;">Vector Animation Engine</label>
-            <span id="badge-rive-engine-status" class="badge badge-emerald" style="font-size: 10px; padding: 2px 6px;">⚡ Procedural (Air-Gapped)</span>
-          </div>
-          <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 8px 0; line-height: 1.4;">
-            Dual-mode engine running offline procedural vector physics with WASM runtime support. Drag and drop compiled <code>.riv</code> binary assets directly from Rive Studio to test live.
-          </p>
-          <div style="margin-bottom: 8px;">
-            <label style="font-size: 10.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Target Interactive Animation</label>
-            <select id="select-rive-target" class="form-control" style="width: 100%; padding: 6px 8px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Rive Animation Target">
-              <option value="mascot">Marky Mascot (App Header Companion)</option>
-              <option value="clearance">50mm Clearance Dial (Tab 2 Virtual Die-Line)</option>
-              <option value="scanner">Scanner HUD Reticle (Tab 4 Camera HUD)</option>
-              <option value="printer">Zebra ZPL Printer Status (Tab 6 Thermal Proof)</option>
-              <option value="seal">Cryptographic Part 11 Seal (Tab 5 CTE Record)</option>
-            </select>
-          </div>
-          
-          <!-- Interactive Drag-and-Drop Zone -->
-          <div id="dropzone-custom-riv" style="border: 2px dashed rgba(0, 240, 255, 0.35); border-radius: 8px; padding: 14px 10px; text-align: center; background: rgba(0, 240, 255, 0.03); cursor: pointer; transition: all 0.2s ease;">
-            <div style="font-size: 20px; margin-bottom: 4px;">🎨</div>
-            <div style="font-size: 11.5px; font-weight: 700; color: var(--text-primary);">Drag &amp; Drop .riv Binary File</div>
-            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">or click to browse local files</div>
-            <input type="file" id="input-custom-riv" accept=".riv" style="display: none;">
-          </div>
-          <div id="status-rive-upload" style="display: none; font-size: 10.5px; margin-top: 6px; padding: 6px 8px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 240, 255, 0.2); word-break: break-all;"></div>
         </div>
       </div>
     </div>
@@ -152,17 +147,17 @@
         <div class="presets-scroller">
           <button class="preset-pill" id="preset-juice">
             <span>🧃</span>
-            <span>Cold-Pressed Juice</span>
+            <span data-i18n="synth.preset_juice">Cold-Pressed Juice</span>
             <span class="preset-badge">UPC + QR</span>
           </button>
           <button class="preset-pill" id="preset-pharma">
             <span>💊</span>
-            <span>Pharma Blister</span>
+            <span data-i18n="synth.preset_pharma">Pharma Blister</span>
             <span class="preset-badge">DataMatrix</span>
           </button>
           <button class="preset-pill" id="preset-shipper">
             <span>📦</span>
-            <span>Master Shipper</span>
+            <span data-i18n="synth.preset_shipper">Master Shipper</span>
             <span class="preset-badge">ITF-14</span>
           </button>
         </div>
@@ -172,7 +167,7 @@
       <div class="card" style="margin-bottom: 14px;">
         <div class="card-title">
           <div class="card-title-text">
-            <span>Dual-Code Packaging Proof</span>
+            <span data-i18n="synth.proof_title">Dual-Code Packaging Proof</span>
             <span class="card-title-sub">Legacy POS &amp; Sunrise 2027</span>
           </div>
           <button type="button" id="tab1-clearance-pill" class="badge badge-emerald" style="cursor: pointer; border: none; font-size: 11px; padding: 4px 10px;" title="Click to open 50mm Die-Line Inspector">⚡ 52.4 mm (PASS: ≥ 50mm)</button>
@@ -209,7 +204,7 @@
       <div class="card" style="margin-bottom: 14px;">
         <div class="card-title">
           <div class="card-title-text">
-            <span>Master Product &amp; GS1 Payload Specifications</span>
+            <span data-i18n="synth.input_title">Master Product &amp; GS1 Payload Specifications</span>
           </div>
           <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--cyan); cursor: pointer; margin: 0;">
             <input type="checkbox" id="chk-sync-codes" checked style="accent-color: var(--cyan); width: 15px; height: 15px; cursor: pointer;">
@@ -348,7 +343,7 @@
     <section id="tab-clearance" class="tab-pane">
       <div class="card">
         <div class="card-title">
-          <span>50mm Physical Clearance Die-Line Inspector</span>
+          <span data-i18n="clearance.title">50mm Physical Clearance Die-Line Inspector</span>
           <span class="badge badge-cyan">SUNRISE 2027 AUDITOR</span>
         </div>
 
@@ -445,7 +440,7 @@
     <section id="tab-resolver" class="tab-pane">
       <div class="card">
         <div class="card-title">
-          <span>Zero-SaaS Dynamic Link Resolver</span>
+          <span data-i18n="resolver.title">Zero-SaaS Dynamic Link Resolver</span>
           <span class="badge badge-emerald">STANDALONE EDGE ROUTING</span>
         </div>
 
@@ -506,7 +501,7 @@
         <!-- Dual Scanner -->
         <div class="card">
           <div class="card-title">
-            <span>Dual Optical Camera Decoder</span>
+            <span data-i18n="scanner.title">Dual Optical Camera Decoder</span>
             <span class="badge badge-cyan" id="scanner-state-badge">CAMERA OFFLINE</span>
           </div>
 
@@ -600,7 +595,7 @@
     <section id="tab-fsma" class="tab-pane">
       <div class="card">
         <div class="card-title">
-          <span>FDA FSMA Rule 204 Critical Tracking Events (CTEs)</span>
+          <span data-i18n="fsma.title">FDA FSMA Rule 204 Critical Tracking Events (CTEs)</span>
           <span class="badge badge-cyan">21 CFR PART 1 SUBPART S</span>
         </div>
 
@@ -720,7 +715,7 @@
     <section id="tab-exports" class="tab-pane">
       <div class="card">
         <div class="card-title">
-          <span>Prepress Packaging Export Station</span>
+          <span data-i18n="exports.title">Prepress Packaging Export Station</span>
           <span class="badge badge-cyan">AIR-GAPPED WORKSTATION</span>
         </div>
 
@@ -937,6 +932,50 @@
           <a href="legal/data_deletion.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">Data Deletion</a>
         </div>
         <button class="btn btn-primary btn-sm" id="btn-legal-confirm">Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Preview & Storage Protection Confirmation Modal -->
+  <div id="modal-export-confirm" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 480px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;" id="modal-export-icon">💾</span>
+          <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 800;" data-i18n="modal_export.title">Export Preview &amp; Confirmation</h3>
+            <small style="color: var(--text-secondary); font-size: 11px;" data-i18n="modal_export.desc">Review the generated file before saving to your device storage.</small>
+          </div>
+        </div>
+        <button class="icon-btn" id="btn-export-cancel-x" title="Cancel">✕</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div>
+              <span style="font-size: 10.5px; color: var(--text-muted);" data-i18n="modal_export.file_label">File Name:</span>
+              <strong id="modal-export-filename" style="font-family: var(--font-mono); font-size: 12.5px; color: var(--cyan); word-break: break-all; margin-left: 4px;">DualMark_Master.pdf</strong>
+            </div>
+            <span id="modal-export-size" class="badge badge-emerald" style="font-size: 10px;">~12 KB</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-secondary);">
+            <span data-i18n="modal_export.type_label">Document Type:</span>
+            <span id="modal-export-format" style="margin-left: 4px; color: var(--text-primary); font-weight: 600;">PDF Document</span>
+          </div>
+        </div>
+
+        <div>
+          <span style="font-size: 10.5px; color: var(--text-muted); display: block; margin-bottom: 4px;" data-i18n="modal_export.preview_label">Content / Vector Preview:</span>
+          <!-- Dynamic Graphic / Code Preview -->
+          <div id="modal-export-preview-container" style="max-height: 180px; overflow: auto; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0,0,0,0.4); padding: 8px; font-family: var(--font-mono); font-size: 11px; line-height: 1.4; color: var(--text-primary); white-space: pre-wrap; word-break: break-all;">
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-secondary" id="btn-export-cancel" style="padding: 8px 16px;" data-i18n="modal_export.cancel_btn">✕ Cancel</button>
+        <button class="btn btn-emerald" id="btn-export-confirm" style="padding: 8px 18px; font-weight: 700;" data-i18n="modal_export.confirm_btn">✓ Confirm &amp; Save</button>
       </div>
     </div>
   </div>

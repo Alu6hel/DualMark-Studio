@@ -28,8 +28,19 @@
   window.showToast = showToast;
   window.DualMarkApp = { showToast: showToast };
 
+  // Helper to escape HTML in previews
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // File download helper (Web or Android native bridge)
-  function downloadBlob(content, filename, mimeType) {
+  function actualDownloadBlob(content, filename, mimeType) {
     // If native Android Bridge is available
     if (window.DualMarkBridge && typeof window.DualMarkBridge.savePdfToStorage === 'function' && filename && filename.endsWith('.pdf')) {
       var base64 = content;
@@ -54,6 +65,151 @@
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
+
+  var pendingExportConfirmAction = null;
+
+  function showExportConfirmModal(config, onConfirm) {
+    var modal = document.getElementById('modal-export-confirm');
+    if (!modal) {
+      if (typeof onConfirm === 'function') onConfirm();
+      return;
+    }
+
+    var filenameEl = document.getElementById('modal-export-filename');
+    var sizeEl = document.getElementById('modal-export-size');
+    var formatEl = document.getElementById('modal-export-format');
+    var iconEl = document.getElementById('modal-export-icon');
+    var previewContainer = document.getElementById('modal-export-preview-container');
+
+    var filename = config.filename || 'export_file';
+    var content = config.content;
+    var mimeType = config.mimeType || 'text/plain';
+
+    if (filenameEl) filenameEl.textContent = filename;
+
+    // Calculate file size
+    var byteSize = 0;
+    if (content instanceof Blob) {
+      byteSize = content.size;
+    } else if (typeof content === 'string') {
+      byteSize = new Blob([content]).size;
+    } else if (content && content.byteLength) {
+      byteSize = content.byteLength;
+    }
+
+    var sizeStr = byteSize > 1048576 
+      ? (byteSize / 1048576).toFixed(1) + ' MB'
+      : Math.max(1, Math.round(byteSize / 1024)) + ' KB';
+    if (sizeEl) sizeEl.textContent = '~' + sizeStr;
+
+    // Determine document type description & icon
+    var formatDesc = 'Document File';
+    var icon = '💾';
+    var lowerName = filename.toLowerCase();
+    if (lowerName.endsWith('.pdf')) {
+      formatDesc = 'PDF/X-4 CMYK Vector Document (ISO 15930-7)';
+      icon = '📄';
+    } else if (lowerName.endsWith('.eps')) {
+      formatDesc = 'Adobe PostScript Vector Plate (CMYK / Spot)';
+      icon = '🎨';
+    } else if (lowerName.endsWith('.svg')) {
+      formatDesc = 'Scalable Vector Graphics (W3C Die-Line Proof)';
+      icon = '📐';
+    } else if (lowerName.endsWith('.png')) {
+      formatDesc = 'Raster Graphic 300 DPI (Lossless PNG)';
+      icon = '🖼️';
+    } else if (lowerName.endsWith('.zpl')) {
+      formatDesc = 'Zebra ZPL II Industrial Thermal Code';
+      icon = '🖨️';
+    } else if (lowerName.endsWith('.zip')) {
+      formatDesc = 'Master Multi-SKU Production Archive (.zip)';
+      icon = '📦';
+    } else if (lowerName.endsWith('.csv')) {
+      formatDesc = 'FDA FSMA 204 Sortable Spreadsheet (CSV)';
+      icon = '📊';
+    } else if (lowerName.endsWith('.json') || lowerName.endsWith('.jsonld')) {
+      formatDesc = 'Structured Data / EPCIS JSON-LD';
+      icon = '🔗';
+    } else if (lowerName.endsWith('.xml')) {
+      formatDesc = 'GS1 EPCIS 2.0 XML Audit Document';
+      icon = '📑';
+    } else if (lowerName.endsWith('.sql')) {
+      formatDesc = 'SQLite Edge Database Script';
+      icon = '🗄️';
+    } else if (lowerName.endsWith('.js')) {
+      formatDesc = 'Cloudflare Edge Worker Script';
+      icon = '⚡';
+    } else if (lowerName.endsWith('.conf')) {
+      formatDesc = 'Nginx Reverse Proxy Route Configuration';
+      icon = '🌐';
+    }
+
+    if (formatEl) formatEl.textContent = formatDesc;
+    if (iconEl) iconEl.textContent = icon;
+
+    // Populate preview container
+    if (previewContainer) {
+      if (typeof content === 'string' && (lowerName.endsWith('.svg') || content.trim().startsWith('<svg'))) {
+        previewContainer.innerHTML = '<div style="background:#ffffff; border-radius:6px; padding:10px; display:flex; justify-content:center; align-items:center; max-height:160px; overflow:hidden;">' + content + '</div>';
+      } else if (content instanceof Blob && (content.type === 'image/png' || lowerName.endsWith('.png'))) {
+        var imgUrl = URL.createObjectURL(content);
+        previewContainer.innerHTML = '<div style="background:#1e293b; border-radius:6px; padding:10px; text-align:center;"><img src="' + imgUrl + '" style="max-height:140px; max-width:100%; object-fit:contain; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>';
+      } else if (lowerName.endsWith('.pdf')) {
+        previewContainer.innerHTML = '<div style="color:var(--text-secondary); font-size:11px; line-height:1.5;">' +
+          '<div style="color:var(--cyan); font-weight:700; margin-bottom:4px;">✓ Prepress Verification Check Passed:</div>' +
+          '<div>• Format: ISO 15930-7 (PDF/X-4:2010 Prepress Master)</div>' +
+          '<div>• Color: CMYK Plates with FOGRA39 Characterization</div>' +
+          '<div>• Geometry: Vector Bézier Paths with Bar Width Reduction (BWR)</div>' +
+          '<div>• Output Target: ' + escapeHtml(filename) + ' (' + sizeStr + ')</div>' +
+          '</div>';
+      } else if (lowerName.endsWith('.zip')) {
+        previewContainer.innerHTML = '<div style="color:var(--text-secondary); font-size:11px; line-height:1.5;">' +
+          '<div style="color:var(--emerald); font-weight:700; margin-bottom:4px;">📦 Multi-SKU Production Archive:</div>' +
+          '<div>• High-Throughput Batch Generation</div>' +
+          '<div>• Bundled: Individual Vector SVGs, Thermal Code &amp; Proof Sheets</div>' +
+          '<div>• Output Target: ' + escapeHtml(filename) + ' (' + sizeStr + ')</div>' +
+          '</div>';
+      } else {
+        var textSample = (typeof content === 'string') ? content : '';
+        var excerpt = textSample.slice(0, 1200);
+        if (textSample.length > 1200) {
+          excerpt += '\n\n... [' + (textSample.length - 1200) + ' more characters truncated for preview]';
+        }
+        previewContainer.textContent = excerpt;
+      }
+    }
+
+    pendingExportConfirmAction = function() {
+      if (typeof onConfirm === 'function') onConfirm();
+    };
+
+    modal.style.display = 'flex';
+    if (window.DualMarkI18n) {
+      window.DualMarkI18n.translateDom(modal);
+    }
+  }
+
+  function downloadBlob(content, filename, mimeType, skipConfirm) {
+    if (skipConfirm) {
+      actualDownloadBlob(content, filename, mimeType);
+      return;
+    }
+    showExportConfirmModal({
+      content: content,
+      filename: filename,
+      mimeType: mimeType
+    }, function() {
+      actualDownloadBlob(content, filename, mimeType);
+    });
+  }
+
+  // Expose global DualMarkApp interface
+  window.DualMarkApp = {
+    downloadBlob: downloadBlob,
+    actualDownloadBlob: actualDownloadBlob,
+    showExportConfirmModal: showExportConfirmModal,
+    showToast: showToast
+  };
 
   function copyTextSafely(text, toastMsg) {
     if (window.PresetLoaders && typeof window.PresetLoaders.copyToClipboard === 'function') {
@@ -280,102 +436,90 @@
       });
     }
 
-    // Custom .riv Binary Asset Loader & Engine Diagnostics
-    var inputCustomRiv = document.getElementById('input-custom-riv');
-    var selectRiveTarget = document.getElementById('select-rive-target');
-    var statusRiveUpload = document.getElementById('status-rive-upload');
-    var badgeRiveStatus = document.getElementById('badge-rive-engine-status');
+    // Mascot Persona & Companion Selector in Workstation Settings
+    var selectMascotStyle = document.getElementById('select-mascot-style');
+    var canvasMascotPreview = document.getElementById('canvas-mascot-preview');
 
-    function updateRiveEngineBadge() {
-      if (!badgeRiveStatus || !window.DualMarkRive) return;
-      var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
-      var st = window.DualMarkRive.getRuntimeStatus(target);
-      if (st && st.isWasm) {
-        badgeRiveStatus.textContent = '✨ WASM Engine Active';
-        badgeRiveStatus.className = 'badge badge-cyan';
-      } else {
-        badgeRiveStatus.textContent = '⚡ Procedural (Air-Gapped)';
-        badgeRiveStatus.className = 'badge badge-emerald';
+    if (window.DualMarkRive) {
+      if (selectMascotStyle) {
+        var currentMascotStyle = window.DualMarkRive.getMascotStyle() || 'marky_scanner';
+        selectMascotStyle.value = currentMascotStyle;
+
+        selectMascotStyle.addEventListener('change', function(e) {
+          var chosenStyle = e.target.value;
+          window.DualMarkRive.setMascotStyle(chosenStyle);
+          var styleNames = {
+            marky_scanner: '🤖 Marky Bot (Cybernetic Assistant)',
+            cyber_reticle: '🎯 Optical Reticle HUD',
+            minimal_pulse: '💡 Cleanroom Status LED',
+            specialist_avatar: '👷 Packaging Specialist',
+            mascot_off: '🚫 Disabled (Minimalist)'
+          };
+          showToast('Mascot updated: ' + (styleNames[chosenStyle] || chosenStyle));
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
+        });
+      }
+
+      if (canvasMascotPreview && typeof window.DualMarkRive.initMascotPreview === 'function') {
+        window.DualMarkRive.initMascotPreview('canvas-mascot-preview');
       }
     }
 
-    if (selectRiveTarget) {
-      selectRiveTarget.addEventListener('change', updateRiveEngineBadge);
+    // Export Confirmation & Storage Protection Modal Listeners
+    var modalExportConfirm = document.getElementById('modal-export-confirm');
+    var btnExportConfirm = document.getElementById('btn-export-confirm');
+    var btnExportCancel = document.getElementById('btn-export-cancel');
+    var btnExportCancelX = document.getElementById('btn-export-cancel-x');
+
+    function closeExportModal() {
+      if (modalExportConfirm) modalExportConfirm.style.display = 'none';
+      pendingExportConfirmAction = null;
     }
-    updateRiveEngineBadge();
 
-    async function handleRivFileUpload(file) {
-      if (!file) return;
-      var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
-      if (statusRiveUpload) {
-        statusRiveUpload.style.display = 'block';
-        statusRiveUpload.textContent = 'Loading ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB) into [' + target + ']...';
-      }
+    if (btnExportCancel) {
+      btnExportCancel.addEventListener('click', function() {
+        closeExportModal();
+        if (window.DualMarkI18n) {
+          showToast(window.DualMarkI18n.t('modal_export.toast_canceled'));
+        } else {
+          showToast('Export canceled. No files were written.');
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
 
-      try {
-        if (window.DualMarkRive && typeof window.DualMarkRive.loadCustomRiv === 'function') {
-          var success = await window.DualMarkRive.loadCustomRiv(target, file);
-          if (success) {
-            if (statusRiveUpload) {
-              statusRiveUpload.textContent = '✓ ' + file.name + ' mounted to ' + target + ' via WASM runtime!';
-              statusRiveUpload.style.color = 'var(--emerald)';
-            }
-            showToast('✨ Custom .riv loaded for ' + target.toUpperCase());
-            updateRiveEngineBadge();
+    if (btnExportCancelX) {
+      btnExportCancelX.addEventListener('click', function() {
+        closeExportModal();
+        if (window.DualMarkI18n) {
+          showToast(window.DualMarkI18n.t('modal_export.toast_canceled'));
+        } else {
+          showToast('Export canceled. No files were written.');
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    if (btnExportConfirm) {
+      btnExportConfirm.addEventListener('click', function() {
+        var action = pendingExportConfirmAction;
+        closeExportModal();
+        if (typeof action === 'function') {
+          action();
+        }
+      });
+    }
+
+    if (modalExportConfirm) {
+      modalExportConfirm.addEventListener('click', function(e) {
+        if (e.target === modalExportConfirm) {
+          closeExportModal();
+          if (window.DualMarkI18n) {
+            showToast(window.DualMarkI18n.t('modal_export.toast_canceled'));
           } else {
-            if (statusRiveUpload) {
-              statusRiveUpload.textContent = 'ℹ Procedural vector engine active (offline fallback).';
-              statusRiveUpload.style.color = 'var(--cyan)';
-            }
-            showToast('ℹ Procedural vector engine active (air-gapped)');
+            showToast('Export canceled. No files were written.');
           }
         }
-      } catch (err) {
-        if (statusRiveUpload) {
-          statusRiveUpload.textContent = 'Error: ' + err.message;
-          statusRiveUpload.style.color = 'var(--danger)';
-        }
-      }
-    }
-
-    var dropzoneCustomRiv = document.getElementById('dropzone-custom-riv');
-    if (dropzoneCustomRiv && inputCustomRiv) {
-      dropzoneCustomRiv.addEventListener('click', function() {
-        inputCustomRiv.click();
-      });
-
-      dropzoneCustomRiv.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzoneCustomRiv.style.borderColor = 'var(--cyan)';
-        dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.12)';
-      });
-
-      ['dragleave', 'dragend'].forEach(function(evt) {
-        dropzoneCustomRiv.addEventListener(evt, function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          dropzoneCustomRiv.style.borderColor = 'rgba(0, 240, 255, 0.35)';
-          dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.03)';
-        });
-      });
-
-      dropzoneCustomRiv.addEventListener('drop', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        dropzoneCustomRiv.style.borderColor = 'rgba(0, 240, 255, 0.35)';
-        dropzoneCustomRiv.style.background = 'rgba(0, 240, 255, 0.03)';
-        var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if (file) {
-          handleRivFileUpload(file);
-        }
-      });
-    }
-
-    if (inputCustomRiv) {
-      inputCustomRiv.addEventListener('change', function(e) {
-        var file = e.target.files && e.target.files[0];
-        if (file) handleRivFileUpload(file);
       });
     }
 

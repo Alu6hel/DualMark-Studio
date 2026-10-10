@@ -113,6 +113,10 @@ const DualMarkZPL = (() => {
   }
 
   function downloadZplFile(zplString, filename = 'dualmark_label.zpl') {
+    if (typeof window !== 'undefined' && window.DualMarkApp && typeof window.DualMarkApp.downloadBlob === 'function') {
+      window.DualMarkApp.downloadBlob(zplString, filename, 'text/plain;charset=utf-8');
+      return;
+    }
     const blob = new Blob([zplString], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

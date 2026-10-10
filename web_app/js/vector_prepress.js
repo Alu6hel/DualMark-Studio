@@ -791,6 +791,10 @@ ${4900 + streamLength}
   }
 
   function downloadFile(content, filename, mimeType) {
+    if (window.DualMarkApp && typeof window.DualMarkApp.downloadBlob === 'function') {
+      window.DualMarkApp.downloadBlob(content, filename, mimeType);
+      return;
+    }
     if (window.DualMarkBridge && typeof window.DualMarkBridge.savePdfToStorage === 'function' && filename.endsWith('.pdf')) {
       const base64 = btoa(unescape(encodeURIComponent(content)));
       window.DualMarkBridge.savePdfToStorage(base64, filename);
