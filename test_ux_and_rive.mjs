@@ -37,6 +37,13 @@ assert(html.includes('id="pane-prepress"') && html.includes('id="pane-zebra"') &
 assert(html.includes('id="canvas-rive-printer"'), 'Rive Miniature Printer canvas (#canvas-rive-printer) present in Tab 6');
 assert(html.includes('src="js/rive_integration.js"'), 'rive_integration.js script tag loaded in index.html');
 
+assert(html.includes('id="canvas-rive-mascot"'), 'Rive Marky Mascot canvas (#canvas-rive-mascot) present in header');
+assert(html.includes('id="mascot-companion-wrap"'), 'Mascot companion wrap (#mascot-companion-wrap) present in header');
+assert(html.includes('id="tab1-clearance-pill"'), 'Tab 1 instant clearance badge pill (#tab1-clearance-pill) present');
+assert(html.includes('id="btn-tab1-prepress-bundle"'), 'Tab 1 1-click Master Prepress Bundle button (#btn-tab1-prepress-bundle) present');
+assert(html.includes('id="btn-toggle-extended-ais"'), 'Tab 1 Extended AIs accordion toggle (#btn-toggle-extended-ais) present');
+assert(html.includes('id="body-extended-ais"'), 'Tab 1 Extended AIs collapsible body (#body-extended-ais) present');
+
 // 2. Verify CSS Styles
 console.log('\n--- 2. CSS Verification: Drawer & Animation Styles ---');
 const css = fs.readFileSync('web_app/css/style.css', 'utf8');
@@ -44,6 +51,9 @@ const css = fs.readFileSync('web_app/css/style.css', 'utf8');
 assert(css.includes('.quick-settings-drawer'), '.quick-settings-drawer style class defined');
 assert(css.includes('@keyframes slideInRight'), 'slideInRight keyframe animation defined for drawer');
 assert(css.includes('#card-scan-quick-cte'), '#card-scan-quick-cte style defined');
+assert(css.includes('.fused-proof-box'), '.fused-proof-box style defined for Tab 1');
+assert(css.includes('#tab1-clearance-pill'), '#tab1-clearance-pill style defined');
+assert(css.includes('.accordion-toggle'), '.accordion-toggle style defined');
 
 // 3. Verify Rive Integration Module
 console.log('\n--- 3. Rive Integration Engine & State Machines ---');
@@ -54,10 +64,12 @@ assert(riveJs.includes('initClearanceGauge'), 'Clearance Gauge state machine ini
 assert(riveJs.includes('initScannerHud'), 'Scanner HUD state machine initialized');
 assert(riveJs.includes('initPrinterStatus'), 'Printer Status state machine initialized');
 assert(riveJs.includes('initFsmaSeal'), 'FSMA Seal state machine initialized');
+assert(riveJs.includes('initMarkyMascot'), 'Marky Mascot state machine initialized');
 assert(riveJs.includes('triggerClearanceUpdate'), 'triggerClearanceUpdate public hook exposed');
 assert(riveJs.includes('triggerScannerAcquired'), 'triggerScannerAcquired public hook exposed');
 assert(riveJs.includes('triggerPrinterState'), 'triggerPrinterState public hook exposed');
 assert(riveJs.includes('triggerSealSigned'), 'triggerSealSigned public hook exposed');
+assert(riveJs.includes('triggerMascotCelebrate'), 'triggerMascotCelebrate public hook exposed');
 
 // 4. Verify Smart Auto-Sync Logic (Headless test)
 console.log('\n--- 4. Logic Verification: Smart Auto-Sync 1D <-> 2D ---');
@@ -95,6 +107,11 @@ assert(appJs.includes("triggerSealSigned"), 'Rive cryptographic seal triggers wi
 assert(appJs.includes("exportSegmentSwitch"), 'Segmented export switch wired in app.js');
 assert(appJs.includes("btn-export-master-package"), '1-Click Master Prepress Bundle wired in app.js');
 assert(appJs.includes("triggerPrinterState"), 'Rive printer state machine triggers wired in Zebra spoolers');
+assert(appJs.includes("btn-toggle-extended-ais"), 'Tab 1 Extended AIs accordion toggle wired in app.js');
+assert(appJs.includes("tab1-clearance-pill"), 'Tab 1 clearance badge pill wired in app.js');
+assert(appJs.includes("btn-tab1-prepress-bundle"), 'Tab 1 Master Prepress Bundle trigger wired in app.js');
+assert(appJs.includes("mascot-companion-wrap"), 'Marky Mascot companion wrap wired in app.js');
+assert(appJs.includes("triggerMascotCelebrate"), 'Marky Mascot celebrate triggers wired across app.js');
 
 console.log('===============================================================');
 console.log(`TOTAL RESULTS: ${pass} PASSED | ${fail} FAILED`);

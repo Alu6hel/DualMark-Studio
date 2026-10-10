@@ -242,6 +242,18 @@
         }
       });
     }
+
+    // Interactive Marky Mascot Companion
+    var mascotWrap = document.getElementById('mascot-companion-wrap');
+    if (mascotWrap) {
+      mascotWrap.addEventListener('click', function() {
+        if (window.DualMarkRive && typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+          window.DualMarkRive.triggerMascotCelebrate();
+        }
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        showToast('🤖 Marky: All GS1 Sunrise 2027 systems calibrated & ready!');
+      });
+    }
   }
 
   // 2. Module 1: Dual-Code Synth
@@ -363,6 +375,9 @@
         update1D();
         showToast('✓ Modulo-10 Check Digit Calculated: ' + chk);
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkRive && typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+          window.DualMarkRive.triggerMascotCelebrate();
+        }
       });
     }
 
@@ -651,6 +666,56 @@
       });
     }
 
+    // Collapsible Extended Logistics Parameters Accordion
+    var btnToggleAis = document.getElementById('btn-toggle-extended-ais');
+    var bodyExtendedAis = document.getElementById('body-extended-ais');
+    var arrowAis = document.getElementById('accordion-ais-arrow');
+    if (btnToggleAis && bodyExtendedAis) {
+      btnToggleAis.addEventListener('click', function() {
+        var isClosed = bodyExtendedAis.style.display === 'none' || !bodyExtendedAis.style.display;
+        if (isClosed) {
+          bodyExtendedAis.style.display = 'block';
+          if (arrowAis) arrowAis.classList.add('open');
+        } else {
+          bodyExtendedAis.style.display = 'none';
+          if (arrowAis) arrowAis.classList.remove('open');
+        }
+      });
+    }
+
+    // Tab 1 Instant Clearance Badge Pill -> Jump to Tab 2
+    var tab1ClearancePill = document.getElementById('tab1-clearance-pill');
+    if (tab1ClearancePill) {
+      tab1ClearancePill.addEventListener('click', function() {
+        var tabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-clearance"]');
+        if (tabBtn) {
+          tabBtn.click();
+        } else if (typeof window.switchTab === 'function') {
+          window.switchTab('tab-clearance');
+        }
+        showToast('🔍 Opened 50mm Die-Line Inspector');
+      });
+    }
+
+    // 1-Click Master Prepress Bundle trigger from Tab 1
+    var btnTab1Bundle = document.getElementById('btn-tab1-prepress-bundle');
+    if (btnTab1Bundle) {
+      btnTab1Bundle.addEventListener('click', function() {
+        var masterBtn = document.getElementById('btn-export-master-package');
+        if (masterBtn) {
+          masterBtn.click();
+        } else {
+          var btnPdf = document.getElementById('btn-export-pdf-x4');
+          var btnSvg = document.getElementById('btn-export-combined-svg');
+          if (btnPdf) btnPdf.click();
+          if (btnSvg) btnSvg.click();
+        }
+        if (window.DualMarkRive && typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+          window.DualMarkRive.triggerMascotCelebrate();
+        }
+      });
+    }
+
     update1D();
     update2D();
   }
@@ -678,10 +743,15 @@
       if (window.DualMarkRive) {
         window.DualMarkRive.triggerClearanceUpdate(distVal, metrics.isCompliant, false);
       }
+      var tab1Pill = document.getElementById('tab1-clearance-pill');
       if (metrics.impossibleFit) {
         statusBox.className = 'status-meter fail';
         statusText.innerHTML = '<span>⚠</span> <span>IMPOSSIBLE FIT (PACKAGE TOO NARROW)</span>';
         statusSub.textContent = 'Package width (' + (window.clearanceInspector.packageWidthMm) + 'mm) cannot fit 50mm clearance. Multi-panel layout recommended (place 1D on front, 2D on back/side).';
+        if (tab1Pill) {
+          tab1Pill.className = 'badge badge-danger';
+          tab1Pill.textContent = '⚠ Too Narrow (<50mm)';
+        }
         if (lastComplianceState !== false) {
           window.DualMarkAudio.warningBuzz();
         }
@@ -690,6 +760,10 @@
         statusBox.className = 'status-meter pass';
         statusText.innerHTML = '<span>✓</span> <span>COMPLIANT (≥ 50.0 mm)</span>';
         statusSub.textContent = 'Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements (' + metrics.marginDeltaMm + ' mm safety margin).';
+        if (tab1Pill) {
+          tab1Pill.className = 'badge badge-emerald';
+          tab1Pill.textContent = '⚡ ' + metrics.edgeDistanceMm + ' mm (PASS: ≥ 50mm)';
+        }
         if (lastComplianceState === false) {
           window.DualMarkAudio.successChime();
         }
@@ -698,6 +772,10 @@
         statusBox.className = 'status-meter fail';
         statusText.innerHTML = '<span>⚠</span> <span>VIOLATION (< 50.0 mm COLLISION RISK)</span>';
         statusSub.textContent = 'Risk of POS scanner laser-grid cross-talk. Deficit: ' + Math.abs(metrics.marginDeltaMm) + ' mm below 50mm standard.';
+        if (tab1Pill) {
+          tab1Pill.className = 'badge badge-danger';
+          tab1Pill.textContent = '⚠ ' + metrics.edgeDistanceMm + ' mm (VIOLATION < 50mm)';
+        }
         if (lastComplianceState === true) {
           window.DualMarkAudio.warningBuzz();
         }
@@ -713,6 +791,9 @@
       window.clearanceInspector.snapToSafe50mm();
       if (window.DualMarkRive) {
         window.DualMarkRive.triggerClearanceUpdate(52.0, true, true);
+        if (typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+          window.DualMarkRive.triggerMascotCelebrate();
+        }
       }
       showToast('⚡ Snapped to 52mm Safe Distance');
       window.DualMarkAudio.successChime();
@@ -1080,7 +1161,12 @@
           var rec = window.DualMarkFsma.addRecord(lastScannedCteData);
           showToast('✓ Committed to FSMA Chain: ' + rec.id);
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
-          if (window.DualMarkRive) window.DualMarkRive.triggerSealSigned(true);
+          if (window.DualMarkRive) {
+            window.DualMarkRive.triggerSealSigned(true);
+            if (typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+              window.DualMarkRive.triggerMascotCelebrate();
+            }
+          }
           cardQuickCte.style.display = 'none';
         }
       });

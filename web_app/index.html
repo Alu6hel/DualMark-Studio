@@ -24,6 +24,9 @@
       </div>
     </div>
     <div class="header-actions">
+      <div id="mascot-companion-wrap" style="display: flex; align-items: center; justify-content: center; cursor: pointer; margin-right: 2px;" title="Marky — DualMark AI Assistant (Click for Status)">
+        <canvas id="canvas-rive-mascot" width="32" height="32" style="width:32px; height:32px; border-radius:50%; background:rgba(0,240,255,0.08); border:1px solid rgba(0,240,255,0.3); display:block;"></canvas>
+      </div>
       <button id="btn-tour" class="icon-btn" title="Interactive Guided Tour" aria-label="Take Tour">❓</button>
       <button id="btn-quick-settings" class="icon-btn" title="Workstation Settings & Controls" aria-label="Settings">⚙️</button>
     </div>
@@ -129,28 +132,59 @@
         </div>
       </div>
 
-      <!-- Smart Auto-Sync 1D <-> 2D Control Bar -->
-      <div class="sync-banner" style="background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--cyan); cursor: pointer; margin: 0;">
-          <input type="checkbox" id="chk-sync-codes" checked style="accent-color: var(--cyan); width: 16px; height: 16px; cursor: pointer;">
-          <span>⚡ Smart Auto-Sync 1D (UPC-A) ↔ 2D (GTIN-14)</span>
-        </label>
-        <span style="font-size: 11px; color: var(--text-secondary);">Single input synchronizes legacy POS & Sunrise 2027 matrices</span>
+      <!-- Fused Live Dual-Code Packaging Proof & Real-time Clearance Hub -->
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-title">
+          <div class="card-title-text">
+            <span>Dual-Code Packaging Proof</span>
+            <span class="card-title-sub">Legacy POS &amp; Sunrise 2027</span>
+          </div>
+          <button type="button" id="tab1-clearance-pill" class="badge badge-emerald" style="cursor: pointer; border: none; font-size: 11px; padding: 4px 10px;" title="Click to open 50mm Die-Line Inspector">⚡ 52.4 mm (PASS: ≥ 50mm)</button>
+        </div>
+
+        <div class="fused-proof-box">
+          <div class="fused-proof-pane">
+            <small style="color:var(--text-secondary); font-weight:700; font-size:10px; margin-bottom:6px; text-transform:uppercase;">1D POS Barcode (<span id="barcode-type-badge">UPC-A</span>)</small>
+            <canvas id="canvas-1d"></canvas>
+          </div>
+          <div class="fused-proof-divider">
+            <span style="font-size:10.5px; font-weight:800; color:var(--cyan); white-space:nowrap;">↔ 50mm ↔</span>
+            <div class="fused-proof-divider-line"></div>
+          </div>
+          <div class="fused-proof-pane">
+            <small style="color:var(--text-secondary); font-weight:700; font-size:10px; margin-bottom:6px; text-transform:uppercase;">2D GS1 Matrix (<span id="badge-2d-standard">ISO/IEC 18004</span>)</small>
+            <canvas id="canvas-2d"></canvas>
+          </div>
+        </div>
+
+        <div class="tool-bar" style="margin-top: 10px;">
+          <button class="btn btn-primary btn-sm" id="btn-tab1-prepress-bundle">🚀 Master Bundle</button>
+          <button class="btn btn-secondary btn-sm" id="btn-1d-svg">💾 1D SVG</button>
+          <button class="btn btn-secondary btn-sm" id="btn-1d-png">🖼️ 1D PNG</button>
+          <button class="btn btn-emerald btn-sm" id="btn-2d-svg">💾 2D SVG</button>
+          <button class="btn btn-secondary btn-sm" id="btn-2d-copy">📋 Copy URI</button>
+          <button class="btn btn-primary btn-sm" id="btn-gs1-conformance">✓ GS1 Audit</button>
+          <button class="btn btn-secondary btn-sm" id="btn-export-pim">📦 PIM</button>
+        </div>
+        <div id="gs1-conformance-result" style="display:none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
       </div>
 
-      <div class="grid-2">
-        <!-- 1D Barcode Form -->
-        <div class="card">
-          <div class="card-title">
-            <div class="card-title-text">
-              <span>1D Barcode Generator</span>
-              <span class="card-title-sub">Legacy POS</span>
-            </div>
-            <span class="badge badge-cyan" id="barcode-type-badge">UPC-A</span>
+      <!-- Master Product & Payload Specifications Console -->
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-title">
+          <div class="card-title-text">
+            <span>Master Product &amp; GS1 Payload Specifications</span>
           </div>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--cyan); cursor: pointer; margin: 0;">
+            <input type="checkbox" id="chk-sync-codes" checked style="accent-color: var(--cyan); width: 15px; height: 15px; cursor: pointer;">
+            <span>⚡ Smart Auto-Sync 1D ↔ 2D</span>
+          </label>
+        </div>
 
-          <div class="form-group">
-            <label>Symbology Standard</label>
+        <!-- Symbology Standards (1D + 2D Selectors) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">1D Symbology Standard</label>
             <select id="synth-1d-type">
               <option value="UPC-A" selected>UPC-A (12-Digit Retail Item)</option>
               <option value="EAN-13">EAN-13 (13-Digit International)</option>
@@ -158,126 +192,104 @@
               <option value="ITF-14">ITF-14 (14-Digit Shipping Corrugated Box)</option>
             </select>
           </div>
-
-          <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <label>Barcode Digits / Payload</label>
-              <button class="btn btn-secondary btn-sm" id="btn-1d-calc-chk" style="padding: 2px 8px; font-size: 10px;" title="Auto-Calculate Modulo-10 Check Digit">✓ Auto Check Digit</button>
-            </div>
-            <input type="text" id="synth-1d-input" class="mono-input" value="081234567890" maxlength="14" placeholder="Enter barcode number">
-            <small id="synth-1d-prefix-info" style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">GS1 Region: United States & Canada (GS1 US)</small>
-          </div>
-
-          <div class="barcode-preview-box">
-            <canvas id="canvas-1d"></canvas>
-          </div>
-
-          <div class="tool-bar">
-            <button class="btn btn-secondary" id="btn-1d-svg">💾 1D SVG</button>
-            <button class="btn btn-secondary" id="btn-1d-png">🖼️ 1D PNG</button>
-          </div>
-        </div>
-
-        <!-- 2D GS1 Digital Link Form -->
-        <div class="card">
-          <div class="card-title">
-            <div class="card-title-text">
-              <span>2D GS1 Matrix Builder</span>
-              <span class="card-title-sub">Sunrise 2027</span>
-            </div>
-            <span class="badge badge-green" id="badge-2d-standard">ISO/IEC 18004</span>
-          </div>
-
-          <div class="form-group">
-            <label>2D Symbology Standard</label>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">2D Symbology Standard</label>
             <select id="synth-2d-symbology">
               <option value="QR" selected>GS1 Digital Link (QR Code — Consumer Retail)</option>
               <option value="DataMatrix">GS1 DataMatrix (ISO 16022 ECC 200 — Pharma/UDI)</option>
               <option value="DotCode">GS1 DotCode (ISO 20835 — High-Speed Inkjet/Laser)</option>
             </select>
           </div>
-
-          <div class="form-group">
-            <label>Brand Resolver Domain</label>
-            <input type="text" id="synth-2d-domain" class="mono-input" value="https://id.brand.com" placeholder="https://id.brand.com">
-          </div>
-
-          <div class="form-group">
-            <label>GTIN-14 (AI 01)</label>
-            <input type="text" id="synth-2d-gtin" class="mono-input" value="00812345678901" maxlength="14">
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group">
-              <label>Batch / Lot (AI 10)</label>
-              <input type="text" id="synth-2d-lot" class="mono-input" value="LOT-2026-X" maxlength="20">
-            </div>
-            <div class="form-group">
-              <label>Serial (AI 21)</label>
-              <input type="text" id="synth-2d-serial" class="mono-input" value="SN-94021" maxlength="20">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div class="form-group">
-              <label>Exp (AI 17)</label>
-              <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD">
-            </div>
-            <div class="form-group">
-              <label>Calendar Date</label>
-              <input type="date" id="synth-2d-exp-date" class="mono-input" value="2027-12-31">
-            </div>
-          </div>
-
-          <!-- Extended GS1 Application Identifiers (AIs) -->
-          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-bottom: 10px;">
-            <div style="font-size: 11px; font-weight: 700; color: var(--cyan); margin-bottom: 6px;">Extended GS1 AIs (Supply Chain &amp; Logistics)</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 10px;">Weight kg (AI 3102)</label>
-                <input type="text" id="synth-2d-weight" class="mono-input" value="001500" placeholder="001500">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 10px;">Price (AI 3922)</label>
-                <input type="text" id="synth-2d-price" class="mono-input" value="001999" placeholder="001999">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 10px;">PO # (AI 400)</label>
-                <input type="text" id="synth-2d-po" class="mono-input" value="PO-88391" placeholder="PO-88391">
-              </div>
-              <div class="form-group" style="margin-bottom: 0;">
-                <label style="font-size: 10px;">Origin (AI 422)</label>
-                <select id="synth-2d-country-select" style="font-size: 11px; padding: 6px;">
-                  <option value="840" selected>840 — USA</option>
-                  <option value="124">124 — CAN</option>
-                  <option value="250">250 — FRA</option>
-                  <option value="276">276 — DEU</option>
-                  <option value="392">392 — JPN</option>
-                  <option value="826">826 — GBR</option>
-                  <option value="036">036 — AUS</option>
-                </select>
-                <input type="hidden" id="synth-2d-origin" value="840">
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom: 8px;">
-            <label style="font-size: 10px;">GS1 Digital Link URI</label>
-            <div class="code-block" id="synth-2d-uri-preview" style="margin: 4px 0; padding: 8px; font-size: 11px;">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
-          </div>
-
-          <div class="barcode-preview-box">
-            <canvas id="canvas-2d"></canvas>
-          </div>
-
-          <div class="tool-bar">
-            <button class="btn btn-secondary" id="btn-2d-copy">📋 Copy URI</button>
-            <button class="btn btn-emerald" id="btn-2d-svg">💾 2D SVG</button>
-            <button class="btn btn-primary" id="btn-gs1-conformance">✓ GS1 Audit</button>
-            <button class="btn btn-secondary" id="btn-export-pim">📦 PIM</button>
-          </div>
-          <div id="gs1-conformance-result" style="display:none; margin-top: 8px; padding: 8px; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-secondary); border: 1px solid var(--border-color);"></div>
         </div>
+
+        <!-- Master Product Identifier (Unified Code Input) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label style="font-size: 11px;">Master Product Code / UPC-A</label>
+              <button class="btn btn-secondary btn-sm" id="btn-1d-calc-chk" style="padding: 1px 6px; font-size: 9.5px;" title="Auto-Calculate Modulo-10 Check Digit">✓ Auto Check</button>
+            </div>
+            <input type="text" id="synth-1d-input" class="mono-input" value="081234567890" maxlength="14" placeholder="Enter barcode number">
+            <small id="synth-1d-prefix-info" style="color: var(--text-secondary); font-size: 10px; margin-top: 3px; display: block;">GS1 Region: United States &amp; Canada (GS1 US)</small>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">GTIN-14 (AI 01) [Sunrise 2027]</label>
+            <input type="text" id="synth-2d-gtin" class="mono-input" value="00812345678901" maxlength="14">
+            <small style="color: var(--text-secondary); font-size: 10px; margin-top: 3px; display: block;">Synchronized with 1D Payload</small>
+          </div>
+        </div>
+
+        <!-- Resolver Domain -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="font-size: 11px;">Brand Resolver Domain</label>
+          <input type="text" id="synth-2d-domain" class="mono-input" value="https://id.brand.com" placeholder="https://id.brand.com">
+        </div>
+
+        <!-- Core Tracking Attributes: Batch/Lot, Serial, Exp -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">Batch / Lot (AI 10)</label>
+            <input type="text" id="synth-2d-lot" class="mono-input" value="LOT-2026-X" maxlength="20">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">Serial (AI 21)</label>
+            <input type="text" id="synth-2d-serial" class="mono-input" value="SN-94021" maxlength="20">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">Exp (AI 17) [YYMMDD]</label>
+            <input type="text" id="synth-2d-exp" class="mono-input" value="271231" maxlength="6" placeholder="YYMMDD">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label style="font-size: 11px;">Calendar Date</label>
+            <input type="date" id="synth-2d-exp-date" class="mono-input" value="2027-12-31">
+          </div>
+        </div>
+
+        <!-- Collapsible Extended Logistics Parameters Accordion -->
+        <button type="button" class="accordion-toggle" id="btn-toggle-extended-ais">
+          <span>📦 Advanced Supply Chain &amp; Logistics AIs (Weight, Price, PO, Origin)</span>
+          <span class="accordion-arrow" id="accordion-ais-arrow">▾</span>
+        </button>
+
+        <div id="body-extended-ais" style="display: none; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 10px;">Weight kg (AI 3102)</label>
+              <input type="text" id="synth-2d-weight" class="mono-input" value="001500" placeholder="001500">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 10px;">Price (AI 3922)</label>
+              <input type="text" id="synth-2d-price" class="mono-input" value="001999" placeholder="001999">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 10px;">PO # (AI 400)</label>
+              <input type="text" id="synth-2d-po" class="mono-input" value="PO-88391" placeholder="PO-88391">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label style="font-size: 10px;">Origin (AI 422)</label>
+              <select id="synth-2d-country-select" style="font-size: 11px; padding: 6px;">
+                <option value="840" selected>840 — USA</option>
+                <option value="124">124 — CAN</option>
+                <option value="250">250 — FRA</option>
+                <option value="276">276 — DEU</option>
+                <option value="392">392 — JPN</option>
+                <option value="826">826 — GBR</option>
+                <option value="036">036 — AUS</option>
+              </select>
+              <input type="hidden" id="synth-2d-origin" value="840">
+            </div>
+          </div>
+        </div>
+
+        <!-- GS1 Digital Link Live Preview -->
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="font-size: 10px;">GS1 Digital Link URI</label>
+          <div class="code-block" id="synth-2d-uri-preview" style="margin: 4px 0 0; padding: 8px 10px; font-size: 11px;">https://id.brand.com/01/00812345678901/10/LOT-2026-X/21/SN-94021?17=271231&amp;3102=001500</div>
+        </div>
+      </div>
 
         <!-- GS1 GEPIR Prefix Validation -->
         <div class="card" style="grid-column: 1 / -1; margin-top: 4px; padding: 12px 16px;">

@@ -93,7 +93,7 @@ body {
   font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.01em;
-  color: var(--text-primary);
+  color: #FFFFFF !important;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -117,39 +117,43 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 1;
-  overflow-x: auto;
-  scrollbar-width: none;
-  max-width: 52%;
+  gap: 6px;
+  flex-shrink: 0;
   padding: 2px 0;
 }
 .header-actions::-webkit-scrollbar { display: none; }
 
 .icon-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
-  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 
-.icon-btn:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--cyan);
-  transform: translateY(-1px);
-  box-shadow: 0 0 8px var(--cyan-glow);
+.app-header .icon-btn {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #FFFFFF !important;
 }
-.icon-btn:active {
+
+.icon-btn:hover, .app-header .icon-btn:hover {
+  background: rgba(0, 240, 255, 0.22) !important;
+  border-color: var(--cyan) !important;
+  color: var(--cyan) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.35);
+}
+.icon-btn:active, .app-header .icon-btn:active {
   transform: scale(0.95);
 }
 
@@ -504,6 +508,100 @@ input:focus, select:focus, textarea:focus {
 .btn-danger {
   background: var(--danger);
   color: #FFFFFF;
+}
+
+/* Fused Dual-Code Live Proof Stage (Tab 1) */
+.fused-proof-box {
+  background: #FFFFFF;
+  border-radius: 12px;
+  padding: 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  min-height: 160px;
+  margin: 12px 0;
+  border: 1px solid #CBD5E1;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.fused-proof-pane {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+}
+
+.fused-proof-pane canvas {
+  max-width: 100%;
+  max-height: 130px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.fused-proof-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.fused-proof-divider-line {
+  width: 1px;
+  height: 50px;
+  background: #CBD5E1;
+}
+
+/* Tab 1 Instant Clearance Badge Pill */
+#tab1-clearance-pill {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+#tab1-clearance-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+/* Collapsible Accordion */
+.accordion-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 14px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cyan);
+  transition: all 0.15s ease;
+  margin-bottom: 8px;
+}
+.accordion-toggle:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--cyan);
+}
+.accordion-arrow {
+  transition: transform 0.2s ease;
+  display: inline-block;
+  font-size: 11px;
+}
+.accordion-arrow.open {
+  transform: rotate(180deg);
 }
 
 /* Barcode Display Stage */
@@ -1057,9 +1155,18 @@ body.theme-outdoor .btn {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid var(--border-color);
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-primary) !important;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+.settings-drawer-header button#btn-close-settings:hover {
+  background: var(--bg-card-hover) !important;
+  border-color: var(--cyan) !important;
+  color: var(--cyan) !important;
 }
 
 .settings-drawer-body {
@@ -1099,6 +1206,26 @@ body.theme-outdoor .btn {
 }
 
 @media (max-width: 540px) {
+  .app-header {
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .brand-title {
+    font-size: 13px;
+  }
+  /* On compact screens, hide secondary badge so controls (Mascot, Tour, Settings) always fit */
+  .brand-badge:not(#header-license-badge) {
+    display: none;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+  .icon-btn {
+    width: 29px;
+    height: 29px;
+    min-width: 29px;
+    font-size: 13px;
+  }
   .quick-settings-drawer {
     max-width: 100%;
     border-left: none;

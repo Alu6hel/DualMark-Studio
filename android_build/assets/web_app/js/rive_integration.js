@@ -19,6 +19,7 @@
       this.initScannerHud();
       this.initPrinterStatus();
       this.initFsmaSeal();
+      this.initMarkyMascot();
     },
 
     // ----------------------------------------------------
@@ -495,6 +496,206 @@
       };
     },
 
+    // ----------------------------------------------------
+    // 5. Marky Mascot — Interactive Cybernetic Assistant
+    // ----------------------------------------------------
+    initMarkyMascot: function() {
+      var canvas = document.getElementById('canvas-rive-mascot');
+      if (!canvas) return;
+
+      var ctx = canvas.getContext('2d');
+      var state = {
+        lookX: 0,
+        lookY: 0,
+        targetLookX: 0,
+        targetLookY: 0,
+        blink: 0,
+        nextBlink: Date.now() + 2500,
+        isBlinking: false,
+        celebrateTimer: 0,
+        laserY: 0,
+        bobOffset: 0,
+        tick: 0
+      };
+
+      function updateTarget(clientX, clientY) {
+        var rect = canvas.getBoundingClientRect();
+        var cx = rect.left + rect.width / 2;
+        var cy = rect.top + rect.height / 2;
+        var dx = clientX - cx;
+        var dy = clientY - cy;
+        var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        var maxLook = 1.0;
+        state.targetLookX = Math.max(-maxLook, Math.min(maxLook, dx / Math.max(120, dist * 0.5)));
+        state.targetLookY = Math.max(-maxLook, Math.min(maxLook, dy / Math.max(120, dist * 0.5)));
+      }
+
+      if (typeof window !== 'undefined') {
+        window.addEventListener('pointermove', function(e) {
+          updateTarget(e.clientX, e.clientY);
+        }, { passive: true });
+      }
+
+      function resize() {
+        var rect = canvas.getBoundingClientRect();
+        var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        var w = rect.width || 32;
+        var h = rect.height || 32;
+        if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+          canvas.width = Math.floor(w * dpr);
+          canvas.height = Math.floor(h * dpr);
+        }
+      }
+      resize();
+      if (typeof window !== 'undefined') {
+        window.addEventListener('resize', resize);
+      }
+
+      function render() {
+        resize();
+        var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        var w = canvas.width;
+        var h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        state.tick++;
+        state.bobOffset = Math.sin(state.tick * 0.05) * (1.2 * dpr);
+
+        // Smooth spring physics for eyes
+        state.lookX += (state.targetLookX - state.lookX) * 0.15;
+        state.lookY += (state.targetLookY - state.lookY) * 0.15;
+
+        // Blinking state
+        var now = Date.now();
+        if (now > state.nextBlink) {
+          state.isBlinking = true;
+          state.blink += 0.25;
+          if (state.blink >= 1) {
+            state.blink = 1;
+            state.isBlinking = false;
+            state.nextBlink = now + 2500 + Math.random() * 3000;
+          }
+        } else if (state.blink > 0) {
+          state.blink = Math.max(0, state.blink - 0.25);
+        }
+
+        var cx = w / 2;
+        var cy = (h / 2) + state.bobOffset;
+        var r = Math.min(w, h) * 0.44;
+
+        var isCelebrating = state.celebrateTimer > 0;
+        if (isCelebrating) state.celebrateTimer--;
+
+        // Outer Glow
+        ctx.save();
+        ctx.shadowColor = isCelebrating ? '#10B981' : '#00F0FF';
+        ctx.shadowBlur = (isCelebrating ? 10 : 5) * dpr;
+
+        // Robot Head Helmet
+        var headGrad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+        headGrad.addColorStop(0, '#1E293B');
+        headGrad.addColorStop(1, '#0F172A');
+        ctx.fillStyle = headGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Visor Rim Border
+        ctx.strokeStyle = isCelebrating ? '#10B981' : '#00F0FF';
+        ctx.lineWidth = 1.5 * dpr;
+        ctx.stroke();
+        ctx.restore();
+
+        // Dark Visor Glass Screen
+        ctx.save();
+        ctx.fillStyle = '#080D1A';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r * 0.72, r * 0.58, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.clip();
+
+        // Subtle Sweeping Laser Scan Line
+        state.laserY = (state.laserY + 0.04) % 1.0;
+        var laserScreenY = (cy - r * 0.5) + state.laserY * (r * 1.0);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.lineWidth = 1 * dpr;
+        ctx.beginPath();
+        ctx.moveTo(cx - r, laserScreenY);
+        ctx.lineTo(cx + r, laserScreenY);
+        ctx.stroke();
+
+        // Eyes / Visor Display
+        var eyeOffsetX = state.lookX * (3.5 * dpr);
+        var eyeOffsetY = state.lookY * (2.5 * dpr);
+        var eyeDist = 4.5 * dpr;
+        var eyeRadius = 3.2 * dpr;
+
+        var eyeColor = isCelebrating ? '#10B981' : '#00F0FF';
+        ctx.fillStyle = eyeColor;
+        ctx.shadowColor = eyeColor;
+        ctx.shadowBlur = 6 * dpr;
+
+        if (isCelebrating) {
+          // Cheerful inverted arc eyes ^ ^
+          ctx.strokeStyle = eyeColor;
+          ctx.lineWidth = 1.8 * dpr;
+          [-eyeDist, eyeDist].forEach(function(offset) {
+            ctx.beginPath();
+            var ex = cx + offset + eyeOffsetX;
+            var ey = cy + eyeOffsetY;
+            ctx.arc(ex, ey + 1 * dpr, eyeRadius, Math.PI * 1.1, Math.PI * 1.9);
+            ctx.stroke();
+          });
+        } else if (state.blink > 0.6) {
+          // Closed eye line
+          ctx.strokeStyle = eyeColor;
+          ctx.lineWidth = 1.5 * dpr;
+          [-eyeDist, eyeDist].forEach(function(offset) {
+            var ex = cx + offset + eyeOffsetX;
+            var ey = cy + eyeOffsetY;
+            ctx.beginPath();
+            ctx.moveTo(ex - eyeRadius, ey);
+            ctx.lineTo(ex + eyeRadius, ey);
+            ctx.stroke();
+          });
+        } else {
+          // Open round pupils with reflection gleam
+          [-eyeDist, eyeDist].forEach(function(offset) {
+            var ex = cx + offset + eyeOffsetX;
+            var ey = cy + eyeOffsetY;
+            ctx.beginPath();
+            ctx.arc(ex, ey, eyeRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupil gleam
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(ex - 1 * dpr, ey - 1 * dpr, 1 * dpr, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = eyeColor;
+          });
+        }
+        ctx.restore();
+
+        // Small Antenna on top of head
+        ctx.save();
+        ctx.fillStyle = isCelebrating ? '#10B981' : '#00F0FF';
+        ctx.beginPath();
+        ctx.arc(cx, cy - r, 1.8 * dpr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        requestAnimationFrame(render);
+      }
+      requestAnimationFrame(render);
+
+      this.instances.mascot = {
+        celebrate: function() {
+          state.celebrateTimer = 90; // ~1.5s
+        }
+      };
+    },
+
     // Public hook triggers
     triggerClearanceUpdate: function(distanceMm, isCompliant, didSnap) {
       if (this.instances.clearance) {
@@ -517,6 +718,12 @@
     triggerSealSigned: function(signed) {
       if (this.instances.seal) {
         this.instances.seal.setSigned(signed);
+      }
+    },
+
+    triggerMascotCelebrate: function() {
+      if (this.instances.mascot) {
+        this.instances.mascot.celebrate();
       }
     }
   };
