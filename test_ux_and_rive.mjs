@@ -43,6 +43,8 @@ assert(html.includes('id="tab1-clearance-pill"'), 'Tab 1 instant clearance badge
 assert(html.includes('id="btn-tab1-prepress-bundle"'), 'Tab 1 1-click Master Prepress Bundle button (#btn-tab1-prepress-bundle) present');
 assert(html.includes('id="btn-toggle-extended-ais"'), 'Tab 1 Extended AIs accordion toggle (#btn-toggle-extended-ais) present');
 assert(html.includes('id="body-extended-ais"'), 'Tab 1 Extended AIs collapsible body (#body-extended-ais) present');
+assert(html.includes('id="badge-rive-engine-status"'), 'Rive Vector Engine status badge (#badge-rive-engine-status) present in Settings');
+assert(html.includes('id="input-custom-riv"'), 'Custom .riv file input (#input-custom-riv) present in Settings');
 
 // 2. Verify CSS Styles
 console.log('\n--- 2. CSS Verification: Drawer & Animation Styles ---');

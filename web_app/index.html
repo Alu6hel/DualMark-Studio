@@ -91,6 +91,31 @@
             </button>
           </div>
         </div>
+
+        <!-- Vector Animation Engine Diagnostics & Custom .riv Loader -->
+        <div class="settings-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="settings-group-title" style="margin: 0;">Vector Animation Engine</label>
+            <span id="badge-rive-engine-status" class="badge badge-emerald" style="font-size: 10px; padding: 2px 6px;">⚡ Procedural (Air-Gapped)</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 8px 0; line-height: 1.4;">
+            Dual-mode engine running offline procedural vector physics. Load custom .riv binary assets or inspect active state machine status.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <select id="select-rive-target" class="form-control" style="flex: 1; padding: 6px 8px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Rive Animation Target">
+              <option value="mascot">Marky Mascot (Header)</option>
+              <option value="clearance">50mm Clearance Dial (Tab 2)</option>
+              <option value="scanner">Scanner HUD (Tab 4)</option>
+              <option value="printer">Zebra Printer (Tab 6)</option>
+              <option value="seal">Cryptographic Seal (Tab 5)</option>
+            </select>
+            <label class="btn btn-secondary" style="margin: 0; padding: 6px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;" title="Upload custom .riv binary asset">
+              <span>📁</span> <span>Load .riv</span>
+              <input type="file" id="input-custom-riv" accept=".riv" style="display: none;">
+            </label>
+          </div>
+          <div id="status-rive-upload" style="display: none; font-size: 10.5px; margin-top: 6px; padding: 4px 8px; border-radius: 4px; background: rgba(0, 240, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 240, 255, 0.2);"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -336,6 +361,22 @@
           </div>
         </div>
 
+        <!-- Packaging Geometry Curvature Mode -->
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px;">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">SURFACE:</span>
+            <div class="segmented-control" id="surface-geometry-switch" style="margin: 0;">
+              <button type="button" class="segmented-item active" data-geom="flat" id="seg-geom-flat">📄 Flat Carton</button>
+              <button type="button" class="segmented-item" data-geom="cylindrical" id="seg-geom-cyl">🥫 3D Cylinder / Can</button>
+            </div>
+          </div>
+          <div id="wrap-cylinder-controls" style="display: none; align-items: center; gap: 8px; flex: 1; justify-content: flex-end; min-width: 220px;">
+            <label style="font-size: 11px; white-space: nowrap;">Diameter: <strong id="val-cylinder-diam" style="color: var(--cyan);">66 mm</strong></label>
+            <input type="range" id="slider-cylinder-diam" min="30" max="150" value="66" style="width: 100px;">
+            <span id="badge-cylinder-3d-status" class="badge badge-cyan" style="font-size: 10px;">Δθ: 0° | ARC OK</span>
+          </div>
+        </div>
+
         <!-- Interactive Die-Line Canvas Stage with Touch & Pinch Zoom -->
         <div class="die-line-stage">
           <canvas id="canvas-clearance"></canvas>
@@ -521,6 +562,7 @@
               <label class="btn btn-secondary" style="cursor: pointer; margin: 0;">
                 📁 Load Photo <input type="file" id="input-dewarp-file" accept="image/*" style="display:none;">
               </label>
+              <button class="btn btn-secondary" id="btn-autodetect-corners" title="Auto-detect quad corners using Canny & Sobel gradient analysis">🎯 Auto-Detect Corners</button>
               <button class="btn btn-emerald" id="btn-flatten-dewarp">⚡ Flatten &amp; Binarize</button>
             </div>
           </div>
@@ -921,6 +963,9 @@
 
   <!-- Dynamic Localization Engine -->
   <script src="js/i18n.js"></script>
+
+  <!-- Optional Official Rive WebAssembly Runtime (Loads online, seamless fallback if offline) -->
+  <script src="https://unpkg.com/@rive-app/canvas@2.24.0" async defer onerror="console.info('Rive WASM CDN offline: DualMark Studio procedural vector engine active.')"></script>
 
   <!-- Interactive Rive Animation Engine -->
   <script src="js/rive_integration.js"></script>

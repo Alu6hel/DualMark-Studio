@@ -280,7 +280,6 @@
     },
 
     decodeScanlineUpcEan: function(imgData, w, h) {
-      var yList = [Math.floor(h * 0.5), Math.floor(h * 0.4), Math.floor(h * 0.6), Math.floor(h * 0.35), Math.floor(h * 0.65)];
       var UPC_L = {
         '0001101': '0', '0011001': '1', '0010011': '2', '0111101': '3', '0100011': '4',
         '0110001': '5', '0101111': '6', '0111011': '7', '0110111': '8', '0001011': '9'
@@ -290,25 +289,22 @@
         '1001110': '5', '1010000': '6', '1000100': '7', '1001000': '8', '1110100': '9'
       };
 
-      for (var yIdx = 0; yIdx < yList.length; yIdx++) {
-        var y = yList[yIdx];
-        var lum = new Float32Array(w);
+      function tryDecodeLuminance(lum) {
+        var len = lum.length;
+        if (len < 50) return null;
         var minL = 255, maxL = 0;
-        for (var x = 0; x < w; x++) {
-          var idx = (y * w + x) * 4;
-          var l = 0.299 * imgData.data[idx] + 0.587 * imgData.data[idx + 1] + 0.114 * imgData.data[idx + 2];
-          lum[x] = l;
-          if (l < minL) minL = l;
-          if (l > maxL) maxL = l;
+        for (var i = 0; i < len; i++) {
+          if (lum[i] < minL) minL = lum[i];
+          if (lum[i] > maxL) maxL = lum[i];
         }
-        if (maxL - minL < 40) continue;
+        if (maxL - minL < 35) return null;
         var thresh = (minL + maxL) / 2;
 
         var runs = [];
         var curVal = lum[0] < thresh ? 1 : 0;
         var curLen = 0;
-        for (var x = 0; x < w; x++) {
-          var v = lum[x] < thresh ? 1 : 0;
+        for (var i = 0; i < len; i++) {
+          var v = lum[i] < thresh ? 1 : 0;
           if (v === curVal) {
             curLen++;
           } else {
@@ -322,7 +318,7 @@
         for (var r = 0; r < runs.length - 56; r++) {
           if (runs[r].val === 1 && runs[r + 1].val === 0 && runs[r + 2].val === 1) {
             var moduleW = (runs[r].len + runs[r + 1].len + runs[r + 2].len) / 3.0;
-            if (moduleW < 1.0) continue;
+            if (moduleW < 0.8) continue;
 
             var digitsL = '';
             var runPos = r + 3;
@@ -346,7 +342,6 @@
               runPos += 4;
             }
             if (fail || digitsL.length !== 6) continue;
-
             if (runPos + 5 >= runs.length) continue;
             runPos += 5; // skip center guard
 
@@ -382,7 +377,65 @@
             }
           }
         }
+        return null;
       }
+
+      function sampleRay(x0, y0, x1, y1) {
+        var dx = x1 - x0;
+        var dy = y1 - y0;
+        var steps = Math.max(Math.floor(Math.sqrt(dx * dx + dy * dy)), 10);
+        var lum = new Float32Array(steps);
+        for (var s = 0; s < steps; s++) {
+          var t = s / (steps - 1);
+          var px = Math.min(w - 1, Math.max(0, Math.round(x0 + t * dx)));
+          var py = Math.min(h - 1, Math.max(0, Math.round(y0 + t * dy)));
+          var idx = (py * w + px) * 4;
+          lum[s] = 0.299 * imgData.data[idx] + 0.587 * imgData.data[idx + 1] + 0.114 * imgData.data[idx + 2];
+        }
+        return lum;
+      }
+
+      // 1. Horizontal Scanlines
+      var yFractions = [0.5, 0.4, 0.6, 0.3, 0.7, 0.25, 0.75, 0.2, 0.8];
+      for (var i = 0; i < yFractions.length; i++) {
+        var y = Math.floor(h * yFractions[i]);
+        var lumH = sampleRay(0, y, w - 1, y);
+        var res = tryDecodeLuminance(lumH);
+        if (res) return res;
+        lumH.reverse();
+        res = tryDecodeLuminance(lumH);
+        if (res) return res;
+      }
+
+      // 2. Vertical Scanlines (for rotated packaging / tall cans)
+      var xFractions = [0.5, 0.4, 0.6, 0.35, 0.65];
+      for (var j = 0; j < xFractions.length; j++) {
+        var x = Math.floor(w * xFractions[j]);
+        var lumV = sampleRay(x, 0, x, h - 1);
+        var resV = tryDecodeLuminance(lumV);
+        if (resV) return resV;
+        lumV.reverse();
+        resV = tryDecodeLuminance(lumV);
+        if (resV) return resV;
+      }
+
+      // 3. Diagonal Scanlines (for tilted handheld captures)
+      var diagRays = [
+        [w * 0.1, h * 0.2, w * 0.9, h * 0.8],
+        [w * 0.1, h * 0.8, w * 0.9, h * 0.2],
+        [w * 0.15, h * 0.35, w * 0.85, h * 0.65],
+        [w * 0.15, h * 0.65, w * 0.85, h * 0.35]
+      ];
+      for (var d = 0; d < diagRays.length; d++) {
+        var r = diagRays[d];
+        var lumD = sampleRay(r[0], r[1], r[2], r[3]);
+        var resD = tryDecodeLuminance(lumD);
+        if (resD) return resD;
+        lumD.reverse();
+        resD = tryDecodeLuminance(lumD);
+        if (resD) return resD;
+      }
+
       return null;
     },
 
@@ -423,6 +476,38 @@
     },
 
     // 4. 4-Point Document Dewarping (Perspective Transform)
+    autoDetectCorners: function(forceRender) {
+      if (!this.sourceImage) return;
+      var cv = window.DualMarkCV || window.DualMarkCvGeometry;
+      if (cv && typeof cv.autoDetectLabelQuad === 'function') {
+        try {
+          var img = this.sourceImage;
+          var w = Math.min(img.width || 400, 400);
+          var h = Math.round(w * ((img.height || 300) / (img.width || 400)));
+          var c = document.createElement('canvas');
+          c.width = w;
+          c.height = h;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          var imgData = ctx.getImageData(0, 0, w, h);
+          var gray = new Uint8Array(w * h);
+          for (var i = 0; i < gray.length; i++) {
+            var idx = i * 4;
+            gray[i] = Math.round(0.2126 * imgData.data[idx] + 0.7152 * imgData.data[idx + 1] + 0.0722 * imgData.data[idx + 2]);
+          }
+          var quad = cv.autoDetectLabelQuad(gray, w, h);
+          if (quad && quad.length === 4) {
+            this.corners = quad;
+          }
+        } catch (e) {
+          console.warn('Auto quad detection error:', e);
+        }
+      }
+      if (forceRender !== false) {
+        this.renderDewarpHandles();
+      }
+    },
+
     loadDocumentForDewarp: function(img) {
       this.sourceImage = img;
       this.corners = [
@@ -431,6 +516,7 @@
         { x: 0.9, y: 0.9 },
         { x: 0.1, y: 0.9 }
       ];
+      this.autoDetectCorners(false);
       this.renderDewarpHandles();
     },
 
@@ -490,7 +576,7 @@
       };
     },
 
-    // Apply 3x3 Projective Homography Perspective Transform & Binarization
+    // Apply 3x3 Projective Homography Perspective Transform & Bilinear Sauvola Binarization
     flattenAndBinarize: function(targetWidth, targetHeight) {
       if (!this.sourceImage) return null;
       targetWidth = targetWidth || 800;
@@ -509,11 +595,13 @@
       srcCtx.drawImage(img, 0, 0);
       var srcImgData = srcCtx.getImageData(0, 0, img.width, img.height);
       var srcPixels = srcImgData.data;
+      var srcW = img.width;
+      var srcH = img.height;
 
-      var p0 = { x: this.corners[0].x * img.width, y: this.corners[0].y * img.height };
-      var p1 = { x: this.corners[1].x * img.width, y: this.corners[1].y * img.height };
-      var p2 = { x: this.corners[2].x * img.width, y: this.corners[2].y * img.height };
-      var p3 = { x: this.corners[3].x * img.width, y: this.corners[3].y * img.height };
+      var p0 = { x: this.corners[0].x * srcW, y: this.corners[0].y * srcH };
+      var p1 = { x: this.corners[1].x * srcW, y: this.corners[1].y * srcH };
+      var p2 = { x: this.corners[2].x * srcW, y: this.corners[2].y * srcH };
+      var p3 = { x: this.corners[3].x * srcW, y: this.corners[3].y * srcH };
 
       // Compute Projective Homography from Unit Square [0,1]^2 to Quad (p0, p1, p2, p3)
       var dx1 = p1.x - p2.x;
@@ -550,39 +638,67 @@
         g = 0; h = 0;
       }
 
-      var dstImgData = offCtx.createImageData(targetWidth, targetHeight);
-      var dstPixels = dstImgData.data;
-      var srcW = img.width;
-      var srcH = img.height;
-      var threshold = 138;
+      var grayResampled = new Uint8Array(targetWidth * targetHeight);
 
+      // Resample using subpixel Bilinear Interpolation
       for (var y = 0; y < targetHeight; y++) {
         var t = y / targetHeight;
         for (var x = 0; x < targetWidth; x++) {
           var s = x / targetWidth;
           var den = g * s + h * t + 1.0;
-          var srcX = Math.round((a * s + b * t + c) / den);
-          var srcY = Math.round((d * s + e * t + f) / den);
+          var srcX = (a * s + b * t + c) / den;
+          var srcY = (d * s + e * t + f) / den;
 
-          var dstIdx = (y * targetWidth + x) * 4;
-          if (srcX >= 0 && srcX < srcW && srcY >= 0 && srcY < srcH) {
-            var srcIdx = (srcY * srcW + srcX) * 4;
-            var r = srcPixels[srcIdx];
-            var gr = srcPixels[srcIdx + 1];
-            var bl = srcPixels[srcIdx + 2];
-            var lum = 0.299 * r + 0.587 * gr + 0.114 * bl;
-            var val = (lum > threshold) ? 255 : Math.round(lum * 0.7);
-            dstPixels[dstIdx] = val;
-            dstPixels[dstIdx + 1] = val;
-            dstPixels[dstIdx + 2] = val;
-            dstPixels[dstIdx + 3] = 255;
+          var outIdx = y * targetWidth + x;
+          if (srcX >= 0 && srcX < srcW - 1 && srcY >= 0 && srcY < srcH - 1) {
+            var x0 = Math.floor(srcX);
+            var y0 = Math.floor(srcY);
+            var x1 = x0 + 1;
+            var y1 = y0 + 1;
+            var fx = srcX - x0;
+            var fy = srcY - y0;
+
+            var idx00 = (y0 * srcW + x0) * 4;
+            var idx10 = (y0 * srcW + x1) * 4;
+            var idx01 = (y1 * srcW + x0) * 4;
+            var idx11 = (y1 * srcW + x1) * 4;
+
+            var lum00 = 0.299 * srcPixels[idx00] + 0.587 * srcPixels[idx00 + 1] + 0.114 * srcPixels[idx00 + 2];
+            var lum10 = 0.299 * srcPixels[idx10] + 0.587 * srcPixels[idx10 + 1] + 0.114 * srcPixels[idx10 + 2];
+            var lum01 = 0.299 * srcPixels[idx01] + 0.587 * srcPixels[idx01 + 1] + 0.114 * srcPixels[idx01 + 2];
+            var lum11 = 0.299 * srcPixels[idx11] + 0.587 * srcPixels[idx11 + 1] + 0.114 * srcPixels[idx11 + 2];
+
+            var topLum = lum00 * (1 - fx) + lum10 * fx;
+            var btmLum = lum01 * (1 - fx) + lum11 * fx;
+            grayResampled[outIdx] = Math.round(topLum * (1 - fy) + btmLum * fy);
           } else {
-            dstPixels[dstIdx] = 255;
-            dstPixels[dstIdx + 1] = 255;
-            dstPixels[dstIdx + 2] = 255;
-            dstPixels[dstIdx + 3] = 255;
+            grayResampled[outIdx] = 255;
           }
         }
+      }
+
+      // Apply Sauvola Local Adaptive Thresholding (O(1) Integral Matrix)
+      var cv = window.DualMarkCV || window.DualMarkCvGeometry;
+      var binarized;
+      if (cv && typeof cv.binarizeSauvola === 'function') {
+        binarized = cv.binarizeSauvola(grayResampled, targetWidth, targetHeight, 25, 0.2);
+      } else {
+        // Fallback global threshold
+        binarized = new Uint8Array(targetWidth * targetHeight);
+        for (var k = 0; k < grayResampled.length; k++) {
+          binarized[k] = grayResampled[k] > 138 ? 255 : 0;
+        }
+      }
+
+      var dstImgData = offCtx.createImageData(targetWidth, targetHeight);
+      var dstPixels = dstImgData.data;
+      for (var p = 0; p < binarized.length; p++) {
+        var pIdx = p * 4;
+        var val = binarized[p];
+        dstPixels[pIdx] = val;
+        dstPixels[pIdx + 1] = val;
+        dstPixels[pIdx + 2] = val;
+        dstPixels[pIdx + 3] = 255;
       }
 
       offCtx.putImageData(dstImgData, 0, 0);

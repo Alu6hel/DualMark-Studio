@@ -14,7 +14,7 @@
   } else if (typeof module === 'object' && module.exports) {
     module.exports = factory();
   } else {
-    root.DualMarkCvGeometry = factory();
+    root.DualMarkCvGeometry = root.DualMarkCV = factory();
   }
 })(typeof self !== 'undefined' ? self : this, function() {
   'use strict';
@@ -461,6 +461,251 @@
     };
   }
 
+  // =========================================================================
+  // 6. TOPOLOGICAL QUADRILATERAL EXTRACTION & ADAPTIVE SAUVOLA BINARIZATION
+  // =========================================================================
+
+  /**
+   * 3x3 Separable Gaussian Blur Kernel [1, 2, 1] / 4 for high-speed denoising
+   */
+  function gaussianBlur3x3(grayPixels, width, height) {
+    const temp = new Uint8Array(width * height);
+    const out = new Uint8Array(width * height);
+
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width; x++) {
+        const xPrev = x > 0 ? x - 1 : 0;
+        const xNext = x < width - 1 ? x + 1 : width - 1;
+        temp[row + x] = (grayPixels[row + xPrev] + (grayPixels[row + x] << 1) + grayPixels[row + xNext]) >> 2;
+      }
+    }
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const yPrev = y > 0 ? y - 1 : 0;
+        const yNext = y < height - 1 ? y + 1 : height - 1;
+        out[y * width + x] = (temp[yPrev * width + x] + (temp[y * width + x] << 1) + temp[yNext * width + x]) >> 2;
+      }
+    }
+
+    return out;
+  }
+
+  /**
+   * Computes Sobel Edge Gradients Gx and Gy, Magnitude, and Direction
+   */
+  function computeSobelGradients(grayPixels, width, height) {
+    const mag = new Float32Array(width * height);
+    const dir = new Uint8Array(width * height);
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const p00 = grayPixels[(y - 1) * width + (x - 1)];
+        const p01 = grayPixels[(y - 1) * width + x];
+        const p02 = grayPixels[(y - 1) * width + (x + 1)];
+        const p10 = grayPixels[y * width + (x - 1)];
+        const p12 = grayPixels[y * width + (x + 1)];
+        const p20 = grayPixels[(y + 1) * width + (x - 1)];
+        const p21 = grayPixels[(y + 1) * width + x];
+        const p22 = grayPixels[(y + 1) * width + (x + 1)];
+
+        const gx = (p02 + 2 * p12 + p22) - (p00 + 2 * p10 + p20);
+        const gy = (p20 + 2 * p21 + p22) - (p00 + 2 * p01 + p02);
+
+        mag[y * width + x] = Math.sqrt(gx * gx + gy * gy);
+
+        let angle = Math.atan2(gy, gx) * (180 / Math.PI);
+        if (angle < 0) angle += 180;
+        if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180)) {
+          dir[y * width + x] = 0;
+        } else if (angle >= 22.5 && angle < 67.5) {
+          dir[y * width + x] = 1;
+        } else if (angle >= 67.5 && angle < 112.5) {
+          dir[y * width + x] = 2;
+        } else {
+          dir[y * width + x] = 3;
+        }
+      }
+    }
+
+    return { mag, dir };
+  }
+
+  /**
+   * Canny Non-Maximum Suppression (NMS) & Double Threshold Hysteresis
+   */
+  function cannyEdges(grayPixels, width, height, lowT = 30, highT = 80) {
+    const blurred = gaussianBlur3x3(grayPixels, width, height);
+    const { mag, dir } = computeSobelGradients(blurred, width, height);
+    const nms = new Float32Array(width * height);
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const c = mag[y * width + x];
+        const d = dir[y * width + x];
+        let n1 = 0, n2 = 0;
+
+        if (d === 0) {
+          n1 = mag[y * width + (x - 1)];
+          n2 = mag[y * width + (x + 1)];
+        } else if (d === 1) {
+          n1 = mag[(y - 1) * width + (x + 1)];
+          n2 = mag[(y + 1) * width + (x - 1)];
+        } else if (d === 2) {
+          n1 = mag[(y - 1) * width + x];
+          n2 = mag[(y + 1) * width + x];
+        } else {
+          n1 = mag[(y - 1) * width + (x - 1)];
+          n2 = mag[(y + 1) * width + (x + 1)];
+        }
+
+        if (c >= n1 && c >= n2) {
+          nms[y * width + x] = c;
+        }
+      }
+    }
+
+    const edges = new Uint8Array(width * height);
+    for (let i = 0; i < nms.length; i++) {
+      if (nms[i] >= highT) {
+        edges[i] = 255;
+      } else if (nms[i] >= lowT) {
+        edges[i] = 128;
+      }
+    }
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        if (edges[idx] === 128) {
+          let hasStrong = false;
+          for (let dy = -1; dy <= 1 && !hasStrong; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (edges[(y + dy) * width + (x + dx)] === 255) {
+                hasStrong = true;
+                break;
+              }
+            }
+          }
+          edges[idx] = hasStrong ? 255 : 0;
+        }
+      }
+    }
+
+    return edges;
+  }
+
+  /**
+   * Fast Integral Image for Adaptive Sauvola / Niblack Thresholding
+   */
+  function binarizeSauvola(grayPixels, width, height, windowSize = 25, k = 0.2, R = 128) {
+    const integral = new Float64Array((width + 1) * (height + 1));
+    const integralSq = new Float64Array((width + 1) * (height + 1));
+
+    for (let y = 0; y < height; y++) {
+      let rowSum = 0;
+      let rowSumSq = 0;
+      for (let x = 0; x < width; x++) {
+        const val = grayPixels[y * width + x];
+        rowSum += val;
+        rowSumSq += val * val;
+        const idx = (y + 1) * (width + 1) + (x + 1);
+        const prevRowIdx = y * (width + 1) + (x + 1);
+        integral[idx] = integral[prevRowIdx] + rowSum;
+        integralSq[idx] = integralSq[prevRowIdx] + rowSumSq;
+      }
+    }
+
+    const out = new Uint8Array(width * height);
+    const halfWin = Math.floor(windowSize / 2);
+
+    for (let y = 0; y < height; y++) {
+      const y0 = Math.max(0, y - halfWin);
+      const y1 = Math.min(height, y + halfWin + 1);
+      for (let x = 0; x < width; x++) {
+        const x0 = Math.max(0, x - halfWin);
+        const x1 = Math.min(width, x + halfWin + 1);
+        const count = (x1 - x0) * (y1 - y0);
+
+        const sum = integral[y1 * (width + 1) + x1] - integral[y1 * (width + 1) + x0] - integral[y0 * (width + 1) + x1] + integral[y0 * (width + 1) + x0];
+        const sumSq = integralSq[y1 * (width + 1) + x1] - integralSq[y1 * (width + 1) + x0] - integralSq[y0 * (width + 1) + x1] + integralSq[y0 * (width + 1) + x0];
+
+        const mean = sum / count;
+        const variance = Math.max(0, (sumSq / count) - (mean * mean));
+        const stdDev = Math.sqrt(variance);
+
+        const threshold = mean * (1.0 + k * ((stdDev / R) - 1.0));
+        out[y * width + x] = (grayPixels[y * width + x] >= threshold) ? 255 : 0;
+      }
+    }
+
+    return out;
+  }
+
+  /**
+   * Automatically detects quadrilateral label corners from image buffer.
+   * Returns sorted normalized corners [{x, y}, {x, y}, {x, y}, {x, y}] (TL, TR, BR, BL).
+   */
+  function autoDetectLabelQuad(grayPixels, width, height) {
+    if (!grayPixels || width <= 10 || height <= 10) {
+      return [
+        { x: 0.1, y: 0.1 },
+        { x: 0.9, y: 0.1 },
+        { x: 0.9, y: 0.9 },
+        { x: 0.1, y: 0.9 }
+      ];
+    }
+
+    const edges = cannyEdges(grayPixels, width, height, 35, 85);
+
+    let top = 0, bottom = height - 1, left = 0, right = width - 1;
+    const thresholdCount = Math.max(8, Math.round(width * 0.05));
+
+    for (let y = Math.floor(height * 0.05); y < Math.floor(height * 0.45); y++) {
+      let count = 0;
+      for (let x = Math.floor(width * 0.1); x < Math.floor(width * 0.9); x++) {
+        if (edges[y * width + x] === 255) count++;
+      }
+      if (count >= thresholdCount) { top = y; break; }
+    }
+    if (top === 0) top = Math.floor(height * 0.12);
+
+    for (let y = Math.floor(height * 0.95); y > Math.floor(height * 0.55); y--) {
+      let count = 0;
+      for (let x = Math.floor(width * 0.1); x < Math.floor(width * 0.9); x++) {
+        if (edges[y * width + x] === 255) count++;
+      }
+      if (count >= thresholdCount) { bottom = y; break; }
+    }
+    if (bottom === height - 1) bottom = Math.floor(height * 0.88);
+
+    for (let x = Math.floor(width * 0.05); x < Math.floor(width * 0.45); x++) {
+      let count = 0;
+      for (let y = top; y <= bottom; y++) {
+        if (edges[y * width + x] === 255) count++;
+      }
+      if (count >= thresholdCount) { left = x; break; }
+    }
+    if (left === 0) left = Math.floor(width * 0.10);
+
+    for (let x = Math.floor(width * 0.95); x > Math.floor(width * 0.55); x--) {
+      let count = 0;
+      for (let y = top; y <= bottom; y++) {
+        if (edges[y * width + x] === 255) count++;
+      }
+      if (count >= thresholdCount) { right = x; break; }
+    }
+    if (right === width - 1) right = Math.floor(width * 0.90);
+
+    return [
+      { x: Math.round((left / width) * 1000) / 1000, y: Math.round((top / height) * 1000) / 1000 },
+      { x: Math.round((right / width) * 1000) / 1000, y: Math.round((top / height) * 1000) / 1000 },
+      { x: Math.round((right / width) * 1000) / 1000, y: Math.round((bottom / height) * 1000) / 1000 },
+      { x: Math.round((left / width) * 1000) / 1000, y: Math.round((bottom / height) * 1000) / 1000 }
+    ];
+  }
+
   return {
     solveHomography,
     invertHomography,
@@ -471,6 +716,11 @@
     toGrayscale,
     calcOtsuThreshold,
     binarize,
+    binarizeSauvola,
+    gaussianBlur3x3,
+    computeSobelGradients,
+    cannyEdges,
+    autoDetectLabelQuad,
     calcOpticalScale,
     calcOpticalDistance,
     detectFiducialTarget

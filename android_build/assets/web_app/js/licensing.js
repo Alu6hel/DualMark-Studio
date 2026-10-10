@@ -69,10 +69,26 @@ const DualMarkLicensing = (() => {
 
   const TIER_HIERARCHY = { free: 0, pro: 1, enterprise: 2 };
 
+  const _memoryStorage = {};
+  function getStorage() {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage !== null) return localStorage;
+      if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+    } catch (e) {}
+    return {
+      getItem: (k) => Object.prototype.hasOwnProperty.call(_memoryStorage, k) ? _memoryStorage[k] : null,
+      setItem: (k, v) => { _memoryStorage[k] = String(v); },
+      removeItem: (k) => { delete _memoryStorage[k]; }
+    };
+  }
+
   function getCurrentTier() {
     try {
-      const stored = localStorage.getItem('dualmark_license_tier');
-      if (stored && TIERS[stored]) return stored;
+      const storage = getStorage();
+      if (storage) {
+        const stored = storage.getItem('dualmark_license_tier');
+        if (stored && TIERS[stored]) return stored;
+      }
     } catch (e) {}
     return 'free';
   }
@@ -80,15 +96,127 @@ const DualMarkLicensing = (() => {
   function setCurrentTier(tierId) {
     if (!TIERS[tierId]) return;
     try {
-      localStorage.setItem('dualmark_license_tier', tierId);
+      const storage = getStorage();
+      if (storage) {
+        storage.setItem('dualmark_license_tier', tierId);
+      }
     } catch (e) {}
     updateUiBadges();
-    if (window.DualMarkAudio && typeof window.DualMarkAudio.successChime === 'function') {
-      window.DualMarkAudio.successChime();
+    if (typeof window !== 'undefined') {
+      if (window.DualMarkAudio && typeof window.DualMarkAudio.successChime === 'function') {
+        window.DualMarkAudio.successChime();
+      }
+      if (window.DualMarkBridge && typeof window.DualMarkBridge.vibrate === 'function') {
+        window.DualMarkBridge.vibrate(40);
+      }
     }
-    if (window.DualMarkBridge && typeof window.DualMarkBridge.vibrate === 'function') {
-      window.DualMarkBridge.vibrate(40);
+  }
+
+  async function computeHmacSha256(keyStr, dataStr) {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(keyStr);
+    const messageData = encoder.encode(dataStr);
+    const cryptoObj = (typeof crypto !== 'undefined' ? crypto : (typeof window !== 'undefined' ? window.crypto : null));
+    if (cryptoObj && cryptoObj.subtle) {
+      const key = await cryptoObj.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signature = await cryptoObj.subtle.sign('HMAC', key, messageData);
+      const uint8 = new Uint8Array(signature);
+      let binary = '';
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+      return btoa(binary)
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
+    // Deterministic fallback for environments without SubtleCrypto
+    let hash = 0;
+    for (let i = 0; i < dataStr.length; i++) {
+      hash = ((hash << 5) - hash) + dataStr.charCodeAt(i) + keyStr.charCodeAt(i % keyStr.length);
+      hash |= 0;
+    }
+    return 'fb_' + Math.abs(hash).toString(36);
+  }
+
+  async function generateLicenseToken(payload, secretKey = 'DUALMARK_OFFLINE_ROOT_KEY_SUNRISE2027') {
+    const jsonStr = JSON.stringify(payload);
+    const b64Payload = btoa(unescape(encodeURIComponent(jsonStr)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const sig = await computeHmacSha256(secretKey, b64Payload);
+    return `DMLIC-1.${b64Payload}.${sig}`;
+  }
+
+  async function verifyLicenseToken(tokenString, secretKey = 'DUALMARK_OFFLINE_ROOT_KEY_SUNRISE2027') {
+    if (!tokenString || typeof tokenString !== 'string') {
+      return { valid: false, reason: 'INVALID_FORMAT' };
+    }
+    const parts = tokenString.trim().split('.');
+    if (parts.length !== 3 || parts[0] !== 'DMLIC-1') {
+      return { valid: false, reason: 'INVALID_HEADER' };
+    }
+    const b64Payload = parts[1];
+    const providedSig = parts[2];
+
+    const expectedSig = await computeHmacSha256(secretKey, b64Payload);
+    if (providedSig !== expectedSig) {
+      return { valid: false, reason: 'SIGNATURE_MISMATCH' };
+    }
+
+    try {
+      let normalizedB64 = b64Payload.replace(/-/g, '+').replace(/_/g, '/');
+      while (normalizedB64.length % 4) normalizedB64 += '=';
+      const jsonStr = decodeURIComponent(escape(atob(normalizedB64)));
+      const payload = JSON.parse(jsonStr);
+
+      if (payload.expires) {
+        const expiryDate = new Date(payload.expires);
+        if (!isNaN(expiryDate.getTime()) && Date.now() > expiryDate.getTime()) {
+          return { valid: false, reason: 'EXPIRED', payload, expiryDate };
+        }
+      }
+
+      if (!payload.tier || !TIERS[payload.tier]) {
+        return { valid: false, reason: 'INVALID_TIER', payload };
+      }
+
+      return { valid: true, payload };
+    } catch (e) {
+      return { valid: false, reason: 'MALFORMED_PAYLOAD', error: e.message };
+    }
+  }
+
+  async function activateWithLicenseToken(tokenString, secretKey) {
+    const verification = await verifyLicenseToken(tokenString, secretKey);
+    if (!verification.valid) {
+      return { success: false, reason: verification.reason };
+    }
+    const payload = verification.payload;
+    setCurrentTier(payload.tier);
+    try {
+      const storage = getStorage();
+      if (storage) {
+        storage.setItem('dualmark_active_license_token', tokenString);
+        storage.setItem('dualmark_active_license_payload', JSON.stringify(payload));
+      }
+    } catch (e) {}
+    return { success: true, tier: payload.tier, payload };
+  }
+
+  function getActiveLicenseInfo() {
+    try {
+      const storage = getStorage();
+      if (storage) {
+        const token = storage.getItem('dualmark_active_license_token');
+        const payloadStr = storage.getItem('dualmark_active_license_payload');
+        if (payloadStr) {
+          return { token, payload: JSON.parse(payloadStr) };
+        }
+      }
+    } catch (e) {}
+    return null;
   }
 
   function isFeatureAllowed(featureKey) {
@@ -109,6 +237,7 @@ const DualMarkLicensing = (() => {
   }
 
   function updateUiBadges() {
+    if (typeof document === 'undefined') return;
     const currentTier = getCurrentTier();
     const badgeEl = document.getElementById('header-license-badge');
     if (badgeEl) {
@@ -318,9 +447,19 @@ const DualMarkLicensing = (() => {
     isFeatureAllowed,
     checkFeatureOrPrompt,
     showPaywallModal,
-    updateUiBadges
+    updateUiBadges,
+    generateLicenseToken,
+    verifyLicenseToken,
+    activateWithLicenseToken,
+    getActiveLicenseInfo
   };
 })();
 
-window.DualMarkLicensing = DualMarkLicensing;
+if (typeof window !== 'undefined') {
+  window.DualMarkLicensing = DualMarkLicensing;
+}
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = DualMarkLicensing;
+}
+
 

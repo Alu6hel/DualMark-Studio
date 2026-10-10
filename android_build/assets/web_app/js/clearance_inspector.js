@@ -44,6 +44,11 @@
     this.initialPinchDistance = 0;
     this.listeners = [];
 
+    // Curvilinear 3D Surface Clearance Model (Bottles, Cans, Pouches)
+    this.surfaceType = 'flat'; // 'flat' | 'cylindrical'
+    this.cylinderDiameterMm = 66.0; // 66mm = standard 12oz / 355mL can/bottle
+    this.imagerFovDeg = 75.0; // Nominal handheld 2D imager Field of View
+
     this.initEvents();
   }
 
@@ -97,8 +102,112 @@
       }
     },
 
+    setSurfaceType: function(type, diameterMm) {
+      this.surfaceType = (type === 'cylindrical') ? 'cylindrical' : 'flat';
+      if (typeof diameterMm === 'number' && diameterMm > 0) {
+        this.cylinderDiameterMm = diameterMm;
+      }
+      this.render();
+      return this.calculateDistanceMm();
+    },
+
+    setCylinderDiameter: function(diameterMm) {
+      if (typeof diameterMm === 'number' && diameterMm > 0) {
+        this.cylinderDiameterMm = diameterMm;
+        this.render();
+      }
+      return this.calculateDistanceMm();
+    },
+
+    // 3D Curvilinear Cylinder Clearance Model
+    calculateCylindricalClearance: function(diameterMm, imagerFovDeg) {
+      var dMm = diameterMm || this.cylinderDiameterMm || 66.0;
+      var fov = imagerFovDeg || this.imagerFovDeg || 75.0;
+      var R = dMm / 2.0;
+
+      var b1 = {
+        left: this.barcode1d.x - this.barcode1d.w / 2,
+        right: this.barcode1d.x + this.barcode1d.w / 2,
+        top: this.barcode1d.y - this.barcode1d.h / 2,
+        bottom: this.barcode1d.y + this.barcode1d.h / 2
+      };
+
+      var b2 = {
+        left: this.barcode2d.x - this.barcode2d.w / 2,
+        right: this.barcode2d.x + this.barcode2d.w / 2,
+        top: this.barcode2d.y - this.barcode2d.h / 2,
+        bottom: this.barcode2d.y + this.barcode2d.h / 2
+      };
+
+      var dx = Math.max(0, Math.max(b1.left - b2.right, b2.left - b1.right));
+      var dy = Math.max(0, Math.max(b1.top - b2.bottom, b2.top - b1.bottom));
+
+      // Angular separation along cylindrical surface in radians & degrees
+      var deltaThetaRad = dx / R;
+      var deltaThetaDeg = (deltaThetaRad * 180.0) / Math.PI;
+
+      // Geodesic surface arc clearance
+      var arcDistanceMm = Math.sqrt(dx * dx + dy * dy);
+
+      // Line-of-sight occlusion: If angular separation exceeds 90 degrees or imager FOV,
+      // the barcodes wrap around the cylinder so a single scanner cannot observe both concurrently.
+      var losOccluded = (deltaThetaDeg >= 90.0 || deltaThetaDeg > fov);
+
+      // Projective cosine foreshortening from cylinder center line
+      var packageCenter = this.packageWidthMm / 2.0;
+      var theta1Rad = Math.abs(this.barcode1d.x - packageCenter) / R;
+      var theta2Rad = Math.abs(this.barcode2d.x - packageCenter) / R;
+      var foreshortening1 = Math.max(0, Math.cos(theta1Rad));
+      var foreshortening2 = Math.max(0, Math.cos(theta2Rad));
+      var minForeshortening = Math.min(foreshortening1, foreshortening2);
+      var isForeshortened = (minForeshortening < 0.70);
+
+      var isCompliant = arcDistanceMm >= 50.0 || losOccluded;
+
+      var rec = 'COPLANAR_OK';
+      if (losOccluded) {
+        rec = 'CYLINDRICAL_OCCLUDED_SAFE';
+      } else if (isForeshortened) {
+        rec = 'CYLINDRICAL_FORESHORTENED_WARNING';
+      } else if (!isCompliant) {
+        rec = 'CYLINDRICAL_COLLISION_HAZARD';
+      }
+
+      return {
+        surfaceType: 'cylindrical',
+        cylinderDiameterMm: dMm,
+        radiusMm: R,
+        deltaThetaDeg: parseFloat(deltaThetaDeg.toFixed(1)),
+        deltaThetaRad: parseFloat(deltaThetaRad.toFixed(3)),
+        arcDistanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        distanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        edgeDistanceMm: parseFloat(arcDistanceMm.toFixed(1)),
+        losOccluded: losOccluded,
+        foreshortening1: parseFloat(foreshortening1.toFixed(2)),
+        foreshortening2: parseFloat(foreshortening2.toFixed(2)),
+        minForeshortening: parseFloat(minForeshortening.toFixed(2)),
+        isForeshortened: isForeshortened,
+        isCompliant: isCompliant,
+        recommendation: rec,
+        dxMm: parseFloat(dx.toFixed(1)),
+        dyMm: parseFloat(dy.toFixed(1)),
+        b1: b1,
+        b2: b2
+      };
+    },
+
     // Calculate edge-to-edge distance between the two bounding boxes in mm
     calculateDistanceMm: function() {
+      if (this.surfaceType === 'cylindrical') {
+        var cyl = this.calculateCylindricalClearance(this.cylinderDiameterMm, this.imagerFovDeg);
+        var totalNeededWidth = this.barcode1d.w + this.barcode2d.w + 50.0;
+        var impossibleFit = this.packageWidthMm < (totalNeededWidth + 8.0);
+        cyl.impossibleFit = impossibleFit;
+        cyl.multiPanelRecommended = impossibleFit;
+        cyl.marginDeltaMm = (cyl.distanceMm - 50.0).toFixed(1);
+        return cyl;
+      }
+
       var b1 = {
         left: this.barcode1d.x - this.barcode1d.w / 2,
         right: this.barcode1d.x + this.barcode1d.w / 2,
@@ -123,6 +232,7 @@
       var impossibleFit = this.packageWidthMm < (totalNeededWidth + 8.0); // including 4mm side margins
 
       return {
+        surfaceType: 'flat',
         distanceMm: parseFloat(distance.toFixed(1)),
         edgeDistanceMm: parseFloat(distance.toFixed(1)),
         isCompliant: isCompliant,
@@ -132,6 +242,10 @@
         marginDeltaMm: (distance - 50.0).toFixed(1),
         dxMm: parseFloat(dx.toFixed(1)),
         dyMm: parseFloat(dy.toFixed(1)),
+        deltaThetaDeg: 0,
+        losOccluded: false,
+        isForeshortened: false,
+        minForeshortening: 1.0,
         b1: b1,
         b2: b2
       };
@@ -335,6 +449,18 @@
       ctx.fillStyle = '#0F172A';
       ctx.fillRect(0, 0, widthPx, heightPx);
 
+      // Cylindrical 3D Curvature Shader
+      if (this.surfaceType === 'cylindrical') {
+        var cylGrad = ctx.createLinearGradient(0, 0, widthPx, 0);
+        cylGrad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+        cylGrad.addColorStop(0.25, 'rgba(30, 41, 59, 0.5)');
+        cylGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.12)');
+        cylGrad.addColorStop(0.75, 'rgba(30, 41, 59, 0.5)');
+        cylGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+        ctx.fillStyle = cylGrad;
+        ctx.fillRect(0, 0, widthPx, heightPx);
+      }
+
       // Grid Lines (every 10mm)
       ctx.strokeStyle = '#1E293B';
       ctx.lineWidth = 1;
@@ -363,6 +489,13 @@
       ctx.fillText(this.packageHeightMm + ' mm', 8, heightPx - 8);
       ctx.fillText((this.zoomLevel * 100).toFixed(0) + '% Zoom', widthPx - 65, 16);
 
+      if (this.surfaceType === 'cylindrical') {
+        ctx.fillStyle = '#38BDF8';
+        ctx.font = 'bold 10px monospace';
+        var statusStr = metrics.losOccluded ? '✓ OCCLUDED (>90° ZERO CROSS-TALK)' : 'Δθ: ' + metrics.deltaThetaDeg + '°';
+        ctx.fillText('🥫 3D CYLINDER (' + this.cylinderDiameterMm + 'mm Ø) | ' + statusStr, 8, 30);
+      }
+
       // 2. Draw Caliper / Clearance Line
       var p1 = { x: this.barcode1d.x * scale, y: this.barcode1d.y * scale };
       var p2 = { x: this.barcode2d.x * scale, y: this.barcode2d.y * scale };
@@ -380,16 +513,21 @@
       // Measurement bubble in middle
       var midX = (p1.x + p2.x) / 2;
       var midY = (p1.y + p2.y) / 2;
+      var bubbleRadius = this.surfaceType === 'cylindrical' ? 24 : 18;
       ctx.fillStyle = metrics.isCompliant ? '#10B981' : '#F43F5E';
       ctx.beginPath();
-      ctx.arc(midX, midY, 18, 0, Math.PI * 2);
+      ctx.arc(midX, midY, bubbleRadius, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 11px monospace';
+      ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(metrics.distanceMm + 'm', midX, midY);
+      var bubbleText = metrics.distanceMm + 'm';
+      if (this.surfaceType === 'cylindrical') {
+        bubbleText = metrics.losOccluded ? 'OCCL' : metrics.distanceMm + 'm';
+      }
+      ctx.fillText(bubbleText, midX, midY);
 
       // 3. Draw 1D Barcode Placeholder Box
       var b1Px = {

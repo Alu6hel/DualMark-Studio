@@ -243,6 +243,67 @@
       });
     }
 
+    // Custom .riv Binary Asset Loader & Engine Diagnostics
+    var inputCustomRiv = document.getElementById('input-custom-riv');
+    var selectRiveTarget = document.getElementById('select-rive-target');
+    var statusRiveUpload = document.getElementById('status-rive-upload');
+    var badgeRiveStatus = document.getElementById('badge-rive-engine-status');
+
+    function updateRiveEngineBadge() {
+      if (!badgeRiveStatus || !window.DualMarkRive) return;
+      var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
+      var st = window.DualMarkRive.getRuntimeStatus(target);
+      if (st && st.isWasm) {
+        badgeRiveStatus.textContent = '✨ WASM Engine Active';
+        badgeRiveStatus.className = 'badge badge-cyan';
+      } else {
+        badgeRiveStatus.textContent = '⚡ Procedural (Air-Gapped)';
+        badgeRiveStatus.className = 'badge badge-emerald';
+      }
+    }
+
+    if (selectRiveTarget) {
+      selectRiveTarget.addEventListener('change', updateRiveEngineBadge);
+    }
+    updateRiveEngineBadge();
+
+    if (inputCustomRiv) {
+      inputCustomRiv.addEventListener('change', async function(e) {
+        var file = e.target.files && e.target.files[0];
+        if (!file) return;
+        var target = (selectRiveTarget && selectRiveTarget.value) || 'mascot';
+        if (statusRiveUpload) {
+          statusRiveUpload.style.display = 'block';
+          statusRiveUpload.textContent = 'Loading ' + file.name + ' into [' + target + ']...';
+        }
+
+        try {
+          if (window.DualMarkRive && typeof window.DualMarkRive.loadCustomRiv === 'function') {
+            var success = await window.DualMarkRive.loadCustomRiv(target, file);
+            if (success) {
+              if (statusRiveUpload) {
+                statusRiveUpload.textContent = '✓ ' + file.name + ' mounted to ' + target + ' via WASM runtime!';
+                statusRiveUpload.style.color = 'var(--emerald)';
+              }
+              showToast('✨ Custom .riv loaded for ' + target.toUpperCase());
+              updateRiveEngineBadge();
+            } else {
+              if (statusRiveUpload) {
+                statusRiveUpload.textContent = 'ℹ Procedural vector engine active (offline fallback).';
+                statusRiveUpload.style.color = 'var(--cyan)';
+              }
+              showToast('ℹ Procedural vector engine active (air-gapped)');
+            }
+          }
+        } catch (err) {
+          if (statusRiveUpload) {
+            statusRiveUpload.textContent = 'Error: ' + err.message;
+            statusRiveUpload.style.color = 'var(--danger)';
+          }
+        }
+      });
+    }
+
     // Interactive Marky Mascot Companion
     var mascotWrap = document.getElementById('mascot-companion-wrap');
     if (mascotWrap) {
@@ -799,6 +860,52 @@
       window.DualMarkAudio.successChime();
     });
 
+    // 3D Curvilinear Surface Curvature Controls
+    var segGeomFlat = document.getElementById('seg-geom-flat');
+    var segGeomCyl = document.getElementById('seg-geom-cyl');
+    var wrapCylControls = document.getElementById('wrap-cylinder-controls');
+    var sliderCylDiam = document.getElementById('slider-cylinder-diam');
+    var valCylDiam = document.getElementById('val-cylinder-diam');
+    var badgeCylStatus = document.getElementById('badge-cylinder-3d-status');
+
+    if (segGeomFlat && segGeomCyl && wrapCylControls) {
+      segGeomFlat.addEventListener('click', function() {
+        segGeomFlat.classList.add('active');
+        segGeomCyl.classList.remove('active');
+        wrapCylControls.style.display = 'none';
+        window.clearanceInspector.setSurfaceType('flat');
+        showToast('📄 Flat Carton Mode Active');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+
+      segGeomCyl.addEventListener('click', function() {
+        segGeomCyl.classList.add('active');
+        segGeomFlat.classList.remove('active');
+        wrapCylControls.style.display = 'flex';
+        var diam = sliderCylDiam ? parseFloat(sliderCylDiam.value) : 66;
+        window.clearanceInspector.setSurfaceType('cylindrical', diam);
+        showToast('🥫 3D Cylindrical Packaging Mode (' + diam + ' mm Ø)');
+        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+      });
+    }
+
+    if (sliderCylDiam && valCylDiam) {
+      sliderCylDiam.addEventListener('input', function() {
+        var diam = parseFloat(this.value);
+        valCylDiam.textContent = diam + ' mm';
+        window.clearanceInspector.setCylinderDiameter(diam);
+      });
+    }
+
+    // Connect Cylindrical Live Status into onUpdate
+    window.clearanceInspector.onUpdate(function(metrics) {
+      if (metrics.surfaceType === 'cylindrical' && badgeCylStatus) {
+        var statusLabel = metrics.losOccluded ? '✓ OCCLUDED (SAFE)' : (metrics.isCompliant ? 'ARC OK' : '⚠ COLLISION');
+        badgeCylStatus.textContent = 'Δθ: ' + metrics.deltaThetaDeg + '° | ' + statusLabel;
+        badgeCylStatus.className = metrics.losOccluded ? 'badge badge-green' : (metrics.isCompliant ? 'badge badge-cyan' : 'badge badge-danger');
+      }
+    });
+
     // ISO/IEC 15416 & 15415 Optical Verification & NIST Calibration
     var btnIsoGrading = document.getElementById('btn-run-iso-grading');
     var btnNistCal = document.getElementById('btn-nist-calibration');
@@ -1253,6 +1360,19 @@
         reader.readAsDataURL(e.target.files[0]);
       }
     });
+
+    var btnAutoCorners = document.getElementById('btn-autodetect-corners');
+    if (btnAutoCorners) {
+      btnAutoCorners.addEventListener('click', function() {
+        if (studio.sourceImage) {
+          studio.autoDetectCorners(true);
+          showToast('🎯 Corners Auto-Detected via Canny/Sobel');
+          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        } else {
+          showToast('Please load a document image first');
+        }
+      });
+    }
 
     document.getElementById('btn-flatten-dewarp').addEventListener('click', function() {
       var dataUrl = studio.flattenAndBinarize(800, 1050);
@@ -1794,18 +1914,41 @@
     var zplOutputPreview = document.getElementById('zpl-output-preview');
 
     function getActiveZpl() {
+      var type1d = (document.getElementById('synth-1d-type') && document.getElementById('synth-1d-type').value) || 'UPC-A';
       var val1d = (document.getElementById('synth-1d-input') && document.getElementById('synth-1d-input').value.trim()) || '081234567890';
+      var symbology2d = (document.getElementById('synth-2d-symbology') && document.getElementById('synth-2d-symbology').value) || 'QR';
       var uri2d = (document.getElementById('synth-2d-uri-preview') && document.getElementById('synth-2d-uri-preview').textContent) || 'https://id.brand.com/01/00812345678901';
       var lot = (document.getElementById('synth-2d-lot') && document.getElementById('synth-2d-lot').value.trim()) || 'LOT-2026-X';
       var dpi = zplDpiSelect ? parseInt(zplDpiSelect.value, 10) : 203;
 
+      var coords1d = null;
+      var coords2d = null;
+      if (window.clearanceInspector && window.clearanceInspector.barcode1d && window.clearanceInspector.barcode2d) {
+        coords1d = {
+          xMm: Math.max(0, window.clearanceInspector.barcode1d.x - window.clearanceInspector.barcode1d.w / 2),
+          yMm: Math.max(0, window.clearanceInspector.barcode1d.y - window.clearanceInspector.barcode1d.h / 2),
+          wMm: window.clearanceInspector.barcode1d.w,
+          hMm: window.clearanceInspector.barcode1d.h
+        };
+        coords2d = {
+          xMm: Math.max(0, window.clearanceInspector.barcode2d.x - window.clearanceInspector.barcode2d.w / 2),
+          yMm: Math.max(0, window.clearanceInspector.barcode2d.y - window.clearanceInspector.barcode2d.h / 2),
+          wMm: window.clearanceInspector.barcode2d.w,
+          hMm: window.clearanceInspector.barcode2d.h
+        };
+      }
+
       if (window.DualMarkZpl) {
         return window.DualMarkZpl.generateDualMarkZpl({
+          type: type1d,
           gtin: val1d,
+          symbology2d: symbology2d,
           digitalLinkUri: uri2d,
           lot: lot,
           dpi: dpi,
-          clearanceMm: 52
+          clearanceMm: 52,
+          coords1d: coords1d,
+          coords2d: coords2d
         });
       }
       return '^XA\n^FO50,50^BCN,100,Y,N,N^FD>:' + val1d + '^FS\n^XZ';

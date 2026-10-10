@@ -126,19 +126,25 @@ b
       const modSizeY = qrHeight / numRows;
       const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
 
-      ps += `\n% 2D Matrix (${isDotCode ? 'DotCode' : (numRows !== numCols ? 'Rect DataMatrix' : 'Square')})\n`;
+      const bwr2d = Math.min(modSizeX * 0.35, Math.abs(bwrPoints) / 2);
+      ps += `\n% 2D Matrix (${isDotCode ? 'DotCode' : (numRows !== numCols ? 'Rect DataMatrix' : 'Square')}) with 2D BWR: ${currentBwrMicrons} um\n`;
       for (let r = 0; r < numRows; r++) {
         for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
             const mx = startX + (c * modSizeX);
             const my = startY + ((numRows - 1 - r) * modSizeY);
             if (isDotCode) {
-              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const baseRadius = Math.min(modSizeX, modSizeY) * 0.45;
+              const radius = Math.max(0.2, baseRadius - bwr2d);
               const cx = mx + modSizeX / 2;
               const cy = my + modSizeY / 2;
               ps += `${radius.toFixed(3)} ${cx.toFixed(3)} ${cy.toFixed(3)} circle\n`;
             } else {
-              ps += `${mx.toFixed(3)} ${my.toFixed(3)} ${modSizeX.toFixed(3)} ${modSizeY.toFixed(3)} rect\n`;
+              const adjMx = mx + bwr2d;
+              const adjMy = my + bwr2d;
+              const adjSizeX = Math.max(0.2, modSizeX - (2 * bwr2d));
+              const adjSizeY = Math.max(0.2, modSizeY - (2 * bwr2d));
+              ps += `${adjMx.toFixed(3)} ${adjMy.toFixed(3)} ${adjSizeX.toFixed(3)} ${adjSizeY.toFixed(3)} rect\n`;
             }
           }
         }
@@ -197,13 +203,16 @@ b
       const modSizeY = qrHeight / numRows;
       const isDotCode = Boolean(options.isDotCode || options.symbology === 'dotcode');
 
+      const bwr2d = Math.min(modSizeX * 0.35, Math.abs(bwrPoints) / 2);
+
       for (let r = 0; r < numRows; r++) {
         for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
             const mx = startX + (c * modSizeX);
             const my = startY + ((numRows - 1 - r) * modSizeY);
             if (isDotCode) {
-              const radius = Math.min(modSizeX, modSizeY) * 0.45;
+              const baseRadius = Math.min(modSizeX, modSizeY) * 0.45;
+              const radius = Math.max(0.2, baseRadius - bwr2d);
               const cx = mx + modSizeX / 2;
               const cy = my + modSizeY / 2;
               const k = radius * 0.55228475;
@@ -213,7 +222,11 @@ b
                 `${(cx + radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx + k).toFixed(2)} ${(cy - radius).toFixed(2)} ${cx.toFixed(2)} ${(cy - radius).toFixed(2)} c ` +
                 `${(cx - k).toFixed(2)} ${(cy - radius).toFixed(2)} ${(cx - radius).toFixed(2)} ${(cy - k).toFixed(2)} ${(cx - radius).toFixed(2)} ${cy.toFixed(2)} c f\n`;
             } else {
-              stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSizeX.toFixed(2)} ${modSizeY.toFixed(2)} re f\n`;
+              const adjMx = mx + bwr2d;
+              const adjMy = my + bwr2d;
+              const adjSizeX = Math.max(0.2, modSizeX - (2 * bwr2d));
+              const adjSizeY = Math.max(0.2, modSizeY - (2 * bwr2d));
+              stream += `${adjMx.toFixed(2)} ${adjMy.toFixed(2)} ${adjSizeX.toFixed(2)} ${adjSizeY.toFixed(2)} re f\n`;
             }
           }
         }
@@ -519,9 +532,10 @@ ${850 + streamLength}
           bytes: new Uint8Array(128)
         };
 
+    const targetFontName = options.fontName || 'DualMarkBrandSans';
     const font = (fontEngine && fontEngine.createSubsetTrueTypeFont)
-      ? fontEngine.createSubsetTrueTypeFont('DualMarkBrandSans')
-      : { bytes: new Uint8Array(512), fontName: 'DualMarkBrandSans' };
+      ? fontEngine.createSubsetTrueTypeFont(targetFontName)
+      : { bytes: new Uint8Array(512), fontName: targetFontName };
 
     const toUnicode = (fontEngine && fontEngine.generateToUnicodeCMap)
       ? fontEngine.generateToUnicodeCMap(32, 126)
@@ -573,12 +587,18 @@ ${850 + streamLength}
       const modSizeX = qrWidth / numCols;
       const modSizeY = qrHeight / numRows;
 
+      const bwr2d = Math.min(modSizeX * 0.35, Math.abs(bwrPoints) / 2);
+
       for (let r = 0; r < numRows; r++) {
         for (let c = 0; c < numCols; c++) {
           if (qrMatrix[r][c]) {
             const mx = startX + (c * modSizeX);
             const my = startY + ((numRows - 1 - r) * modSizeY);
-            stream += `${mx.toFixed(2)} ${my.toFixed(2)} ${modSizeX.toFixed(2)} ${modSizeY.toFixed(2)} re f\n`;
+            const adjMx = mx + bwr2d;
+            const adjMy = my + bwr2d;
+            const adjSizeX = Math.max(0.2, modSizeX - (2 * bwr2d));
+            const adjSizeY = Math.max(0.2, modSizeY - (2 * bwr2d));
+            stream += `${adjMx.toFixed(2)} ${adjMy.toFixed(2)} ${adjSizeX.toFixed(2)} ${adjSizeY.toFixed(2)} re f\n`;
           }
         }
       }

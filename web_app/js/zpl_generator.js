@@ -27,9 +27,51 @@ const DualMarkZPL = (() => {
     const headerX = Math.round(6 * dpmm);
     zpl += `^FO${headerX},${headerY}^A0N,${Math.round(2.8 * dpmm)},${Math.round(2.8 * dpmm)}^FDDUALMARK STUDIO PACKAGING PROOF — SUNRISE 2027^FS\n`;
 
-    // 1. 1D Barcode on Left
-    const x1d = Math.round(8 * dpmm);
-    const y1d = Math.round(10 * dpmm);
+    // Dynamic coordinate calculation
+    let coords1d = options.coords1d;
+    let coords2d = options.coords2d;
+    if ((!coords1d || !coords2d) && options.useDieLine !== false && typeof window !== 'undefined' && window.clearanceInspector && window.clearanceInspector.barcode1d && window.clearanceInspector.barcode2d) {
+      if (!coords1d) {
+        coords1d = {
+          xMm: Math.max(0, window.clearanceInspector.barcode1d.x - window.clearanceInspector.barcode1d.w / 2),
+          yMm: Math.max(0, window.clearanceInspector.barcode1d.y - window.clearanceInspector.barcode1d.h / 2),
+          wMm: window.clearanceInspector.barcode1d.w,
+          hMm: window.clearanceInspector.barcode1d.h
+        };
+      }
+      if (!coords2d) {
+        coords2d = {
+          xMm: Math.max(0, window.clearanceInspector.barcode2d.x - window.clearanceInspector.barcode2d.w / 2),
+          yMm: Math.max(0, window.clearanceInspector.barcode2d.y - window.clearanceInspector.barcode2d.h / 2),
+          wMm: window.clearanceInspector.barcode2d.w,
+          hMm: window.clearanceInspector.barcode2d.h
+        };
+      }
+    }
+
+    let x1d, y1d;
+    if (coords1d && typeof coords1d.xMm === 'number') {
+      x1d = Math.round(coords1d.xMm * dpmm);
+      y1d = typeof coords1d.yMm === 'number' ? Math.round(coords1d.yMm * dpmm) : Math.round(10 * dpmm);
+    } else if (coords1d && typeof coords1d.x === 'number') {
+      x1d = Math.round(coords1d.x);
+      y1d = typeof coords1d.y === 'number' ? Math.round(coords1d.y) : Math.round(10 * dpmm);
+    } else {
+      x1d = Math.round(8 * dpmm);
+      y1d = Math.round(10 * dpmm);
+    }
+
+    let x2d, y2d;
+    if (coords2d && typeof coords2d.xMm === 'number') {
+      x2d = Math.round(coords2d.xMm * dpmm);
+      y2d = typeof coords2d.yMm === 'number' ? Math.round(coords2d.yMm * dpmm) : Math.round(10 * dpmm);
+    } else if (coords2d && typeof coords2d.x === 'number') {
+      x2d = Math.round(coords2d.x);
+      y2d = typeof coords2d.y === 'number' ? Math.round(coords2d.y) : Math.round(10 * dpmm);
+    } else {
+      x2d = Math.round(64 * dpmm);
+      y2d = Math.round(10 * dpmm);
+    }
 
     if (type === 'UPC-A') {
       zpl += `^FO${x1d},${y1d}^BY${moduleWidth},3,${barHeight}^BUN,${barHeight},Y,N,Y^FD${barcodeValue}^FS\n`;
@@ -42,17 +84,19 @@ const DualMarkZPL = (() => {
     }
 
     // 2. 50mm Optical Clearance Center Divider Marker
-    const dividerX = Math.round(52 * dpmm);
-    const dividerY = Math.round(8 * dpmm);
+    const w1d = coords1d && coords1d.wMm ? coords1d.wMm * dpmm : Math.round(38 * dpmm);
+    const dividerX = Math.round((x1d + w1d + x2d) / 2);
+    const dividerY = Math.min(y1d, y2d);
     const dividerH = Math.round(32 * dpmm);
     zpl += `^FO${dividerX},${dividerY}^GB${Math.max(2, Math.round(0.3 * dpmm))},${dividerH},3^FS\n`;
-    zpl += `^FO${dividerX - Math.round(10 * dpmm)},${dividerY + dividerH + Math.round(1 * dpmm)}^A0N,${Math.round(2.2 * dpmm)},${Math.round(2.2 * dpmm)}^FD>= 50mm SAFE^FS\n`;
+    zpl += `^FO${Math.max(0, dividerX - Math.round(10 * dpmm))},${dividerY + dividerH + Math.round(1 * dpmm)}^A0N,${Math.round(2.2 * dpmm)},${Math.round(2.2 * dpmm)}^FD>= 50mm SAFE^FS\n`;
 
     // 3. 2D GS1 Digital Link Matrix on Right
-    const x2d = Math.round(64 * dpmm);
-    const y2d = Math.round(10 * dpmm);
-    const symbology2d = options.symbology2d || options.symbology || 'QR';
-    if (symbology2d === 'DataMatrix' || symbology2d === 'datamatrix') {
+    const symbology2d = (options.symbology2d || options.symbology || 'QR').toLowerCase();
+    if (symbology2d === 'dotcode') {
+      const dotSize = options.dotSize || (dpi === 600 ? 6 : (dpi === 300 ? 4 : 3));
+      zpl += `^FO${x2d},${y2d}^BDN,${dotSize},0,0^FD${digitalLinkUri}^FS\n`;
+    } else if (symbology2d === 'datamatrix') {
       const dmModuleSize = dpi === 600 ? 8 : (dpi === 300 ? 5 : 4);
       zpl += `^FO${x2d},${y2d}^BXN,${dmModuleSize},200^FD${digitalLinkUri}^FS\n`;
     } else {

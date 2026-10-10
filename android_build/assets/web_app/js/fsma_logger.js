@@ -46,7 +46,12 @@
   }
 
   function FsmaLogger() {
-    this.records = JSON.parse(localStorage.getItem('dualmark_fsma_records') || 'null') || [];
+    var raw = null;
+    try {
+      if (typeof localStorage !== 'undefined') raw = localStorage.getItem('dualmark_fsma_records');
+      else if (window.localStorage) raw = window.localStorage.getItem('dualmark_fsma_records');
+    } catch (e) {}
+    this.records = JSON.parse(raw || 'null') || [];
     this.initDb();
   }
 
@@ -77,7 +82,8 @@
 
     save: function() {
       try {
-        localStorage.setItem('dualmark_fsma_records', JSON.stringify(this.records));
+        if (typeof localStorage !== 'undefined') localStorage.setItem('dualmark_fsma_records', JSON.stringify(this.records));
+        else if (window.localStorage) window.localStorage.setItem('dualmark_fsma_records', JSON.stringify(this.records));
       } catch (e) {
         console.warn('[FsmaLogger] LocalStorage quota exceeded, relying on IndexedDB', e);
       }
@@ -253,11 +259,128 @@
       return headers.join(',') + '\n' + rows.join('\n');
     },
 
+    // Persistent WebCrypto ECDSA P-256 Key Pair (21 CFR §11.100 Non-Repudiation)
+    getOrCreatePersistentSigningKey: async function() {
+      if (this._cachedKeyPair) return this._cachedKeyPair;
+
+      if (!window.crypto || !window.crypto.subtle) {
+        return null;
+      }
+
+      var storedJwk = null;
+      if (window.DualMarkDB) {
+        try {
+          var item = await window.DualMarkDB.get('app_settings', 'pki_signing_key_p256');
+          if (item && item.value) storedJwk = item.value;
+        } catch (e) {}
+      }
+      if (!storedJwk) {
+        try {
+          var raw = (typeof localStorage !== 'undefined') ? localStorage.getItem('dualmark_pki_signing_key_p256') : (window.localStorage ? window.localStorage.getItem('dualmark_pki_signing_key_p256') : null);
+          if (raw) storedJwk = JSON.parse(raw);
+        } catch (e) {}
+      }
+
+      if (storedJwk && storedJwk.priv && storedJwk.pub) {
+        try {
+          var privateKey = await window.crypto.subtle.importKey(
+            'jwk', storedJwk.priv,
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            false, ['sign']
+          );
+          var publicKey = await window.crypto.subtle.importKey(
+            'jwk', storedJwk.pub,
+            { name: 'ECDSA', namedCurve: 'P-256' },
+            true, ['verify']
+          );
+          this._cachedKeyPair = { privateKey: privateKey, publicKey: publicKey };
+          return this._cachedKeyPair;
+        } catch (e) {
+          console.warn('[FsmaLogger] Error importing persistent signing key, regenerating', e);
+        }
+      }
+
+      var keyPair = await window.crypto.subtle.generateKey(
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        true,
+        ['sign', 'verify']
+      );
+
+      var privJwk = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
+      var pubJwk = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+
+      var toStore = { priv: privJwk, pub: pubJwk, createdAt: new Date().toISOString() };
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('dualmark_pki_signing_key_p256', JSON.stringify(toStore));
+        else if (window.localStorage) window.localStorage.setItem('dualmark_pki_signing_key_p256', JSON.stringify(toStore));
+      } catch (e) {}
+
+      if (window.DualMarkDB) {
+        try {
+          await window.DualMarkDB.put('app_settings', { key: 'pki_signing_key_p256', value: toStore });
+        } catch (e) {}
+      }
+
+      this._cachedKeyPair = keyPair;
+      return this._cachedKeyPair;
+    },
+
+    // GS1 EPCIS 2.0 TransformationEvent Builder (CBV 2.0 Section 7.4)
+    buildEpcis2TransformationEvent: function(rec) {
+      var inputTlc = rec.inputTlc || 'LOT-INPUT-RAW';
+      var outputTlc = rec.tlc || 'LOT-OUTPUT-FINISHED';
+      var gtin = rec.gtin || '00812345678901';
+
+      var transformationId = 'urn:epc:id:gdti:' + (rec.gln ? rec.gln.replace(/\D/g, '').slice(0, 10) : '0812345000') + '.9924.' + (rec.id || '001');
+
+      return {
+        type: 'TransformationEvent',
+        eventTime: rec.recordedAt || new Date().toISOString(),
+        eventTimeZoneOffset: '+00:00',
+        inputEPCList: [
+          'urn:epc:id:sgtin:' + gtin + '.' + inputTlc
+        ],
+        inputQuantityList: [
+          {
+            epcClass: 'urn:epc:class:lgtin:' + gtin + '.' + inputTlc,
+            quantity: 1.0,
+            uom: 'CS'
+          }
+        ],
+        outputEPCList: [
+          'urn:epc:id:sgtin:' + gtin + '.' + outputTlc
+        ],
+        outputQuantityList: [
+          {
+            epcClass: 'urn:epc:class:lgtin:' + gtin + '.' + outputTlc,
+            quantity: 1.0,
+            uom: 'CS'
+          }
+        ],
+        transformationID: transformationId,
+        bizStep: 'urn:epcglobal:cbv:bizstep:transforming',
+        disposition: 'urn:epcglobal:cbv:disp:in_progress',
+        readPoint: { id: 'urn:epc:id:sgln:' + (rec.gln ? rec.gln.replace(/\D/g, '').slice(0, 13) : '0812345000012') },
+        bizLocation: { id: 'geo:' + (rec.gps ? rec.gps.replace(/[^\d.,-]/g, '') : '37.7749,-122.4194') },
+        ilmd: {
+          'cbvmda:lotNumber': outputTlc,
+          'cbvmda:itemDescription': rec.commodity || 'FSMA Regulated Food Commodity',
+          'dualmark:inputParentLot': inputTlc,
+          'dualmark:previousMerkleHash': rec.previousHash || '',
+          'dualmark:sha256AuditHash': rec.sha256 || ''
+        }
+      };
+    },
+
     // GS1 EPCIS 2.0 JSON-LD Export
     exportEpcisJsonLd: function() {
+      var self = this;
       var eventList = this.records.map(function(rec) {
+        if (rec.eventType && (rec.eventType.includes('TRANSFORMATION') || rec.inputTlc)) {
+          return self.buildEpcis2TransformationEvent(rec);
+        }
+
         var action = 'OBSERVE';
-        if (rec.eventType && rec.eventType.includes('TRANSFORMATION')) action = 'ADD';
         if (rec.eventType && rec.eventType.includes('SHIPPING')) action = 'DELETE';
 
         return {
@@ -305,28 +428,48 @@
       xml += '  <EPCISBody>\n    <EventList>\n';
 
       this.records.forEach(function(rec) {
-        xml += '      <ObjectEvent>\n';
-        xml += '        <eventTime>' + rec.recordedAt + '</eventTime>\n';
-        xml += '        <eventTimeZoneOffset>+00:00</eventTimeZoneOffset>\n';
-        xml += '        <epcList>\n';
-        xml += '          <epc>urn:epc:id:sgtin:' + (rec.gtin || '00812345000000') + '.' + (rec.tlc || 'LOT001') + '</epc>\n';
-        xml += '        </epcList>\n';
-        xml += '        <action>OBSERVE</action>\n';
-        xml += '        <bizStep>urn:epcglobal:cbv:bizstep:' + (rec.eventType ? rec.eventType.toLowerCase().replace(/[^a-z]/g, '') : 'receiving') + '</bizStep>\n';
-        xml += '        <readPoint><id>urn:epc:id:sgln:' + (rec.gln ? rec.gln.replace(/\D/g, '').slice(0, 13) : '0812345000012') + '</id></readPoint>\n';
-        xml += '        <extension>\n';
-        xml += '          <lotNumber>' + (rec.tlc || '') + '</lotNumber>\n';
-        if (rec.inputTlc) xml += '          <inputLotNumber>' + rec.inputTlc + '</inputLotNumber>\n';
-        xml += '          <sha256Digest>' + (rec.sha256 || '') + '</sha256Digest>\n';
-        xml += '        </extension>\n';
-        xml += '      </ObjectEvent>\n';
+        if (rec.eventType && (rec.eventType.includes('TRANSFORMATION') || rec.inputTlc)) {
+          xml += '      <TransformationEvent>\n';
+          xml += '        <eventTime>' + rec.recordedAt + '</eventTime>\n';
+          xml += '        <eventTimeZoneOffset>+00:00</eventTimeZoneOffset>\n';
+          xml += '        <inputEPCList>\n';
+          xml += '          <epc>urn:epc:id:sgtin:' + (rec.gtin || '00812345000000') + '.' + (rec.inputTlc || 'LOT-RAW') + '</epc>\n';
+          xml += '        </inputEPCList>\n';
+          xml += '        <outputEPCList>\n';
+          xml += '          <epc>urn:epc:id:sgtin:' + (rec.gtin || '00812345000000') + '.' + (rec.tlc || 'LOT001') + '</epc>\n';
+          xml += '        </outputEPCList>\n';
+          xml += '        <bizStep>urn:epcglobal:cbv:bizstep:transforming</bizStep>\n';
+          xml += '        <readPoint><id>urn:epc:id:sgln:' + (rec.gln ? rec.gln.replace(/\D/g, '').slice(0, 13) : '0812345000012') + '</id></readPoint>\n';
+          xml += '        <ilmd>\n';
+          xml += '          <lotNumber>' + (rec.tlc || '') + '</lotNumber>\n';
+          xml += '          <parentLotNumber>' + (rec.inputTlc || '') + '</parentLotNumber>\n';
+          xml += '          <sha256Digest>' + (rec.sha256 || '') + '</sha256Digest>\n';
+          xml += '        </ilmd>\n';
+          xml += '      </TransformationEvent>\n';
+        } else {
+          xml += '      <ObjectEvent>\n';
+          xml += '        <eventTime>' + rec.recordedAt + '</eventTime>\n';
+          xml += '        <eventTimeZoneOffset>+00:00</eventTimeZoneOffset>\n';
+          xml += '        <epcList>\n';
+          xml += '          <epc>urn:epc:id:sgtin:' + (rec.gtin || '00812345000000') + '.' + (rec.tlc || 'LOT001') + '</epc>\n';
+          xml += '        </epcList>\n';
+          xml += '        <action>OBSERVE</action>\n';
+          xml += '        <bizStep>urn:epcglobal:cbv:bizstep:' + (rec.eventType ? rec.eventType.toLowerCase().replace(/[^a-z]/g, '') : 'receiving') + '</bizStep>\n';
+          xml += '        <readPoint><id>urn:epc:id:sgln:' + (rec.gln ? rec.gln.replace(/\D/g, '').slice(0, 13) : '0812345000012') + '</id></readPoint>\n';
+          xml += '        <extension>\n';
+          xml += '          <lotNumber>' + (rec.tlc || '') + '</lotNumber>\n';
+          if (rec.inputTlc) xml += '          <inputLotNumber>' + rec.inputTlc + '</inputLotNumber>\n';
+          xml += '          <sha256Digest>' + (rec.sha256 || '') + '</sha256Digest>\n';
+          xml += '        </extension>\n';
+          xml += '      </ObjectEvent>\n';
+        }
       });
 
       xml += '    </EventList>\n  </EPCISBody>\n</epcis:EPCISDocument>';
       return xml;
     },
 
-    // 21 CFR Part 11 Web Crypto API Digital Signature Sign-Off
+    // 21 CFR Part 11 Web Crypto API Digital Signature Sign-Off with Persistent PKI Key
     signRecord21CfrPart11: async function(recordOrId, auditorName, auditorTitle) {
       var recordId = (typeof recordOrId === 'object' && recordOrId) ? recordOrId.id : recordOrId;
       var rec = this.records.find(function(r) { return r.id === recordId; });
@@ -351,15 +494,9 @@
 
       var dataToSign = JSON.stringify(signatureManifest);
 
-      // Generate in-memory ECDSA P-256 keypair if not present
-      var keyPair;
-      if (window.crypto && window.crypto.subtle) {
-        keyPair = await window.crypto.subtle.generateKey(
-          { name: 'ECDSA', namedCurve: 'P-256' },
-          true,
-          ['sign', 'verify']
-        );
-
+      // Retrieve or create persistent ECDSA P-256 keypair
+      var keyPair = await this.getOrCreatePersistentSigningKey();
+      if (keyPair && window.crypto && window.crypto.subtle) {
         var enc = new TextEncoder();
         var rawSig = await window.crypto.subtle.sign(
           { name: 'ECDSA', hash: { name: 'SHA-256' } },

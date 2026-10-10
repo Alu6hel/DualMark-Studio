@@ -3,7 +3,7 @@
  * Compiles routing tables, geo-targeted content switches, and instant recall kill-switches.
  * Generates standalone SQLite databases, JSON rules, Cloudflare Workers, and Nginx edge maps.
  */
-(function(window) {
+(function(globalScope) {
   'use strict';
 
   var DEFAULT_RULES = [
@@ -40,14 +40,22 @@
   ];
 
   function DynamicResolver() {
-    this.rules = JSON.parse(localStorage.getItem('dualmark_resolver_rules') || 'null') || DEFAULT_RULES;
+    var saved = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        saved = localStorage.getItem('dualmark_resolver_rules');
+      } else if (typeof window !== 'undefined' && window.localStorage) {
+        saved = window.localStorage.getItem('dualmark_resolver_rules');
+      }
+    } catch (e) {}
+    this.rules = JSON.parse(saved || 'null') || DEFAULT_RULES;
     this.initDb();
   }
 
   DynamicResolver.prototype = {
     initDb: function() {
       var self = this;
-      if (window.DualMarkDB) {
+      if (typeof window !== 'undefined' && window.DualMarkDB) {
         window.DualMarkDB.getAll('resolver_rules').then(function(rules) {
           if (rules && rules.length > 0) {
             self.rules = rules;
@@ -64,11 +72,15 @@
 
     save: function() {
       try {
-        localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+        } else if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('dualmark_resolver_rules', JSON.stringify(this.rules));
+        }
       } catch (e) {
         console.warn('[DynamicResolver] LocalStorage quota exceeded, relying on IndexedDB', e);
       }
-      if (window.DualMarkDB) {
+      if (typeof window !== 'undefined' && window.DualMarkDB) {
         this.rules.forEach(function(r) {
           window.DualMarkDB.put('resolver_rules', r);
         });
@@ -203,6 +215,140 @@
         targetUrl: 'https://id.dualmark.studio/01/' + gtin + '?status=unregistered',
         ruleMatched: null,
         status: 'UNREGISTERED_GTIN'
+      };
+    },
+
+    // RFC 9264 & GS1 Digital Link Content Negotiation
+    resolveWithContentNegotiation: function(gtin, options) {
+      options = options || {};
+      var lot = options.lot || '';
+      var serial = options.serial || '';
+      var countryCode = (options.countryCode || 'US').toUpperCase();
+      var linkType = (options.linkType || '').toLowerCase().trim();
+      if (linkType.indexOf('gs1:') === 0) linkType = linkType.substring(4);
+      var accept = (options.acceptHeader || options.accept || '').toLowerCase();
+
+      var r = null;
+      for (var i = 0; i < this.rules.length; i++) {
+        if (this.rules[i].gtin === gtin) {
+          if (this.rules[i].lot && this.rules[i].lot !== '*' && lot && this.rules[i].lot !== lot) continue;
+          if (this.rules[i].serial && this.rules[i].serial !== '*' && serial && !this.matchesSerial(this.rules[i].serial, serial)) continue;
+          r = this.rules[i];
+          break;
+        }
+      }
+
+      if (!r) {
+        return {
+          status: 'UNREGISTERED_GTIN',
+          httpStatus: 404,
+          targetUrl: 'https://id.dualmark.studio/01/' + gtin + '?status=unregistered',
+          message: 'GTIN not found in local routing table'
+        };
+      }
+
+      var baseUrl = 'https://id.dualmark.studio/01/' + r.gtin;
+
+      // 1. Linkset requested via Accept header or ?linkType=all / ?linkType=linkset
+      if (accept.indexOf('application/linkset+json') !== -1 || linkType === 'all' || linkType === 'linkset') {
+        return {
+          status: 'LINKSET_RESOLVED',
+          httpStatus: 200,
+          contentType: 'application/linkset+json',
+          body: this.exportLinksetJson(gtin),
+          headers: {
+            'Content-Type': 'application/linkset+json',
+            'Link': this.exportLinksetHeaders(gtin)
+          }
+        };
+      }
+
+      // 2. Immediate safety recall kill-switch overrides
+      if (r.isRecalled) {
+        return {
+          status: 'RECALLED_SAFETY_OVERRIDE',
+          httpStatus: 307,
+          targetUrl: r.recallNoticeUrl || (baseUrl + '/recall'),
+          linkType: 'gs1:hasRecallNotice',
+          headers: {
+            'Location': r.recallNoticeUrl || (baseUrl + '/recall'),
+            'Link': this.exportLinksetHeaders(gtin)
+          },
+          message: 'EMERGENCY RECALL KILL-SWITCH ACTIVE'
+        };
+      }
+
+      // 3. Specific linkType resolution
+      if (linkType) {
+        if (linkType === 'pip' || linkType === 'productinfo') {
+          var targetUrl = r.defaultUrl;
+          if (r.geoRules && r.geoRules.length > 0) {
+            for (var g = 0; g < r.geoRules.length; g++) {
+              if (r.geoRules[g].country === countryCode) {
+                targetUrl = r.geoRules[g].targetUrl;
+                break;
+              }
+            }
+          }
+          return {
+            status: 'LINKTYPE_MATCH',
+            httpStatus: 307,
+            linkType: 'gs1:pip',
+            targetUrl: targetUrl,
+            headers: {
+              'Location': targetUrl,
+              'Link': this.exportLinksetHeaders(gtin)
+            }
+          };
+        } else if (linkType === 'epcis' || linkType === 'traceability' || linkType === 'events') {
+          var epcisUrl = r.traceabilityUrl || (baseUrl + '/traceability');
+          return {
+            status: 'LINKTYPE_MATCH',
+            httpStatus: 307,
+            linkType: 'gs1:traceability',
+            targetUrl: epcisUrl,
+            headers: {
+              'Location': epcisUrl,
+              'Link': this.exportLinksetHeaders(gtin)
+            }
+          };
+        } else if (linkType === 'sds' || linkType === 'safety' || linkType === 'certification' || linkType === 'certificationinfo') {
+          var sdsUrl = r.safetyUrl || (baseUrl + '/safety');
+          return {
+            status: 'LINKTYPE_MATCH',
+            httpStatus: 307,
+            linkType: 'gs1:certificationInfo',
+            targetUrl: sdsUrl,
+            headers: {
+              'Location': sdsUrl,
+              'Link': this.exportLinksetHeaders(gtin)
+            }
+          };
+        } else if (linkType === 'hasrecallnotice' || linkType === 'recall') {
+          var recUrl = r.recallNoticeUrl || (baseUrl + '/recall');
+          return {
+            status: 'LINKTYPE_MATCH',
+            httpStatus: 307,
+            linkType: 'gs1:hasRecallNotice',
+            targetUrl: recUrl,
+            headers: {
+              'Location': recUrl,
+              'Link': this.exportLinksetHeaders(gtin)
+            }
+          };
+        }
+      }
+
+      // 4. Fallback to standard geo / default URL resolution
+      var standard = this.resolve(gtin, lot, serial, countryCode);
+      return {
+        status: standard.status,
+        httpStatus: 307,
+        targetUrl: standard.targetUrl,
+        headers: {
+          'Location': standard.targetUrl,
+          'Link': this.exportLinksetHeaders(gtin)
+        }
       };
     },
 
@@ -450,6 +596,19 @@
     }
   };
 
-  window.DualMarkResolver = new DynamicResolver();
+  var resolver = new DynamicResolver();
 
-})(window);
+  if (typeof window !== 'undefined') {
+    window.DualMarkResolver = resolver;
+    window.DynamicResolver = DynamicResolver;
+  }
+  if (typeof globalThis !== 'undefined') {
+    globalThis.DualMarkResolver = resolver;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = resolver;
+    module.exports.DynamicResolver = DynamicResolver;
+  }
+
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+
