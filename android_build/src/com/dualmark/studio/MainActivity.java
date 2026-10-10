@@ -120,6 +120,24 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(bridge, "DualMarkBridge");
         webView.addJavascriptInterface(bridge, "Android");
 
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            try {
+                if (url != null && url.startsWith("data:")) {
+                    int comma = url.indexOf(',');
+                    if (comma != -1) {
+                        String header = url.substring(5, comma);
+                        String data = url.substring(comma + 1);
+                        boolean isBase64 = header.contains(";base64");
+                        byte[] bytes = isBase64 ? Base64.decode(data, Base64.DEFAULT) : Uri.decode(data).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        String filename = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
+                        bridge.saveBytesToStorage(bytes, filename, mimeType);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "DownloadListener error", e);
+            }
+        });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
@@ -555,9 +573,23 @@ public class MainActivity extends Activity {
         public boolean saveToMediaStore(final String base64Data, final String filename, final String mimeType) {
             try {
                 byte[] bytes = Base64.decode(base64Data, Base64.DEFAULT);
+                return saveBytesToStorage(bytes, filename, mimeType);
+            } catch (Exception e) {
+                Log.e(TAG, "MediaStore save failed", e);
+                return false;
+            }
+        }
+
+        public boolean saveBytesToStorage(final byte[] bytes, final String filename, final String mimeType) {
+            try {
                 String safeName = (filename != null && !filename.isEmpty()) ? filename : "DualMark_Export.bin";
                 String safeMime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "application/octet-stream";
+                String lower = safeName.toLowerCase(java.util.Locale.ROOT);
+                if (lower.endsWith(".zpl") || lower.endsWith(".sql")) {
+                    safeMime = "application/octet-stream";
+                }
 
+                boolean wrotePrimary = false;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     ContentValues values = new ContentValues();
                     values.put(MediaStore.MediaColumns.DISPLAY_NAME, safeName);
@@ -569,15 +601,38 @@ public class MainActivity extends Activity {
                             if (os != null) {
                                 os.write(bytes);
                                 os.flush();
-                                runOnUiThread(() -> Toast.makeText(MainActivity.this, "💾 Saved via MediaStore: " + safeName, Toast.LENGTH_SHORT).show());
-                                return true;
+                                wrotePrimary = true;
                             }
                         }
                     }
                 }
-                return savePdfToStorage(base64Data, safeName);
+
+                if (!wrotePrimary) {
+                    File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!dir.exists()) dir.mkdirs();
+                    File target = new File(dir, safeName);
+                    try (FileOutputStream fos = new FileOutputStream(target)) {
+                        fos.write(bytes);
+                        wrotePrimary = true;
+                    }
+                }
+
+                // Always write a backup copy to the app's external files downloads directory
+                try {
+                    File appDir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                    if (appDir != null) {
+                        if (!appDir.exists()) appDir.mkdirs();
+                        File backup = new File(appDir, safeName);
+                        try (FileOutputStream fos = new FileOutputStream(backup)) {
+                            fos.write(bytes);
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "💾 Saved to Downloads: " + safeName, Toast.LENGTH_SHORT).show());
+                return true;
             } catch (Exception e) {
-                Log.e(TAG, "MediaStore save failed", e);
+                Log.e(TAG, "saveBytesToStorage failed", e);
                 return false;
             }
         }

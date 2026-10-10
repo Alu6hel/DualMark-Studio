@@ -39,31 +39,156 @@
       .replace(/'/g, '&#039;');
   }
 
-  // File download helper (Web or Android native bridge)
-  function actualDownloadBlob(content, filename, mimeType) {
-    // If native Android Bridge is available
-    if (window.DualMarkBridge && typeof window.DualMarkBridge.savePdfToStorage === 'function' && filename && filename.endsWith('.pdf')) {
-      var base64 = content;
-      if (typeof content === 'string' && content.indexOf('%PDF') === 0) {
+  // Helper to convert any content (string, Blob, ArrayBuffer, TypedArray) to base64 & Blob
+  function processExportContent(content, mimeType, callback) {
+    var mime = mimeType || 'application/octet-stream';
+    if (content instanceof Blob) {
+      var reader = new FileReader();
+      reader.onloadend = function() {
+        var dataUrl = reader.result || '';
+        var b64 = (dataUrl.indexOf(',') !== -1) ? dataUrl.split(',')[1] : '';
+        callback(content, b64);
+      };
+      reader.readAsDataURL(content);
+    } else if (content instanceof ArrayBuffer || (window.ArrayBuffer && ArrayBuffer.isView && ArrayBuffer.isView(content))) {
+      var blob = new Blob([content], { type: mime });
+      var reader = new FileReader();
+      reader.onloadend = function() {
+        var dataUrl = reader.result || '';
+        var b64 = (dataUrl.indexOf(',') !== -1) ? dataUrl.split(',')[1] : '';
+        callback(blob, b64);
+      };
+      reader.readAsDataURL(blob);
+    } else if (typeof content === 'string') {
+      var blob = new Blob([content], { type: mime });
+      var b64 = '';
+      try {
+        b64 = btoa(unescape(encodeURIComponent(content)));
+      } catch (e1) {
         try {
-          base64 = btoa(unescape(encodeURIComponent(content)));
-        } catch (e) {
-          base64 = content;
+          var binary = '';
+          for (var i = 0; i < content.length; i++) {
+            binary += String.fromCharCode(content.charCodeAt(i) & 0xff);
+          }
+          b64 = btoa(binary);
+        } catch (e2) {
+          try {
+            b64 = btoa(content);
+          } catch (e3) {
+            b64 = '';
+          }
         }
       }
-      window.DualMarkBridge.savePdfToStorage(base64, filename);
+      callback(blob, b64);
+    } else {
+      var json = JSON.stringify(content, null, 2);
+      var blob = new Blob([json], { type: mime });
+      var b64 = '';
+      try {
+        b64 = btoa(unescape(encodeURIComponent(json)));
+      } catch (e) {}
+      callback(blob, b64);
+    }
+  }
+
+  // Universal file download engine (Native Android Bridge via MediaStore / Storage + Web Browser fallback)
+  function actualDownloadBlob(content, filename, mimeType) {
+    var safeFilename = filename || 'DualMark_Export';
+    var safeMime = mimeType || 'application/octet-stream';
+
+    // 1. Web Browser Execution: Synchronous execution preserves user gesture token
+    if (!window.DualMarkBridge) {
+      try {
+        var blob = (content instanceof Blob) ? content : new Blob([content], { type: safeMime });
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+          window.navigator.msSaveOrOpenBlob(blob, safeFilename);
+        } else {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = safeFilename;
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+            if (a.parentNode) a.parentNode.removeChild(a);
+            setTimeout(function() {
+              URL.revokeObjectURL(url);
+            }, 60000);
+          }, 300);
+        }
+      } catch (err) {
+        console.error('Web browser download error:', err);
+      }
+
+      triggerSavedFeedback(safeFilename);
       return;
     }
 
-    var blob = (content instanceof Blob) ? content : new Blob([content], { type: mimeType || 'text/plain' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    // 2. Android Native Bridge execution (MediaStore / Downloads Directory)
+    processExportContent(content, safeMime, function(blob, base64) {
+      var savedNatively = false;
+
+      if (window.DualMarkBridge) {
+        if (base64 && typeof window.DualMarkBridge.saveToMediaStore === 'function') {
+          try {
+            savedNatively = window.DualMarkBridge.saveToMediaStore(base64, safeFilename, safeMime);
+          } catch (e) {
+            console.warn('DualMarkBridge.saveToMediaStore threw:', e);
+          }
+        }
+        if (!savedNatively && base64 && typeof window.DualMarkBridge.savePdfToStorage === 'function' && safeFilename.endsWith('.pdf')) {
+          try {
+            savedNatively = window.DualMarkBridge.savePdfToStorage(base64, safeFilename);
+          } catch (e) {
+            console.warn('DualMarkBridge.savePdfToStorage threw:', e);
+          }
+        }
+      }
+
+      // Fallback if native bridge failed
+      if (!savedNatively) {
+        try {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = safeFilename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function() {
+            if (a.parentNode) a.parentNode.removeChild(a);
+            setTimeout(function() {
+              URL.revokeObjectURL(url);
+            }, 45000);
+          }, 300);
+        } catch (err) {
+          console.error('Fallback download error:', err);
+        }
+      }
+
+      triggerSavedFeedback(safeFilename);
+    });
+  }
+
+  function triggerSavedFeedback(safeFilename) {
+    var toastText = '✓ File saved successfully: ' + safeFilename;
+    if (window.DualMarkI18n && typeof window.DualMarkI18n.t === 'function') {
+      var tpl = window.DualMarkI18n.t('modal_export.toast_saved');
+      if (tpl && tpl !== 'modal_export.toast_saved') {
+        toastText = tpl + safeFilename;
+      }
+    }
+    showToast(toastText);
+
+    if (window.DualMarkAudio && typeof window.DualMarkAudio.successChime === 'function') {
+      window.DualMarkAudio.successChime();
+    }
+
+    if (window.DualMarkRive && typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
+      window.DualMarkRive.triggerMascotCelebrate();
+    }
   }
 
   var pendingExportConfirmAction = null;
@@ -501,11 +626,16 @@
     }
 
     if (btnExportConfirm) {
-      btnExportConfirm.addEventListener('click', function() {
+      btnExportConfirm.addEventListener('click', function(e) {
+        if (e) e.preventDefault();
         var action = pendingExportConfirmAction;
         closeExportModal();
         if (typeof action === 'function') {
-          action();
+          try {
+            action();
+          } catch (err) {
+            console.error('Export confirm action error:', err);
+          }
         }
       });
     }
@@ -829,16 +959,14 @@
     document.getElementById('btn-1d-svg').addEventListener('click', function() {
       var res = window.DualMarkBarcode1D.renderSvg(typeSelect.value, input1d.value.trim());
       downloadBlob(res.svg, '1D_Barcode_' + typeSelect.value + '.svg', 'image/svg+xml');
-      showToast('1D Vector SVG Downloaded');
-      window.DualMarkAudio.click();
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-1d-png').addEventListener('click', function() {
       canvas1d.toBlob(function(blob) {
         downloadBlob(blob, '1D_Barcode_' + typeSelect.value + '.png', 'image/png');
-        showToast('1D PNG Image Saved');
       });
-      window.DualMarkAudio.click();
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-2d-svg').addEventListener('click', function() {
@@ -858,8 +986,7 @@
         filename = '2D_GS1_DigitalLink.svg';
       }
       downloadBlob(svg, filename, 'image/svg+xml');
-      showToast('2D Vector SVG Downloaded (' + symbology + ')');
-      window.DualMarkAudio.click();
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-2d-copy').addEventListener('click', function() {
@@ -1294,25 +1421,25 @@
     document.getElementById('btn-export-sql').addEventListener('click', function() {
       var sql = window.DualMarkResolver.exportSqlScript();
       downloadBlob(sql, 'dualmark_routes.sql', 'application/sql');
-      showToast('SQLite Schema & Data SQL Exported');
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-export-json').addEventListener('click', function() {
       var json = window.DualMarkResolver.exportJsonRules();
       downloadBlob(json, 'dualmark_routes.json', 'application/json');
-      showToast('JSON Rules Manifest Exported');
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-export-cf').addEventListener('click', function() {
       var worker = window.DualMarkResolver.exportCloudflareWorker();
       downloadBlob(worker, 'worker.js', 'application/javascript');
-      showToast('Cloudflare Workers Router Script Exported');
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-export-nginx').addEventListener('click', function() {
       var nginx = window.DualMarkResolver.exportNginxConfig();
       downloadBlob(nginx, 'nginx_routes.conf', 'text/plain');
-      showToast('Nginx Map Configuration Exported');
+      if (window.DualMarkAudio) window.DualMarkAudio.click();
     });
 
     var btnExportLinkset = document.getElementById('btn-export-linkset');
@@ -1321,7 +1448,7 @@
         var gtin = (testGtin && testGtin.value.trim()) || '00812345678901';
         var linksetJson = window.DualMarkResolver.exportLinksetJson(gtin);
         downloadBlob(linksetJson, 'gs1_linkset_' + gtin + '.json', 'application/linkset+json');
-        showToast('RFC 9264 GS1 Linkset Exported');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -1803,8 +1930,7 @@
       btnFdaCsv.addEventListener('click', function() {
         var csv = window.DualMarkFsma.exportFdaSortableSpreadsheet();
         downloadBlob(csv, 'FDA_FSMA204_Sortable_Spreadsheet.csv', 'text/csv');
-        showToast('📊 FDA 24-Hour Sortable Spreadsheet Exported');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -1814,8 +1940,7 @@
       btnEpcis.addEventListener('click', function() {
         var epcis = window.DualMarkFsma.exportEpcisJsonLd();
         downloadBlob(epcis, 'DualMark_EPCIS20_Events.jsonld', 'application/ld+json');
-        showToast('🔗 GS1 EPCIS 2.0 JSON-LD Exported');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -1825,8 +1950,7 @@
       btnEpcisXml.addEventListener('click', function() {
         var xml = window.DualMarkFsma.exportEpcisXml();
         downloadBlob(xml, 'DualMark_EPCIS20_Events.xml', 'application/xml');
-        showToast('📄 GS1 EPCIS 2.0 XML Exported');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -1963,12 +2087,61 @@
     var btnMasterPackage = document.getElementById('btn-export-master-package');
     if (btnMasterPackage) {
       btnMasterPackage.addEventListener('click', function() {
-        var btnPdfX4 = document.getElementById('btn-export-pdf-x4');
-        var btnSvg = document.getElementById('btn-export-combined-svg');
-        if (btnPdfX4) btnPdfX4.click();
-        if (btnSvg) btnSvg.click();
-        showToast('🏆 1-Click Master Prepress Bundle Generated');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (!window.DualMarkPrepress) return;
+        var data = getActivePrepressData();
+        var pkgW = window.clearanceInspector ? window.clearanceInspector.packageWidthMm : 150;
+        var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
+        var clearanceMm = window.clearanceInspector ? window.clearanceInspector.getMetrics().edgeDistanceMm : 52;
+
+        if (window.DualMarkZip) {
+          var zip = new window.DualMarkZip();
+          var pdf = window.DualMarkPrepress.generatePdfX4(data.barcode1d, data.qrMatrix, {
+            condition: 'FOGRA39',
+            packageWidthMm: pkgW,
+            packageHeightMm: pkgH,
+            clearanceMm: clearanceMm
+          });
+          zip.addFile('DualMark_Master_PDFX4_FOGRA39.pdf', pdf);
+
+          var eps = window.DualMarkPrepress.generateCmykEps(data.barcode1d, data.qrMatrix, { packageWidthMm: pkgW, packageHeightMm: pkgH });
+          zip.addFile('DualMark_Prepress_CMYK.eps', eps);
+
+          var type1d = (document.getElementById('synth-1d-type') && document.getElementById('synth-1d-type').value) || 'UPC-A';
+          var val1d = (document.getElementById('synth-1d-input') && document.getElementById('synth-1d-input').value.trim()) || '081234567890';
+          var svg1dRes = window.DualMarkBarcode1D ? window.DualMarkBarcode1D.renderSvg(type1d, val1d) : { svg: '' };
+          var svg1dContent = svg1dRes.svg || svg1dRes;
+          var uri2d = (document.getElementById('synth-2d-uri-preview') && document.getElementById('synth-2d-uri-preview').textContent) || 'https://id.brand.com/01/00812345678901';
+          var svg2d = window.DualMarkGS1 ? window.DualMarkGS1.renderQrSvg(uri2d) : '';
+
+          var combinedSvg = [
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="1000" height="400">',
+            '<rect width="1000" height="400" fill="#FFFFFF"/>',
+            '<g transform="translate(60, 100)">' + svg1dContent + '</g>',
+            '<g transform="translate(580, 100)">' + svg2d + '</g>',
+            '<line x1="480" y1="200" x2="570" y2="200" stroke="#EF4444" stroke-width="3" stroke-dasharray="6,6"/>',
+            '<text x="525" y="190" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#EF4444">≥ 50 mm</text>',
+            '<text x="500" y="360" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#0F172A">DUALMARK PREPRESS DIE-LINE PROOF — SUNRISE 2027 COMPLIANT</text>',
+            '</svg>'
+          ].join('\n');
+          zip.addFile('DualMark_DieLine_Proof.svg', combinedSvg);
+
+          var manifest = {
+            format: 'DualMark Prepress Master Production Bundle',
+            standards: ['ISO 15930-7 (PDF/X-4:2010)', 'Adobe PostScript Level 3', 'GS1 Digital Link', 'Sunrise 2027'],
+            iccCondition: 'FOGRA39 (Coated)',
+            packageWidthMm: pkgW,
+            packageHeightMm: pkgH,
+            clearanceMm: clearanceMm,
+            exportedAt: new Date().toISOString()
+          };
+          zip.addFile('manifest.json', JSON.stringify(manifest, null, 2));
+
+          var blob = zip.buildZipBlob();
+          downloadBlob(blob, 'DualMark_Master_Prepress_Bundle.zip', 'application/zip');
+        } else {
+          var btnPdfX4 = document.getElementById('btn-export-pdf-x4');
+          if (btnPdfX4) btnPdfX4.click();
+        }
       });
     }
 
@@ -1993,7 +2166,7 @@
       ].join('\n');
 
       downloadBlob(combinedSvg, 'DualMark_DieLine_Proof.svg', 'image/svg+xml');
-      showToast('Die-Line Proof Sheet SVG Exported');
+      window.DualMarkAudio.click();
     });
 
     document.getElementById('btn-print-labels').addEventListener('click', function() {
@@ -2055,8 +2228,7 @@
             clearanceMm: clearanceMm
           });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Master_PDFX4_FOGRA39.pdf', 'application/pdf');
-          showToast('🏆 PDF/X-4 Master (FOGRA39 / TrueType Embedded) Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2072,8 +2244,7 @@
           var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
           var eps = window.DualMarkPrepress.generateCmykEps(data.barcode1d, data.qrMatrix, { packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(eps, 'DualMark_Prepress_CMYK.eps', 'application/postscript');
-          showToast('✓ PostScript Level 3 CMYK EPS Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2089,8 +2260,7 @@
           var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
           var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 600, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_600DPI.pdf', 'application/pdf');
-          showToast('✓ High-Res Vector PDF (600 DPI Equivalent) Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2106,8 +2276,7 @@
           var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
           var pdf = window.DualMarkPrepress.generateVectorPdf(data.barcode1d, data.qrMatrix, { dpi: 1200, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Vector_Proof_1200DPI.pdf', 'application/pdf');
-          showToast('✓ Ultra High-Res Vector PDF (1200 DPI Equivalent) Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2123,8 +2292,7 @@
           var pkgH = window.clearanceInspector ? window.clearanceInspector.packageHeightMm : 55;
           var eps = window.DualMarkPrepress.generatePantoneEps(data.barcode1d, data.qrMatrix, { packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(eps, 'DualMark_Pantone_Spot_Separation.eps', 'application/postscript');
-          showToast('✓ Pantone Spot Separation (Process Black C & Rubine Red C) EPS Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2141,8 +2309,7 @@
           var clearanceMm = window.clearanceInspector ? window.clearanceInspector.getMetrics().edgeDistanceMm : 52;
           var pdf = window.DualMarkPrepress.generateLayeredPdf(data.barcode1d, data.qrMatrix, { clearanceMm: clearanceMm, packageWidthMm: pkgW, packageHeightMm: pkgH });
           window.DualMarkPrepress.downloadFile(pdf, 'DualMark_Layered_Illustrator_OCG.pdf', 'application/pdf');
-          showToast('✓ Adobe Illustrator Layered PDF (OCG) Exported');
-          if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+          if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       });
     }
@@ -2224,8 +2391,7 @@
         var zpl = zplOutputPreview.textContent;
         if (zpl.indexOf('^XA') === -1) zpl = getActiveZpl();
         downloadBlob(zpl, 'DualMark_Zebra_Sunrise2027.zpl', 'text/plain');
-        showToast('💾 Zebra ZPL File Downloaded');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -2469,8 +2635,7 @@
           batchStatusMsg.style.display = 'block';
           batchStatusMsg.textContent = '✓ Successfully packaged ' + count + ' SKUs (' + blob.size + ' bytes ZIP archive).';
         }
-        showToast('📦 Batch ZIP Package Generated (' + count + ' SKUs)');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
 
@@ -2506,8 +2671,7 @@
         proofSvg.push('</svg>');
 
         downloadBlob(proofSvg.join('\n'), 'DualMark_Batch_GangRun_Proof.svg', 'image/svg+xml');
-        showToast('📑 Multi-Up Gang-Run Proof Sheet Exported');
-        if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
   }

@@ -144,9 +144,13 @@
     }
   };
 
-  window.DualMarkZip = {
-    create: function() {
-      return new ZipPackager();
-    }
+  function DualMarkZip() {
+    return new ZipPackager();
+  }
+  DualMarkZip.create = function() {
+    return new ZipPackager();
   };
+  DualMarkZip.ZipPackager = ZipPackager;
+
+  window.DualMarkZip = DualMarkZip;
 })(window);
