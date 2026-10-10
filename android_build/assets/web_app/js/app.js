@@ -55,6 +55,43 @@
     setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
   }
 
+  function copyTextSafely(text, toastMsg) {
+    if (window.PresetLoaders && typeof window.PresetLoaders.copyToClipboard === 'function') {
+      window.PresetLoaders.copyToClipboard(text).then(function() {
+        if (toastMsg) showToast(toastMsg);
+      }).catch(function() {
+        fallbackCopyText(text, toastMsg);
+      });
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function() {
+        if (toastMsg) showToast(toastMsg);
+      }).catch(function() {
+        fallbackCopyText(text, toastMsg);
+      });
+    } else {
+      fallbackCopyText(text, toastMsg);
+    }
+  }
+
+  function fallbackCopyText(text, toastMsg) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok && toastMsg) showToast(toastMsg);
+    } catch (e) {
+      console.warn('Fallback copy failed:', e);
+    }
+  }
+
   // 1. Navigation Tab Switching
   function initNav() {
     var topTabs = document.querySelectorAll('.nav-tab');
@@ -683,11 +720,7 @@
 
     document.getElementById('btn-2d-copy').addEventListener('click', function() {
       var uri = preview2d.textContent;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(uri).then(function() {
-          showToast('Copied GS1 Digital Link to Clipboard');
-        });
-      }
+      copyTextSafely(uri, 'Copied GS1 Digital Link to Clipboard');
       window.DualMarkAudio.click();
     });
 
@@ -1293,15 +1326,34 @@
         gps: (document.getElementById('fsma-gps') ? document.getElementById('fsma-gps').value : 'Live Field GPS')
       };
 
+      var fGtin = document.getElementById('fsma-gtin');
+      if (fGtin) fGtin.value = lastScannedCteData.gtin;
+      var fTlc = document.getElementById('fsma-tlc');
+      if (fTlc) fTlc.value = lastScannedCteData.tlc;
+
       if (summaryQuickCte) {
         summaryQuickCte.textContent = 'GTIN: ' + lastScannedCteData.gtin + ' | Lot: ' + lot + ' (' + (item.format || '2D').toUpperCase() + ')';
       }
       cardQuickCte.style.display = 'block';
     }
+    window.handleScannedForQuickCte = handleScannedForQuickCte;
 
     if (btnQuickLogCte) {
       btnQuickLogCte.addEventListener('click', function() {
-        if (!lastScannedCteData) return;
+        if (!lastScannedCteData) {
+          var gtinVal = (document.getElementById('fsma-gtin') ? document.getElementById('fsma-gtin').value : '00812345678901') || '00812345678901';
+          var tlcVal = (document.getElementById('fsma-tlc') ? document.getElementById('fsma-tlc').value : 'LOT-2026-X') || 'LOT-2026-X';
+          lastScannedCteData = {
+            gtin: gtinVal,
+            tlc: tlcVal,
+            serial: 'SN-' + Math.floor(10000 + Math.random() * 90000),
+            eventType: 'RECEIVING CTE',
+            commodity: 'Scanned Commercial Item',
+            quantity: '1 Unit / Scanned',
+            gln: 'GLN 0812345000012 — Receiving Bay #1',
+            gps: (document.getElementById('fsma-gps') ? document.getElementById('fsma-gps').value : 'Live Field GPS')
+          };
+        }
         if (window.DualMarkFsma && typeof window.DualMarkFsma.addRecord === 'function') {
           var rec = window.DualMarkFsma.addRecord(lastScannedCteData);
           showToast('✓ Committed to FSMA Chain: ' + rec.id);
@@ -1313,14 +1365,21 @@
             }
           }
           cardQuickCte.style.display = 'none';
+          if (typeof window.switchTab === 'function') {
+            window.switchTab('tab-fsma');
+          }
         }
       });
     }
 
     if (btnViewFsmaCte) {
       btnViewFsmaCte.addEventListener('click', function() {
-        var tabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-fsma"]');
-        if (tabBtn) tabBtn.click();
+        if (typeof window.switchTab === 'function') {
+          window.switchTab('tab-fsma');
+        } else {
+          var tabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-fsma"]');
+          if (tabBtn) tabBtn.click();
+        }
       });
     }
 
@@ -2011,11 +2070,7 @@
       btnCopyZpl.addEventListener('click', function() {
         var zpl = zplOutputPreview.textContent;
         if (zpl.indexOf('^XA') === -1) zpl = getActiveZpl();
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(zpl).then(function() {
-            showToast('📋 Copied ZPL Code to Clipboard');
-          });
-        }
+        copyTextSafely(zpl, '📋 Copied ZPL Code to Clipboard');
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
