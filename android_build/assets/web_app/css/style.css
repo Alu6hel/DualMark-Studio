@@ -1020,3 +1020,142 @@ body.theme-outdoor .btn {
 }
 
 
+
+/* Quick Settings Drawer & Slide-Over Sheet */
+.quick-settings-drawer {
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 380px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.7);
+  animation: slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.settings-drawer-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.settings-drawer-header button#btn-close-settings {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.settings-drawer-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cyan);
+}
+
+.settings-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  font-size: 13px;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
+  border-radius: 8px;
+  gap: 10px;
+}
+
+@media (max-width: 540px) {
+  .quick-settings-drawer {
+    max-width: 100%;
+    border-left: none;
+  }
+}
+
+/* 50mm Optical Clearance Meter Layout */
+.clearance-meter-wrap {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.clearance-dial-box {
+  text-align: center;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 540px) {
+  .clearance-meter-wrap {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 8px;
+  }
+  .clearance-meter-wrap .status-meter {
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: center !important;
+  }
+  .clearance-readout-col {
+    text-align: center !important;
+  }
+}
+
+/* Rive Canvas Components */
+.rive-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 1-Tap Quick Action CTE Card */
+#card-scan-quick-cte {
+  animation: fadeInUp 0.2s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

@@ -98,13 +98,21 @@
 
     // Sound toggle
     var btnSound = document.getElementById('btn-sound');
+    var soundIcon = document.getElementById('sound-icon');
     if (btnSound) {
+      var updateSoundUi = function(muted) {
+        if (soundIcon) {
+          soundIcon.textContent = muted ? '🔇' : '🔊';
+        } else {
+          btnSound.innerHTML = '<span>' + (muted ? '🔇' : '🔊') + '</span> <span>Tactile Audio Feedback</span>';
+        }
+      };
       btnSound.addEventListener('click', function() {
         var muted = window.DualMarkAudio.toggleMute();
-        btnSound.textContent = muted ? '🔇' : '🔊';
+        updateSoundUi(muted);
         showToast(muted ? 'Audio feedback muted' : 'Audio feedback enabled');
       });
-      btnSound.textContent = window.DualMarkAudio.isMuted() ? '🔇' : '🔊';
+      updateSoundUi(window.DualMarkAudio.isMuted());
     }
 
     // Theme toggle

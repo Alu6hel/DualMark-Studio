@@ -61,14 +61,14 @@
         <div class="settings-group">
           <label class="settings-group-title">Environment & Audio</label>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button id="btn-theme" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
+            <button id="btn-theme" class="btn btn-secondary settings-action-btn">
               <span>🌓</span> <span>Clean Room Theme (Light / Dark)</span>
             </button>
-            <button id="btn-outdoor" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
+            <button id="btn-outdoor" class="btn btn-secondary settings-action-btn">
               <span>☀️</span> <span>Outdoor High-Contrast Dock Mode</span>
             </button>
-            <button id="btn-sound" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
-              <span>🔊</span> <span>Tactile Audio Feedback</span>
+            <button id="btn-sound" class="btn btn-secondary settings-action-btn">
+              <span id="sound-icon">🔊</span> <span>Tactile Audio Feedback</span>
             </button>
           </div>
         </div>
@@ -77,13 +77,13 @@
         <div class="settings-group">
           <label class="settings-group-title">System & Regulatory</label>
           <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button id="btn-licensing" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
+            <button id="btn-licensing" class="btn btn-secondary settings-action-btn">
               <span>👑</span> <span>Commercial Licensing & Editions</span>
             </button>
-            <button id="btn-diagnostics" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
+            <button id="btn-diagnostics" class="btn btn-secondary settings-action-btn">
               <span>🛠️</span> <span>Export System Diagnostics</span>
             </button>
-            <button id="btn-legal" class="btn btn-secondary" style="justify-content: flex-start; width: 100%; font-size: 13px; padding: 10px 12px;">
+            <button id="btn-legal" class="btn btn-secondary settings-action-btn">
               <span>⚖️</span> <span>GS1 & FDA Part 11 Disclaimers</span>
             </button>
           </div>
@@ -330,11 +330,11 @@
         </div>
 
         <!-- Rive Dynamic 50mm Optical Compliance Dial & Real-time Status Meter -->
-        <div style="display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: center; margin-top: 12px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px;">
-          <div style="text-align: center; height: 130px; display: flex; align-items: center; justify-content: center;">
+        <div class="clearance-meter-wrap">
+          <div class="clearance-dial-box">
             <canvas id="canvas-rive-clearance" style="width: 130px; height: 130px;"></canvas>
           </div>
-          <div>
+          <div class="clearance-info-box">
             <div class="status-meter pass" id="clearance-status-box" style="padding: 10px 14px; margin: 0;">
               <div>
                 <div class="status-headline" id="clearance-status-text" style="font-size: 13px;">
@@ -345,7 +345,7 @@
                   Edge-to-edge optical clearance satisfies Sunrise 2027 pass rate.
                 </div>
               </div>
-              <div style="text-align: right;">
+              <div class="clearance-readout-col" style="text-align: right;">
                 <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
                 <small style="color: var(--text-muted); font-size: 10px;">Threshold: 50.0 mm</small>
               </div>

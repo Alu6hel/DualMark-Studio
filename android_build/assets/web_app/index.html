@@ -24,23 +24,73 @@
       </div>
     </div>
     <div class="header-actions">
-      <select id="select-language" class="form-control" style="width: auto; padding: 2px 6px; font-size: 11px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px;" title="Select Display Language" aria-label="Language">
-        <option value="en-US">🇺🇸 EN</option>
-        <option value="es-ES">🇪🇸 ES</option>
-        <option value="de-DE">🇩🇪 DE</option>
-        <option value="fr-FR">🇫🇷 FR</option>
-        <option value="ja-JP">🇯🇵 JA</option>
-        <option value="zh-CN">🇨🇳 ZH</option>
-      </select>
       <button id="btn-tour" class="icon-btn" title="Interactive Guided Tour" aria-label="Take Tour">❓</button>
-      <button id="btn-outdoor" class="icon-btn" title="Toggle Outdoor Loading Dock Theme" aria-label="Outdoor Mode">☀️</button>
-      <button id="btn-diagnostics" class="icon-btn" title="Export Sanitized System Diagnostics" aria-label="Diagnostics">🛠️</button>
-      <button id="btn-licensing" class="icon-btn" title="Commercial Licensing & Editions" aria-label="Licensing">👑</button>
-      <button id="btn-legal" class="icon-btn" title="GS1 & FDA Part 11 Regulatory Disclaimers" aria-label="Legal Disclaimers">⚖️</button>
-      <button id="btn-sound" class="icon-btn" title="Toggle Tactile Audio" aria-label="Toggle Sound">🔊</button>
-      <button id="btn-theme" class="icon-btn" title="Toggle Clean Room Theme" aria-label="Toggle Theme">🌓</button>
+      <button id="btn-quick-settings" class="icon-btn" title="Workstation Settings & Controls" aria-label="Settings">⚙️</button>
     </div>
   </header>
+
+  <!-- Slide-Over Quick Settings Sheet (Consolidated Workspace Controls) -->
+  <div id="sheet-quick-settings" class="modal-overlay" style="display:none; align-items: flex-start; justify-content: flex-end; padding: 0;">
+    <div class="quick-settings-drawer">
+      <div class="settings-drawer-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px;">⚙️</span>
+          <div>
+            <h3 style="font-size:15px; font-weight:800; margin:0;">Workstation Settings</h3>
+            <small style="color:var(--text-secondary); font-size:11px;">Environment, Audio & Legal Controls</small>
+          </div>
+        </div>
+        <button class="icon-btn" id="btn-close-settings" title="Close Settings">✕</button>
+      </div>
+
+      <div class="settings-drawer-body">
+        <!-- Language Selector -->
+        <div class="settings-group">
+          <label class="settings-group-title">Display Language (i18n)</label>
+          <select id="select-language" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Display Language" aria-label="Language">
+            <option value="en-US">🇺🇸 English (United States)</option>
+            <option value="es-ES">🇪🇸 Español (España)</option>
+            <option value="de-DE">🇩🇪 Deutsch (Deutschland)</option>
+            <option value="fr-FR">🇫🇷 Français (France)</option>
+            <option value="ja-JP">🇯🇵 日本語 (Japan)</option>
+            <option value="zh-CN">🇨🇳 简体中文 (China)</option>
+          </select>
+        </div>
+
+        <!-- Environment & Themes -->
+        <div class="settings-group">
+          <label class="settings-group-title">Environment & Audio</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button id="btn-theme" class="btn btn-secondary settings-action-btn">
+              <span>🌓</span> <span>Clean Room Theme (Light / Dark)</span>
+            </button>
+            <button id="btn-outdoor" class="btn btn-secondary settings-action-btn">
+              <span>☀️</span> <span>Outdoor High-Contrast Dock Mode</span>
+            </button>
+            <button id="btn-sound" class="btn btn-secondary settings-action-btn">
+              <span id="sound-icon">🔊</span> <span>Tactile Audio Feedback</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Compliance & Diagnostics -->
+        <div class="settings-group">
+          <label class="settings-group-title">System & Regulatory</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button id="btn-licensing" class="btn btn-secondary settings-action-btn">
+              <span>👑</span> <span>Commercial Licensing & Editions</span>
+            </button>
+            <button id="btn-diagnostics" class="btn btn-secondary settings-action-btn">
+              <span>🛠️</span> <span>Export System Diagnostics</span>
+            </button>
+            <button id="btn-legal" class="btn btn-secondary settings-action-btn">
+              <span>⚖️</span> <span>GS1 & FDA Part 11 Disclaimers</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Top Nav Scroller Removed: Single Source of Navigation is Bottom Nav Bar -->
   <div id="nav-tabs" style="display:none;" aria-hidden="true"></div>
@@ -77,6 +127,15 @@
             <span class="preset-badge">ITF-14</span>
           </button>
         </div>
+      </div>
+
+      <!-- Smart Auto-Sync 1D <-> 2D Control Bar -->
+      <div class="sync-banner" style="background: rgba(0, 240, 255, 0.06); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--cyan); cursor: pointer; margin: 0;">
+          <input type="checkbox" id="chk-sync-codes" checked style="accent-color: var(--cyan); width: 16px; height: 16px; cursor: pointer;">
+          <span>⚡ Smart Auto-Sync 1D (UPC-A) ↔ 2D (GTIN-14)</span>
+        </label>
+        <span style="font-size: 11px; color: var(--text-secondary);">Single input synchronizes legacy POS & Sunrise 2027 matrices</span>
       </div>
 
       <div class="grid-2">
@@ -270,20 +329,27 @@
           <canvas id="canvas-clearance"></canvas>
         </div>
 
-        <!-- Real-time Status Meter -->
-        <div class="status-meter pass" id="clearance-status-box" style="padding: 10px 14px; margin-top: 12px;">
-          <div>
-            <div class="status-headline" id="clearance-status-text" style="font-size: 13px;">
-              <span id="clearance-status-icon">✓</span>
-              <span>COMPLIANT (≥ 50.0 mm)</span>
-            </div>
-            <div class="status-detail" id="clearance-status-sub" style="font-size: 11px;">
-              Edge-to-edge optical clearance satisfies Sunrise 2027 pass rate.
-            </div>
+        <!-- Rive Dynamic 50mm Optical Compliance Dial & Real-time Status Meter -->
+        <div class="clearance-meter-wrap">
+          <div class="clearance-dial-box">
+            <canvas id="canvas-rive-clearance" style="width: 130px; height: 130px;"></canvas>
           </div>
-          <div style="text-align: right;">
-            <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
-            <small style="color: var(--text-muted); font-size: 10px;">Threshold: 50.0 mm</small>
+          <div class="clearance-info-box">
+            <div class="status-meter pass" id="clearance-status-box" style="padding: 10px 14px; margin: 0;">
+              <div>
+                <div class="status-headline" id="clearance-status-text" style="font-size: 13px;">
+                  <span id="clearance-status-icon">✓</span>
+                  <span>COMPLIANT (≥ 50.0 mm)</span>
+                </div>
+                <div class="status-detail" id="clearance-status-sub" style="font-size: 11px;">
+                  Edge-to-edge optical clearance satisfies Sunrise 2027 pass rate.
+                </div>
+              </div>
+              <div class="clearance-readout-col" style="text-align: right;">
+                <div style="font-family: var(--font-mono); font-size: 20px; font-weight: 800;" id="clearance-mm-readout">52.4 mm</div>
+                <small style="color: var(--text-muted); font-size: 10px;">Threshold: 50.0 mm</small>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -380,9 +446,10 @@
             <span class="badge badge-cyan" id="scanner-state-badge">CAMERA OFFLINE</span>
           </div>
 
-          <div class="video-scanner-wrap">
+          <div class="video-scanner-wrap" style="position:relative;">
             <video id="scanner-video" style="display:none;"></video>
             <canvas id="scanner-canvas"></canvas>
+            <canvas id="canvas-rive-scanner" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5;"></canvas>
           </div>
 
           <div class="tool-bar" style="margin-top: 10px;">
@@ -403,6 +470,21 @@
           <div style="margin-top: 10px;">
             <label style="font-size: 10px;">Decoded Payload</label>
             <div class="code-block" id="scan-decoded-result" style="margin: 4px 0 0; padding: 8px 10px; font-size: 11px;">Awaiting optical acquisition...</div>
+          </div>
+
+          <!-- 1-Tap "Scan-to-CTE" Quick Action Pipeline -->
+          <div id="card-scan-quick-cte" style="display:none; margin-top: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 10px 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 11px; font-weight: 800; color: var(--emerald);">⚡ 1-TAP FSMA 204 TRACEABILITY</span>
+              <span class="badge badge-green" style="font-size: 9.5px;">PARSED METADATA</span>
+            </div>
+            <div id="quick-cte-summary" style="font-size: 11px; font-family: var(--font-mono); color: var(--text-primary); margin-bottom: 8px;">
+              GTIN: 00812345678901 | Lot: LOT-2026-X
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-emerald btn-sm" id="btn-quick-log-cte" style="flex: 1; padding: 7px 10px; font-weight: 700;">⚡ Log to FSMA Chain (1-Tap)</button>
+              <button class="btn btn-secondary btn-sm" id="btn-view-fsma-cte" style="padding: 7px 10px;">View in FSMA</button>
+            </div>
           </div>
         </div>
 
@@ -526,7 +608,13 @@
         <!-- FDA 204 & EPCIS 2.0 Compliance Dossier Suite -->
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 14px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--emerald);">Compliance Dossier Suite</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <canvas id="canvas-rive-seal" style="width: 48px; height: 48px;"></canvas>
+              <div>
+                <span style="font-size: 12px; font-weight: 700; color: var(--emerald);">Compliance Dossier Suite</span>
+                <small style="display: block; font-size: 10px; color: var(--text-secondary);">SHA-256 Chain-of-Custody Cryptographic Ledger</small>
+              </div>
+            </div>
             <button class="btn btn-secondary btn-sm" id="btn-sign-part11" style="padding: 4px 10px; font-size: 11px;">✍️ 21 CFR Part 11 Sign</button>
           </div>
           <div class="tool-bar" style="margin-top: 0;">
@@ -571,102 +659,128 @@
           <span class="badge badge-cyan">AIR-GAPPED WORKSTATION</span>
         </div>
 
-        <!-- Master Prepress Vector Engine & BWR -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 13px; font-weight: 700; color: var(--cyan);">Prepress Vector Plates &amp; BWR Compensation</span>
-            <span id="prepress-bwr-readout" class="badge badge-cyan" style="font-family: var(--font-mono); font-size: 11px;">0 µm (Nominal)</span>
+        <!-- Master 1-Click Prepress Bundle & Segmented Hub -->
+        <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 10px 14px;">
+          <div>
+            <span style="font-size: 12px; font-weight: 800; color: var(--cyan);">1-TAP MASTER PACKAGING BUNDLE</span>
+            <div style="font-size: 10.5px; color: var(--text-secondary);">Generates PDF/X-4 Plate, Die-Line SVG & Verified Proof Sheet simultaneously</div>
           </div>
+          <button class="btn btn-emerald" id="btn-export-master-package" style="font-weight: 700; padding: 8px 16px;">📦 1-Click Master Prepress Bundle</button>
+        </div>
 
-          <div class="slider-wrap" style="margin: 6px 0 8px;">
-            <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">-100 µm</span>
-            <input type="range" id="prepress-bwr-slider" min="-100" max="0" step="5" value="0">
-            <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">0 µm</span>
-          </div>
+        <div class="segmented-control" id="export-segment-switch" style="margin-bottom: 14px;">
+          <button type="button" class="segmented-item active" data-export-pane="pane-prepress">🏆 Prepress Plates</button>
+          <button type="button" class="segmented-item" data-export-pane="pane-zebra">🖨️ Zebra Thermal</button>
+          <button type="button" class="segmented-item" data-export-pane="pane-batch">📦 Batch CSV</button>
+        </div>
 
-          <div class="tool-bar" style="margin-top: 8px;">
-            <button class="btn btn-primary" id="btn-export-pdf-x4" data-i18n="btn.export_pdf">🏆 PDF/X-4 Master</button>
-            <button class="btn btn-primary" id="btn-export-cmyk-eps" data-i18n="btn.export_eps">📄 CMYK EPS</button>
-            <button class="btn btn-secondary" id="btn-export-pantone-eps">🎨 Pantone Spot</button>
-            <button class="btn btn-emerald" id="btn-export-layered-pdf">📑 Layered PDF</button>
-            <button class="btn btn-secondary" id="btn-export-pdf-600">📐 600 DPI</button>
-            <button class="btn btn-secondary" id="btn-export-pdf-1200">📐 1200 DPI</button>
-            <button class="btn btn-secondary" id="btn-export-combined-svg">📐 Die-Line SVG</button>
-            <button class="btn btn-secondary" id="btn-print-labels">🖨️ Proof Sheet</button>
+        <!-- Pane 1: Prepress Vector Engine & BWR -->
+        <div id="pane-prepress" style="display: block;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 13px; font-weight: 700; color: var(--cyan);">Prepress Vector Plates &amp; BWR Compensation</span>
+              <span id="prepress-bwr-readout" class="badge badge-cyan" style="font-family: var(--font-mono); font-size: 11px;">0 µm (Nominal)</span>
+            </div>
+
+            <div class="slider-wrap" style="margin: 6px 0 8px;">
+              <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">-100 µm</span>
+              <input type="range" id="prepress-bwr-slider" min="-100" max="0" step="5" value="0">
+              <span style="font-size: 10px; color: var(--text-secondary); font-family: var(--font-mono);">0 µm</span>
+            </div>
+
+            <div class="tool-bar" style="margin-top: 8px;">
+              <button class="btn btn-primary" id="btn-export-pdf-x4" data-i18n="btn.export_pdf">🏆 PDF/X-4 Master</button>
+              <button class="btn btn-primary" id="btn-export-cmyk-eps" data-i18n="btn.export_eps">📄 CMYK EPS</button>
+              <button class="btn btn-secondary" id="btn-export-pantone-eps">🎨 Pantone Spot</button>
+              <button class="btn btn-emerald" id="btn-export-layered-pdf">📑 Layered PDF</button>
+              <button class="btn btn-secondary" id="btn-export-pdf-600">📐 600 DPI</button>
+              <button class="btn btn-secondary" id="btn-export-pdf-1200">📐 1200 DPI</button>
+              <button class="btn btn-secondary" id="btn-export-combined-svg">📐 Die-Line SVG</button>
+              <button class="btn btn-secondary" id="btn-print-labels">🖨️ Proof Sheet</button>
+            </div>
           </div>
         </div>
 
-        <!-- Zebra ZPL II & Direct Network Socket Printing -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
-          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span>Zebra ZPL II Thermal Printer &amp; Socket Spooler</span>
-              <span id="zebra-status-pill" class="badge badge-emerald" style="font-size: 10px;">STATUS: READY</span>
+        <!-- Pane 2: Zebra ZPL II & Direct Network Socket Printing -->
+        <div id="pane-zebra" style="display: none;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 14px;">
+            <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span>Zebra ZPL II Thermal Printer &amp; Socket Spooler</span>
+                <span id="zebra-status-pill" class="badge badge-emerald" style="font-size: 10px;">STATUS: READY</span>
+              </div>
+              <span class="badge badge-cyan">RAW PORT 9100</span>
             </div>
-            <span class="badge badge-cyan">RAW PORT 9100</span>
-          </div>
 
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 140px;">
-              <select id="zpl-dpi-select" style="font-size: 11px; padding: 6px 8px;">
-                <option value="203" selected>203 DPI (8 dots/mm — Shipping)</option>
-                <option value="300">300 DPI (12 dots/mm — Packaging)</option>
-                <option value="600">600 DPI (24 dots/mm — Pharma)</option>
-              </select>
+            <!-- Miniature Rive Printer Vector Animation Canvas -->
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+              <canvas id="canvas-rive-printer" style="width: 140px; height: 60px;"></canvas>
             </div>
-            <button class="btn btn-primary btn-sm" id="btn-generate-zpl" style="padding: 6px 12px; white-space: nowrap;">⚡ Generate ZPL</button>
-          </div>
 
-          <div class="code-block" id="zpl-output-preview" style="max-height: 90px; overflow-y: auto; margin: 8px 0; font-size: 10.5px; padding: 8px;">Click "Generate ZPL" to synthesize printer code...</div>
-
-          <div class="tool-bar" style="margin-top: 6px;">
-            <button class="btn btn-emerald btn-sm" id="btn-copy-zpl">📋 Copy ZPL</button>
-            <button class="btn btn-secondary btn-sm" id="btn-download-zpl">💾 Save .zpl</button>
-          </div>
-
-          <!-- Direct Network Socket Spooler -->
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
-            <div style="flex: 2; min-width: 130px;">
-              <input type="text" id="tcp-printer-ip" class="mono-input" value="192.168.1.100" placeholder="Printer IP" style="font-size: 11px; padding: 6px 8px;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 140px;">
+                <select id="zpl-dpi-select" style="font-size: 11px; padding: 6px 8px;">
+                  <option value="203" selected>203 DPI (8 dots/mm — Shipping)</option>
+                  <option value="300">300 DPI (12 dots/mm — Packaging)</option>
+                  <option value="600">600 DPI (24 dots/mm — Pharma)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-generate-zpl" style="padding: 6px 12px; white-space: nowrap;">⚡ Generate ZPL</button>
             </div>
-            <div style="flex: 1; min-width: 60px;">
-              <input type="number" id="tcp-printer-port" class="mono-input" value="9100" style="font-size: 11px; padding: 6px 8px;">
-            </div>
-            <button class="btn btn-primary btn-sm" id="btn-send-tcp-socket" style="white-space: nowrap; padding: 6px 12px;">🖨️ Send TCP</button>
-            <button class="btn btn-secondary btn-sm" id="btn-poll-zebra-status" data-i18n="btn.poll_status" style="white-space: nowrap; padding: 6px 12px;">📊 Poll ~HS</button>
-          </div>
 
-          <!-- Bluetooth Low Energy (BLE) & SPP Hip Printer Spooler -->
-          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
-            <div style="flex: 2; min-width: 150px;">
-              <input type="text" id="bt-printer-mac" class="mono-input" value="00:11:22:33:AA:BB" placeholder="Bluetooth MAC (e.g. Zebra ZQ)" style="font-size: 11px; padding: 6px 8px;">
+            <div class="code-block" id="zpl-output-preview" style="max-height: 90px; overflow-y: auto; margin: 8px 0; font-size: 10.5px; padding: 8px;">Click "Generate ZPL" to synthesize printer code...</div>
+
+            <div class="tool-bar" style="margin-top: 6px;">
+              <button class="btn btn-emerald btn-sm" id="btn-copy-zpl">📋 Copy ZPL</button>
+              <button class="btn btn-secondary btn-sm" id="btn-download-zpl">💾 Save .zpl</button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btn-send-bt-spp" style="white-space: nowrap; padding: 6px 12px;">📱 Send BT SPP</button>
-            <button class="btn btn-emerald btn-sm" id="btn-scan-ble-printers" data-i18n="btn.scan_ble" style="white-space: nowrap; padding: 6px 12px;">🔍 Scan BLE</button>
-            <button class="btn btn-primary btn-sm" id="btn-send-ble-gatt" style="white-space: nowrap; padding: 6px 12px; display: none;">⚡ Send BLE</button>
-          </div>
-          <div id="ble-printers-container" style="display:none; margin-top: 6px; font-size: 11px;">
-            <select id="select-ble-discovered" class="mono-input" style="font-size: 11px; padding: 4px 8px; width: 100%;"></select>
+
+            <!-- Direct Network Socket Spooler -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+              <div style="flex: 2; min-width: 130px;">
+                <input type="text" id="tcp-printer-ip" class="mono-input" value="192.168.1.100" placeholder="Printer IP" style="font-size: 11px; padding: 6px 8px;">
+              </div>
+              <div style="flex: 1; min-width: 60px;">
+                <input type="number" id="tcp-printer-port" class="mono-input" value="9100" style="font-size: 11px; padding: 6px 8px;">
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-send-tcp-socket" style="white-space: nowrap; padding: 6px 12px;">🖨️ Send TCP</button>
+              <button class="btn btn-secondary btn-sm" id="btn-poll-zebra-status" data-i18n="btn.poll_status" style="white-space: nowrap; padding: 6px 12px;">📊 Poll ~HS</button>
+            </div>
+
+            <!-- Bluetooth Low Energy (BLE) & SPP Hip Printer Spooler -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
+              <div style="flex: 2; min-width: 150px;">
+                <input type="text" id="bt-printer-mac" class="mono-input" value="00:11:22:33:AA:BB" placeholder="Bluetooth MAC (e.g. Zebra ZQ)" style="font-size: 11px; padding: 6px 8px;">
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-send-bt-spp" style="white-space: nowrap; padding: 6px 12px;">📱 Send BT SPP</button>
+              <button class="btn btn-emerald btn-sm" id="btn-scan-ble-printers" data-i18n="btn.scan_ble" style="white-space: nowrap; padding: 6px 12px;">🔍 Scan BLE</button>
+              <button class="btn btn-primary btn-sm" id="btn-send-ble-gatt" style="white-space: nowrap; padding: 6px 12px; display: none;">⚡ Send BLE</button>
+            </div>
+            <div id="ble-printers-container" style="display:none; margin-top: 6px; font-size: 11px;">
+              <select id="select-ble-discovered" class="mono-input" style="font-size: 11px; padding: 4px 8px; width: 100%;"></select>
+            </div>
           </div>
         </div>
 
-        <!-- High-Throughput Batch Engine -->
-        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
-          <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
-            <span>Batch CSV Multi-SKU Synthesis</span>
-            <span class="badge badge-emerald">ZIP ARCHIVE</span>
-          </div>
+        <!-- Pane 3: High-Throughput Batch Engine -->
+        <div id="pane-batch" style="display: none;">
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px;">
+            <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
+              <span>Batch CSV Multi-SKU Synthesis</span>
+              <span class="badge badge-emerald">ZIP ARCHIVE</span>
+            </div>
 
-          <div class="form-group" style="margin-bottom: 8px;">
-            <textarea id="batch-csv-input" class="mono-input" style="height: 70px; font-size: 10.5px; padding: 8px;" placeholder="SKU,GTIN,Lot,Serial,ExpDate,Weight,TargetURL&#10;SKU-101,00812345678901,LOT-A1,SN-001,271231,001500,https://id.brand.com/01/00812345678901"></textarea>
-          </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <textarea id="batch-csv-input" class="mono-input" style="height: 70px; font-size: 10.5px; padding: 8px;" placeholder="SKU,GTIN,Lot,Serial,ExpDate,Weight,TargetURL&#10;SKU-101,00812345678901,LOT-A1,SN-001,271231,001500,https://id.brand.com/01/00812345678901"></textarea>
+            </div>
 
-          <div class="tool-bar" style="margin-top: 6px;">
-            <button class="btn btn-emerald btn-sm" id="btn-run-batch-zip">📦 Generate ZIP</button>
-            <button class="btn btn-secondary btn-sm" id="btn-batch-proof-sheet">📑 Proof Sheet</button>
-            <button class="btn btn-secondary btn-sm" id="btn-export-all-rules">🗄️ Routing Bundle</button>
+            <div class="tool-bar" style="margin-top: 6px;">
+              <button class="btn btn-emerald btn-sm" id="btn-run-batch-zip">📦 Generate ZIP</button>
+              <button class="btn btn-secondary btn-sm" id="btn-batch-proof-sheet">📑 Proof Sheet</button>
+              <button class="btn btn-secondary btn-sm" id="btn-export-all-rules">🗄️ Routing Bundle</button>
+            </div>
+            <div id="batch-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--emerald); margin-top: 6px;"></div>
           </div>
-          <div id="batch-status-msg" style="display:none; font-size: 11px; font-family: var(--font-mono); color: var(--emerald); margin-top: 6px;"></div>
         </div>
       </div>
     </section>
@@ -795,6 +909,9 @@
 
   <!-- Dynamic Localization Engine -->
   <script src="js/i18n.js"></script>
+
+  <!-- Interactive Rive Animation Engine -->
+  <script src="js/rive_integration.js"></script>
 
   <script src="js/app.js"></script>
 </body>
