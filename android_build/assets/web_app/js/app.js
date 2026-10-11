@@ -483,7 +483,7 @@
         var labels = {
           'default': 'Industrial Obsidian Theme',
           'theme-mascot-amber': '🦺 Mascot Safety Amber Theme',
-          'theme-mascot-cyber': '𥥽 Mascot Cyber Visor Theme',
+          'theme-mascot-cyber': '🥽 Mascot Cyber Visor Theme',
           'theme-light': 'Clean Room Light Theme',
           'theme-outdoor': 'Outdoor High-Contrast Dock Mode'
         };
@@ -506,7 +506,7 @@
     if (btnThemeCyber) {
       btnThemeCyber.addEventListener('click', function() {
         applyTheme('theme-mascot-cyber');
-        showToast('𥥽 Mascot Cyber Visor Theme');
+        showToast('🥽 Mascot Cyber Visor Theme');
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
@@ -1195,6 +1195,35 @@
       });
     }
 
+    window.loadBarcodeIntoSynth = function(code, type) {
+      if (!code) return;
+      var clean = code.trim();
+      var digitsOnly = clean.replace(/\D/g, '');
+      if (typeSelect) {
+        if (type) {
+          typeSelect.value = type;
+        } else if (digitsOnly.length === 12) {
+          typeSelect.value = 'UPC-A';
+        } else if (digitsOnly.length === 13) {
+          typeSelect.value = 'EAN-13';
+        } else if (digitsOnly.length === 14) {
+          typeSelect.value = 'ITF-14';
+        } else {
+          typeSelect.value = 'Code-128';
+        }
+      }
+      if (input1d) {
+        input1d.value = clean;
+      }
+      if (gtin2d) {
+        var g = digitsOnly;
+        while (g.length < 14) g = '0' + g;
+        gtin2d.value = g;
+      }
+      update1D();
+      update2D();
+    };
+
     update1D();
     update2D();
   }
@@ -1781,9 +1810,47 @@
     var scanFileInput = document.getElementById('input-scan-file');
     scanFileInput.addEventListener('change', function(e) {
       if (e.target.files && e.target.files[0]) {
-        studio.scanImageFile(e.target.files[0], function(res) {
-          showToast('Image analyzed');
-          resultBlock.textContent = 'Analyzed: ' + e.target.files[0].name + ' (Resolution ' + res.image.width + 'x' + res.image.height + ')';
+        var file = e.target.files[0];
+        studio.scanImageFile(file, function(res) {
+          if (res.results && res.results.length > 0) {
+            var first = res.results[0];
+            if (window.DualMarkAudio) window.DualMarkAudio.scanBeep();
+            if (badgeState) {
+              badgeState.textContent = 'BARCODE DETECTED';
+              badgeState.className = 'badge badge-green';
+            }
+            resultBlock.innerHTML = [
+              '<div style="margin-bottom:6px;"><strong>✓ Optical Scan Successful:</strong> <span class="badge badge-emerald">' + (first.format || 'UPC-A').toUpperCase() + '</span></div>',
+              '<div style="font-size:18px; font-weight:800; color:#00F0FF; letter-spacing:1px; margin: 6px 0;">' + first.rawValue + '</div>',
+              '<div style="color:var(--text-secondary); font-size:11px; margin-bottom:10px;">Scanned packaging photo: ' + file.name + ' (' + res.image.width + 'x' + res.image.height + ')</div>',
+              '<div style="display:flex; gap:8px; flex-wrap:wrap;">',
+              '  <button id="btn-transfer-scanned-to-synth" class="btn btn-primary btn-sm" style="font-weight:700;">⚡ Transfer ' + first.rawValue + ' to Tab 1 (Dual-Code Synth)</button>',
+              '</div>'
+            ].join('');
+
+            var btnTransfer = document.getElementById('btn-transfer-scanned-to-synth');
+            if (btnTransfer) {
+              btnTransfer.addEventListener('click', function() {
+                if (window.loadBarcodeIntoSynth) {
+                  window.loadBarcodeIntoSynth(first.rawValue, first.format === 'upc_a' ? 'UPC-A' : (first.format === 'ean_13' ? 'EAN-13' : 'UPC-A'));
+                }
+                var synthTabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-synth"]');
+                if (synthTabBtn) synthTabBtn.click();
+                else if (typeof window.switchTab === 'function') window.switchTab('tab-synth');
+                showToast('⚡ Barcode ' + first.rawValue + ' transferred to Dual-Code Synthesizer!');
+                if (window.DualMarkAudio) window.DualMarkAudio.successChime();
+              });
+            }
+
+            if (window.DualMarkRive) {
+              window.DualMarkRive.triggerScannerAcquired(true, true, first.format === 'qr_code' ? 1 : 0, true);
+            }
+            handleScannedForQuickCte(first);
+            showToast('✓ Barcode Decoded: ' + first.rawValue + ' (' + (first.format || 'UPC-A').toUpperCase() + ')');
+          } else {
+            resultBlock.textContent = 'Analyzed: ' + file.name + ' (' + res.image.width + 'x' + res.image.height + ') — No standard barcode recognized';
+            showToast('Analyzed packaging photo: No barcode recognized');
+          }
         });
       }
     });

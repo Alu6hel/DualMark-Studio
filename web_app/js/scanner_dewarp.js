@@ -569,18 +569,76 @@
     // Analyze uploaded photo file
     scanImageFile: function(file, callback) {
       var self = this;
-      var reader = new FileReader();
-      reader.onload = function(e) {
+
+      function processLoadedImage(img) {
+        self.sourceImage = img;
+        if (self.previewCanvas) {
+          self.previewCanvas.width = img.naturalWidth || img.width || 800;
+          self.previewCanvas.height = img.naturalHeight || img.height || 600;
+          var pctx = self.previewCanvas.getContext('2d');
+          pctx.drawImage(img, 0, 0, self.previewCanvas.width, self.previewCanvas.height);
+        }
+
+        self.detectBarcodes(img).then(function(results) {
+          if (results && results.length > 0 && self.previewCanvas) {
+            var pctx = self.previewCanvas.getContext('2d');
+            pctx.save();
+            var bx = self.previewCanvas.width * 0.12;
+            var by = self.previewCanvas.height * 0.32;
+            var bw = self.previewCanvas.width * 0.76;
+            var bh = self.previewCanvas.height * 0.36;
+
+            // Optical targeting brackets
+            pctx.strokeStyle = '#00F0FF';
+            pctx.lineWidth = 4;
+            pctx.strokeRect(bx, by, bw, bh);
+            pctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+            pctx.fillRect(bx, by, bw, bh);
+
+            // Laser scan line across barcode
+            pctx.strokeStyle = '#10B981';
+            pctx.lineWidth = 2.5;
+            pctx.setLineDash([8, 4]);
+            pctx.beginPath();
+            pctx.moveTo(bx, by + bh / 2);
+            pctx.lineTo(bx + bw, by + bh / 2);
+            pctx.stroke();
+            pctx.setLineDash([]);
+
+            // Decoded value badge on canvas
+            pctx.fillStyle = 'rgba(10, 15, 29, 0.85)';
+            pctx.fillRect(bx, by - 32, bw, 28);
+            pctx.strokeStyle = '#00F0FF';
+            pctx.lineWidth = 1;
+            pctx.strokeRect(bx, by - 32, bw, 28);
+
+            pctx.fillStyle = '#00F0FF';
+            pctx.font = 'bold 15px "JetBrains Mono", monospace';
+            pctx.textBaseline = 'middle';
+            pctx.fillText('✓ ' + results[0].rawValue + ' [' + (results[0].format || 'UPC-A').toUpperCase() + ']', bx + 10, by - 18);
+            pctx.restore();
+          }
+          if (typeof callback === 'function') {
+            callback({ results: results || [], image: img });
+          }
+        });
+      }
+
+      if (typeof file === 'string' && file.indexOf('data:') === 0) {
         var img = new Image();
-        img.onload = function() {
-          self.sourceImage = img;
-          self.detectBarcodes(img).then(function(results) {
-            callback({ results: results, image: img });
-          });
+        img.onload = function() { processLoadedImage(img); };
+        img.src = file;
+      } else if (file instanceof Image) {
+        processLoadedImage(file);
+      } else {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var img = new Image();
+          img.onload = function() { processLoadedImage(img); };
+          img.src = e.target.result;
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      }
     },
 
     parseBarcodeResult: function(rawValue, format) {
