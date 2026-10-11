@@ -1167,6 +1167,7 @@
       this.initPrinterStatus();
       this.initFsmaSeal();
       this.initMarkyMascot();
+      this.initLiveBackground();
 
       // Expose legacy backward-compatible method aliases
       if (this.instances.clearance) {
@@ -1291,6 +1292,418 @@
         this.instances.mascot.setBoolean('isCelebrating', true);
         this.instances.mascot.fireTrigger('celebrate');
       }
+      if (this.liveBackground && typeof this.liveBackground.createRipple === 'function') {
+        var cx = (typeof window !== 'undefined' ? window.innerWidth / 2 : 200);
+        this.liveBackground.createRipple(cx, 70, 160);
+      }
+    },
+
+    initLiveBackground: function() {
+      this.liveBackground = DualMarkLiveBackground;
+      DualMarkLiveBackground.init('dualmark-live-bg');
+      return this.liveBackground;
+    }
+  };
+
+
+  // =========================================================================
+  // 6. DUALMARK INTERACTIVE GPU LIVE BACKGROUND ENGINE
+  // =========================================================================
+  var DualMarkLiveBackground = {
+    canvas: null,
+    ctx: null,
+    animFrame: null,
+    width: 0,
+    height: 0,
+    dpr: 1,
+    activeTheme: 'default',
+    particles: [],
+    ripples: [],
+    scanLine: { y: 0, speed: 0.9, active: true },
+    mouse: { x: -1000, y: -1000, active: false, radius: 140 },
+    lastTime: 0,
+    isPaused: false,
+
+    themes: {
+      'theme-mascot-amber': {
+        name: 'Mascot Safety Amber',
+        bgGradient: ['#0A101D', '#121E33'],
+        gridColor: 'rgba(245, 158, 11, 0.08)',
+        filamentColor: 'rgba(245, 158, 11, 0.16)',
+        particleColors: ['#F59E0B', '#FBBF24', '#D97706', '#FEF3C7'],
+        laserColor: 'rgba(245, 158, 11, 0.38)',
+        laserGlow: 'rgba(245, 158, 11, 0.16)',
+        rippleColor: 'rgba(245, 158, 11, 0.55)'
+      },
+      'theme-mascot-cyber': {
+        name: 'Mascot Cyber Visor',
+        bgGradient: ['#030A14', '#081A33'],
+        gridColor: 'rgba(0, 240, 255, 0.09)',
+        filamentColor: 'rgba(0, 240, 255, 0.18)',
+        particleColors: ['#00F0FF', '#38BDF8', '#06B6D4', '#E0F2FE'],
+        laserColor: 'rgba(0, 240, 255, 0.42)',
+        laserGlow: 'rgba(0, 240, 255, 0.18)',
+        rippleColor: 'rgba(0, 240, 255, 0.55)'
+      },
+      'theme-light': {
+        name: 'Clean Room Light',
+        bgGradient: ['#F1F5F9', '#E2E8F0'],
+        gridColor: 'rgba(2, 132, 199, 0.05)',
+        filamentColor: 'rgba(2, 132, 199, 0.10)',
+        particleColors: ['#0284C7', '#0EA5E9', '#38BDF8'],
+        laserColor: 'rgba(2, 132, 199, 0.25)',
+        laserGlow: 'rgba(2, 132, 199, 0.08)',
+        rippleColor: 'rgba(2, 132, 199, 0.35)'
+      },
+      'theme-outdoor': {
+        name: 'Outdoor High-Contrast',
+        bgGradient: ['#FFFFFF', '#F8FAFC'],
+        gridColor: 'rgba(0, 0, 0, 0.06)',
+        filamentColor: 'rgba(0, 0, 0, 0.12)',
+        particleColors: ['#000000', '#334155', '#0284C7'],
+        laserColor: 'rgba(0, 0, 0, 0.3)',
+        laserGlow: 'rgba(0, 0, 0, 0.1)',
+        rippleColor: 'rgba(0, 0, 0, 0.4)'
+      },
+      'default': {
+        name: 'Industrial Obsidian',
+        bgGradient: ['#070B14', '#0D1527'],
+        gridColor: 'rgba(0, 240, 255, 0.05)',
+        filamentColor: 'rgba(0, 240, 255, 0.12)',
+        particleColors: ['#00F0FF', '#38BDF8', '#64748B', '#0EA5E9'],
+        laserColor: 'rgba(0, 240, 255, 0.28)',
+        laserGlow: 'rgba(0, 240, 255, 0.12)',
+        rippleColor: 'rgba(0, 240, 255, 0.45)'
+      }
+    },
+
+    init: function(canvasId) {
+      var id = canvasId || 'dualmark-live-bg';
+      if (typeof document === 'undefined') return;
+      this.canvas = document.getElementById(id);
+      if (!this.canvas) return;
+      this.ctx = this.canvas.getContext('2d');
+      if (!this.ctx) return;
+
+      var self = this;
+      this.detectCurrentTheme();
+      this.resize();
+      this.initParticles();
+
+      window.addEventListener('resize', function() {
+        self.resize();
+      }, { passive: true });
+
+      window.addEventListener('pointermove', function(e) {
+        self.mouse.x = e.clientX;
+        self.mouse.y = e.clientY;
+        self.mouse.active = true;
+      }, { passive: true });
+
+      window.addEventListener('pointerleave', function() {
+        self.mouse.active = false;
+        self.mouse.x = -1000;
+        self.mouse.y = -1000;
+      }, { passive: true });
+
+      window.addEventListener('click', function(e) {
+        self.createRipple(e.clientX, e.clientY);
+      }, { passive: true });
+
+      if (typeof document.hidden !== 'undefined') {
+        document.addEventListener('visibilitychange', function() {
+          if (document.hidden) {
+            self.pause();
+          } else {
+            self.resume();
+          }
+        });
+      }
+
+      this.lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      this.startLoop();
+    },
+
+    detectCurrentTheme: function() {
+      if (typeof document === 'undefined') return;
+      var b = document.body;
+      if (b.classList.contains('theme-mascot-amber')) {
+        this.activeTheme = 'theme-mascot-amber';
+      } else if (b.classList.contains('theme-mascot-cyber')) {
+        this.activeTheme = 'theme-mascot-cyber';
+      } else if (b.classList.contains('theme-outdoor')) {
+        this.activeTheme = 'theme-outdoor';
+      } else if (b.classList.contains('theme-light')) {
+        this.activeTheme = 'theme-light';
+      } else {
+        this.activeTheme = 'default';
+      }
+    },
+
+    setTheme: function(themeName) {
+      if (this.themes[themeName]) {
+        this.activeTheme = themeName;
+      } else {
+        this.detectCurrentTheme();
+      }
+      this.createRipple(this.width / 2, this.height / 2, 90);
+    },
+
+    resize: function() {
+      if (!this.canvas) return;
+      this.dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+      var w = (typeof window !== 'undefined' && window.innerWidth) || 1024;
+      var h = (typeof window !== 'undefined' && window.innerHeight) || 768;
+      this.width = w;
+      this.height = h;
+      this.canvas.width = Math.floor(w * this.dpr);
+      this.canvas.height = Math.floor(h * this.dpr);
+      this.canvas.style.width = w + 'px';
+      this.canvas.style.height = h + 'px';
+    },
+
+    initParticles: function() {
+      this.particles = [];
+      var count = Math.min(Math.floor((this.width * this.height) / 28000), 55);
+      if (count < 24) count = 24;
+
+      for (var i = 0; i < count; i++) {
+        this.particles.push({
+          x: Math.random() * this.width,
+          y: Math.random() * this.height,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: (Math.random() - 0.5) * 0.45,
+          radius: 1.2 + Math.random() * 2.2,
+          colorIndex: Math.floor(Math.random() * 4),
+          angle: Math.random() * Math.PI * 2,
+          vAngle: (Math.random() - 0.5) * 0.02,
+          shape: Math.random() > 0.75 ? 'rect' : 'circle'
+        });
+      }
+    },
+
+    createRipple: function(x, y, maxR) {
+      this.ripples.push({
+        x: x || (this.width / 2),
+        y: y || (this.height / 2),
+        radius: 4,
+        maxRadius: maxR || Math.min(this.width, this.height) * 0.45,
+        alpha: 0.85,
+        speed: 3.5
+      });
+      if (this.ripples.length > 8) {
+        this.ripples.shift();
+      }
+    },
+
+    triggerScanSweep: function() {
+      this.scanLine.y = 0;
+      this.scanLine.active = true;
+    },
+
+    startLoop: function() {
+      var self = this;
+      function tick(now) {
+        if (!self.isPaused) {
+          var dt = (now - self.lastTime) / 1000;
+          if (dt > 0.1) dt = 0.1;
+          self.update(dt);
+          self.render();
+          self.lastTime = now;
+        }
+        self.animFrame = requestAnimationFrame(tick);
+      }
+      if (typeof requestAnimationFrame !== 'undefined') {
+        this.animFrame = requestAnimationFrame(tick);
+      }
+    },
+
+    pause: function() {
+      this.isPaused = true;
+    },
+
+    resume: function() {
+      if (this.isPaused) {
+        this.isPaused = false;
+        this.lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      }
+    },
+
+    update: function(dt) {
+      var w = this.width;
+      var h = this.height;
+
+      if (this.scanLine.active) {
+        this.scanLine.y += this.scanLine.speed * 120 * dt;
+        if (this.scanLine.y > h + 40) {
+          this.scanLine.y = -40;
+        }
+      }
+
+      for (var r = this.ripples.length - 1; r >= 0; r--) {
+        var rip = this.ripples[r];
+        rip.radius += rip.speed * 60 * dt;
+        rip.alpha -= 0.65 * dt;
+        if (rip.alpha <= 0 || rip.radius >= rip.maxRadius) {
+          this.ripples.splice(r, 1);
+        }
+      }
+
+      var mx = this.mouse.x;
+      var my = this.mouse.y;
+      var mActive = this.mouse.active;
+      var mRad = this.mouse.radius;
+
+      for (var i = 0; i < this.particles.length; i++) {
+        var p = this.particles[i];
+        p.x += p.vx * 60 * dt;
+        p.y += p.vy * 60 * dt;
+        p.angle += p.vAngle;
+
+        if (mActive) {
+          var dx = p.x - mx;
+          var dy = p.y - my;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < mRad && dist > 1) {
+            var force = (1 - dist / mRad) * 1.8;
+            p.x += (dx / dist) * force * 60 * dt;
+            p.y += (dy / dist) * force * 60 * dt;
+          }
+        }
+
+        if (p.x < -20) p.x = w + 20;
+        else if (p.x > w + 20) p.x = -20;
+        if (p.y < -20) p.y = h + 20;
+        else if (p.y > h + 20) p.y = -20;
+      }
+    },
+
+    render: function() {
+      var ctx = this.ctx;
+      if (!ctx) return;
+      var w = this.width;
+      var h = this.height;
+      var dpr = this.dpr;
+      var theme = this.themes[this.activeTheme] || this.themes['default'];
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      // 1. Ambient Background Gradient
+      var grad = ctx.createLinearGradient(0, 0, w * 0.7, h);
+      grad.addColorStop(0, theme.bgGradient[0]);
+      grad.addColorStop(1, theme.bgGradient[1]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Isometric / Perspective Die-Line Grid
+      ctx.save();
+      ctx.strokeStyle = theme.gridColor;
+      ctx.lineWidth = 1;
+      var gridSize = 64;
+      var nowTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      var offsetX = (nowTime * 0.008) % gridSize;
+      var offsetY = (nowTime * 0.006) % gridSize;
+
+      ctx.beginPath();
+      for (var gx = -gridSize + offsetX; gx < w + gridSize; gx += gridSize) {
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, h);
+      }
+      for (var gy = -gridSize + offsetY; gy < h + gridSize; gy += gridSize) {
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+      }
+      ctx.stroke();
+
+      // Corner target marks
+      var markSize = 12;
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(20, 20, markSize, markSize);
+      ctx.strokeRect(w - 20 - markSize, 20, markSize, markSize);
+      ctx.strokeRect(20, h - 20 - markSize, markSize, markSize);
+      ctx.strokeRect(w - 20 - markSize, h - 20 - markSize, markSize, markSize);
+      ctx.restore();
+
+      // 3. Filaments
+      ctx.save();
+      ctx.lineWidth = 0.8;
+      var maxConnectDist = 110;
+      var len = this.particles.length;
+      for (var i = 0; i < len; i++) {
+        var pi = this.particles[i];
+        for (var j = i + 1; j < len; j++) {
+          var pj = this.particles[j];
+          var fdx = pi.x - pj.x;
+          var fdy = pi.y - pj.y;
+          var fdist = Math.sqrt(fdx * fdx + fdy * fdy);
+          if (fdist < maxConnectDist) {
+            var alpha = (1 - fdist / maxConnectDist) * 0.7;
+            ctx.strokeStyle = theme.filamentColor.replace(/[\d\.]+\)$/, alpha + ')');
+            ctx.beginPath();
+            ctx.moveTo(pi.x, pi.y);
+            ctx.lineTo(pj.x, pj.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+
+      // 4. Interactive Particles
+      ctx.save();
+      for (var k = 0; k < len; k++) {
+        var pt = this.particles[k];
+        var pCol = theme.particleColors[pt.colorIndex % theme.particleColors.length];
+        ctx.fillStyle = pCol;
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.rotate(pt.angle);
+
+        if (pt.shape === 'rect') {
+          ctx.fillRect(-pt.radius, -pt.radius, pt.radius * 2, pt.radius * 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, pt.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 5. Optical Scanner Laser Sweep Beam
+      if (this.scanLine.active && this.scanLine.y >= -20 && this.scanLine.y <= h + 20) {
+        ctx.save();
+        var sy = this.scanLine.y;
+        var laserGrad = ctx.createLinearGradient(0, sy - 18, 0, sy + 18);
+        laserGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        laserGrad.addColorStop(0.5, theme.laserGlow);
+        laserGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = laserGrad;
+        ctx.fillRect(0, sy - 18, w, 36);
+
+        ctx.strokeStyle = theme.laserColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, sy);
+        ctx.lineTo(w, sy);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Action Ripple Waves
+      for (var rp = 0; rp < this.ripples.length; rp++) {
+        var ripObj = this.ripples[rp];
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ripObj.x, ripObj.y, ripObj.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = theme.rippleColor.replace(/[\d\.]+\)$/, ripObj.alpha + ')');
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore();
     }
   };
 
@@ -1298,6 +1711,7 @@
   if (typeof window !== 'undefined') {
     window.DualMarkRive = RiveIntegration;
     window.RiveIntegration = RiveIntegration;
+    window.DualMarkLiveBackground = DualMarkLiveBackground;
   }
 
   // Auto-initialize in browser DOM

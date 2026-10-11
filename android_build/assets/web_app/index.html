@@ -19,6 +19,9 @@
 </head>
 <body>
 
+  <!-- Live GPU-Accelerated Vector Interactive Background -->
+  <canvas id="dualmark-live-bg"></canvas>
+
   <!-- Top App Header -->
   <header class="app-header">
     <div class="brand-wrap">
@@ -58,6 +61,7 @@
           <label class="settings-group-title" data-i18n="settings.language_label">Display Language (i18n)</label>
           <select id="select-language" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Select Display Language" aria-label="Language">
             <option value="en-US">🇺🇸 English (United States)</option>
+            <option value="hi-IN">🇮🇳 हिन्दी (Hindi)</option>
             <option value="es-ES">🇪🇸 Español (España)</option>
             <option value="de-DE">🇩🇪 Deutsch (Deutschland)</option>
             <option value="fr-FR">🇫🇷 Français (France)</option>
@@ -94,7 +98,22 @@
         <!-- Environment & Themes -->
         <div class="settings-group">
           <label class="settings-group-title" data-i18n="settings.environment_title">Environment &amp; Audio</label>
+          <div style="margin-bottom: 8px;">
+            <select id="select-theme" class="form-control" style="width: 100%; padding: 8px 10px; font-size: 13px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px;" title="Active Live Theme">
+              <option value="default">🌌 Industrial Obsidian (Standard Dark)</option>
+              <option value="theme-mascot-amber">🦺 Mascot Safety Amber (Engineer Hardhat)</option>
+              <option value="theme-mascot-cyber">𥥽 Mascot Cyber Visor (Holographic HUD)</option>
+              <option value="theme-light">🌓 Clean Room (Light Mode)</option>
+              <option value="theme-outdoor">☀️ High-Contrast Dock (Outdoor)</option>
+            </select>
+          </div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button id="btn-theme-amber" class="btn btn-secondary settings-action-btn" title="Switch to Mascot Safety Amber Theme">
+              <span>🦺</span> <span data-i18n="settings.theme_mascot_amber">Mascot Safety Amber Theme</span>
+            </button>
+            <button id="btn-theme-cyber" class="btn btn-secondary settings-action-btn" title="Switch to Mascot Cyber Visor Theme">
+              <span>𥥽</span> <span data-i18n="settings.theme_mascot_cyber">Mascot Cyber Visor Theme</span>
+            </button>
             <button id="btn-theme" class="btn btn-secondary settings-action-btn">
               <span>🌓</span> <span data-i18n="settings.theme_toggle">Clean Room Theme (Light / Dark)</span>
             </button>

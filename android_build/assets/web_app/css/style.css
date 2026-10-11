@@ -36,6 +36,181 @@ body.theme-light {
   --emerald: #059669;
 }
 
+/* 1. Mascot Safety Amber Theme (Industrial OSHA Hardhat Persona) */
+body.theme-mascot-amber {
+  --bg-primary: #0A101D;
+  --bg-secondary: #101B2E;
+  --bg-card: rgba(22, 34, 56, 0.90);
+  --bg-card-hover: rgba(28, 44, 72, 0.95);
+  --border-color: rgba(245, 158, 11, 0.24);
+  --border-bright: #F59E0B;
+  --text-primary: #FFFDF5;
+  --text-secondary: #FDE68A;
+  --text-muted: #D97706;
+  --cyan: #F59E0B;
+  --cyan-glow: rgba(245, 158, 11, 0.38);
+  --emerald: #10B981;
+  --emerald-glow: rgba(16, 185, 129, 0.28);
+  --warning: #F59E0B;
+}
+
+body.theme-mascot-amber .app-header {
+  background: rgba(16, 27, 46, 0.94);
+  border-bottom: 2px solid #F59E0B;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.16);
+}
+
+body.theme-mascot-amber .brand-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FBBF24;
+  border-color: #F59E0B;
+}
+
+body.theme-mascot-amber .card {
+  border: 1px solid rgba(245, 158, 11, 0.26);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(245, 158, 11, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+body.theme-mascot-amber .card-title {
+  border-bottom: 1px solid rgba(245, 158, 11, 0.18);
+}
+
+body.theme-mascot-amber .btn-primary {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #0F172A;
+  font-weight: 800;
+  border-color: #FBBF24;
+  box-shadow: 0 3px 14px rgba(245, 158, 11, 0.38);
+}
+
+body.theme-mascot-amber .btn-secondary {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #FEF3C7;
+}
+
+body.theme-mascot-amber .btn-secondary:hover {
+  border-color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+body.theme-mascot-amber .badge-cyan {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+body.theme-mascot-amber .bottom-nav {
+  background: rgba(10, 16, 29, 0.96);
+  border-top: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+body.theme-mascot-amber .nav-item.active {
+  color: #F59E0B;
+}
+
+body.theme-mascot-amber .presets-glow-dot {
+  background: #F59E0B;
+  box-shadow: 0 0 10px #F59E0B;
+}
+
+/* 2. Mascot Cyber Visor Theme (Holographic Optical Visor Persona) */
+body.theme-mascot-cyber {
+  --bg-primary: #030A14;
+  --bg-secondary: #071529;
+  --bg-card: rgba(11, 28, 54, 0.90);
+  --bg-card-hover: rgba(16, 38, 72, 0.95);
+  --border-color: rgba(0, 240, 255, 0.24);
+  --border-bright: #00F0FF;
+  --text-primary: #F0FDFA;
+  --text-secondary: #A5F3FC;
+  --text-muted: #38BDF8;
+  --cyan: #00F0FF;
+  --cyan-glow: rgba(0, 240, 255, 0.42);
+  --emerald: #06B6D4;
+  --emerald-glow: rgba(6, 182, 212, 0.35);
+  --warning: #F59E0B;
+}
+
+body.theme-mascot-cyber .app-header {
+  background: rgba(7, 21, 41, 0.94);
+  border-bottom: 2px solid #00F0FF;
+  box-shadow: 0 4px 25px rgba(0, 240, 255, 0.2);
+}
+
+body.theme-mascot-cyber .brand-badge {
+  background: rgba(0, 240, 255, 0.2);
+  color: #00F0FF;
+  border-color: #00F0FF;
+}
+
+body.theme-mascot-cyber .card {
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(0, 240, 255, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+body.theme-mascot-cyber .card-title {
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+body.theme-mascot-cyber .btn-primary {
+  background: linear-gradient(135deg, #00F0FF 0%, #0284C7 100%);
+  color: #020617;
+  font-weight: 800;
+  border-color: #38BDF8;
+  box-shadow: 0 3px 16px rgba(0, 240, 255, 0.4);
+}
+
+body.theme-mascot-cyber .btn-secondary {
+  border-color: rgba(0, 240, 255, 0.3);
+  color: #E0F2FE;
+}
+
+body.theme-mascot-cyber .btn-secondary:hover {
+  border-color: #00F0FF;
+  background: rgba(0, 240, 255, 0.12);
+}
+
+body.theme-mascot-cyber .badge-cyan {
+  background: rgba(0, 240, 255, 0.22);
+  color: #00F0FF;
+  border-color: rgba(0, 240, 255, 0.55);
+}
+
+body.theme-mascot-cyber .bottom-nav {
+  background: rgba(3, 10, 20, 0.96);
+  border-top: 1px solid rgba(0, 240, 255, 0.32);
+}
+
+body.theme-mascot-cyber .nav-item.active {
+  color: #00F0FF;
+}
+
+body.theme-mascot-cyber .presets-glow-dot {
+  background: #00F0FF;
+  box-shadow: 0 0 10px #00F0FF;
+}
+
+/* Live Vector Interactive Background Canvas */
+#dualmark-live-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  display: block;
+}
+
+.app-header, .main-content {
+  position: relative;
+  z-index: 1;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

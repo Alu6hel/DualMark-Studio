@@ -433,18 +433,93 @@
       updateSoundUi(window.DualMarkAudio.isMuted());
     }
 
-    // Theme toggle
+    // Centralized Theme Manager (Obsidian, Mascot Safety Amber, Mascot Cyber Visor, Clean Room, Outdoor)
+    function applyTheme(themeKey) {
+      document.body.classList.remove('theme-light', 'theme-outdoor', 'theme-mascot-amber', 'theme-mascot-cyber');
+      var chosenTheme = themeKey || 'default';
+
+      if (chosenTheme === 'theme-mascot-amber' || chosenTheme === 'amber') {
+        document.body.classList.add('theme-mascot-amber');
+        chosenTheme = 'theme-mascot-amber';
+      } else if (chosenTheme === 'theme-mascot-cyber' || chosenTheme === 'cyber') {
+        document.body.classList.add('theme-mascot-cyber');
+        chosenTheme = 'theme-mascot-cyber';
+      } else if (chosenTheme === 'theme-light' || chosenTheme === 'light') {
+        document.body.classList.add('theme-light');
+        chosenTheme = 'theme-light';
+      } else if (chosenTheme === 'theme-outdoor' || chosenTheme === 'outdoor') {
+        document.body.classList.add('theme-outdoor');
+        chosenTheme = 'theme-outdoor';
+      } else {
+        chosenTheme = 'default';
+      }
+
+      localStorage.setItem('dualmark_active_theme', chosenTheme);
+      localStorage.setItem('dualmark_theme', chosenTheme === 'theme-light' ? 'light' : 'dark');
+      localStorage.setItem('dualmark_outdoor', chosenTheme === 'theme-outdoor' ? 'true' : 'false');
+
+      var selectTheme = document.getElementById('select-theme');
+      if (selectTheme) {
+        selectTheme.value = chosenTheme;
+      }
+
+      if (window.DualMarkLiveBackground) {
+        window.DualMarkLiveBackground.setTheme(chosenTheme);
+      }
+    }
+
+    // Initialize Active Theme on startup
+    var savedTheme = localStorage.getItem('dualmark_active_theme') ||
+      (localStorage.getItem('dualmark_theme') === 'light' ? 'theme-light' :
+      (localStorage.getItem('dualmark_outdoor') === 'true' ? 'theme-outdoor' : 'default'));
+    applyTheme(savedTheme);
+
+    // Theme selector dropdown
+    var selectThemeEl = document.getElementById('select-theme');
+    if (selectThemeEl) {
+      selectThemeEl.value = savedTheme;
+      selectThemeEl.addEventListener('change', function(e) {
+        applyTheme(e.target.value);
+        var labels = {
+          'default': 'Industrial Obsidian Theme',
+          'theme-mascot-amber': '🦺 Mascot Safety Amber Theme',
+          'theme-mascot-cyber': '𥥽 Mascot Cyber Visor Theme',
+          'theme-light': 'Clean Room Light Theme',
+          'theme-outdoor': 'Outdoor High-Contrast Dock Mode'
+        };
+        showToast(labels[e.target.value] || 'Theme Updated');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    // Direct Mascot Theme Buttons
+    var btnThemeAmber = document.getElementById('btn-theme-amber');
+    if (btnThemeAmber) {
+      btnThemeAmber.addEventListener('click', function() {
+        applyTheme('theme-mascot-amber');
+        showToast('🦺 Mascot Safety Amber Theme');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    var btnThemeCyber = document.getElementById('btn-theme-cyber');
+    if (btnThemeCyber) {
+      btnThemeCyber.addEventListener('click', function() {
+        applyTheme('theme-mascot-cyber');
+        showToast('𥥽 Mascot Cyber Visor Theme');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
+      });
+    }
+
+    // Clean Room Light/Dark Theme toggle
     var btnTheme = document.getElementById('btn-theme');
     if (btnTheme) {
       btnTheme.addEventListener('click', function() {
-        document.body.classList.toggle('theme-light');
         var isLight = document.body.classList.contains('theme-light');
-        localStorage.setItem('dualmark_theme', isLight ? 'light' : 'dark');
-        showToast(isLight ? 'Clean Room Light Theme' : 'Industrial Obsidian Theme');
+        applyTheme(isLight ? 'default' : 'theme-light');
+        showToast(!isLight ? 'Clean Room Light Theme' : 'Industrial Obsidian Theme');
+        if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
-      if (localStorage.getItem('dualmark_theme') === 'light') {
-        document.body.classList.add('theme-light');
-      }
     }
 
     // Commercial Licensing & Editions Modal
@@ -513,15 +588,11 @@
     var btnOutdoor = document.getElementById('btn-outdoor');
     if (btnOutdoor) {
       btnOutdoor.addEventListener('click', function() {
-        document.body.classList.toggle('theme-outdoor');
         var isOutdoor = document.body.classList.contains('theme-outdoor');
-        localStorage.setItem('dualmark_outdoor', isOutdoor ? 'true' : 'false');
-        showToast(isOutdoor ? 'High-Contrast Outdoor Theme' : 'Standard Dark Theme');
+        applyTheme(isOutdoor ? 'default' : 'theme-outdoor');
+        showToast(!isOutdoor ? 'High-Contrast Outdoor Theme' : 'Standard Dark Theme');
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
-      if (localStorage.getItem('dualmark_outdoor') === 'true') {
-        document.body.classList.add('theme-outdoor');
-      }
     }
 
     // Sanitized System Diagnostics Export
@@ -573,6 +644,11 @@
         selectMascotStyle.addEventListener('change', function(e) {
           var chosenStyle = e.target.value;
           window.DualMarkRive.setMascotStyle(chosenStyle);
+          if (chosenStyle === 'specialist_avatar') {
+            applyTheme('theme-mascot-amber');
+          } else if (chosenStyle === 'cyber_reticle') {
+            applyTheme('theme-mascot-cyber');
+          }
           var styleNames = {
             marky_scanner: '🤖 Marky Bot (Cybernetic Assistant)',
             cyber_reticle: '🎯 Optical Reticle HUD',
