@@ -423,6 +423,10 @@ body {
   font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 .bottom-nav-item:hover {
@@ -1460,4 +1464,20 @@ body.theme-outdoor .btn {
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* Responsive Two-Column Form Row (Prevents Select Dropdown Truncation on Mobile) */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 580px) {
+  .form-row-2col {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }

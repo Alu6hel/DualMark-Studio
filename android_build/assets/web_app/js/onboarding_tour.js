@@ -5,10 +5,19 @@
 (function(window) {
   'use strict';
 
+  function _t(key, fallback, params) {
+    if (typeof window !== 'undefined' && window.DualMarkI18n && typeof window.DualMarkI18n.t === 'function') {
+      return window.DualMarkI18n.t(key, params);
+    }
+    return fallback || key;
+  }
+
   var TOUR_STEPS = [
     {
       targetId: 'tab-synth',
       tabKey: 'tab-synth',
+      titleKey: 'tour.step1_title',
+      contentKey: 'tour.step1_content',
       title: '1. Dual-Code Barcode Synthesis',
       content: 'During the GS1 Sunrise 2027 transition, consumer packaging requires both a 1D UPC/EAN for legacy checkout scanners and a 2D GS1 Digital Link QR or DataMatrix code for smart supply chain data.',
       position: 'bottom'
@@ -16,6 +25,8 @@
     {
       targetId: 'canvas-1d',
       tabKey: 'tab-synth',
+      titleKey: 'tour.step2_title',
+      contentKey: 'tour.step2_content',
       title: '2. 1D Barcode & Auto Check Digit',
       content: 'Select UPC-A, EAN-13, Code-128, or ITF-14. As you type, the Modulo-10 check digit validates and corrects automatically with live GS1 country prefix lookup.',
       position: 'bottom'
@@ -23,6 +34,8 @@
     {
       targetId: 'synth-2d-exp-date',
       tabKey: 'tab-synth',
+      titleKey: 'tour.step3_title',
+      contentKey: 'tour.step3_content',
       title: '3. Calendar Date Picker & Smart AIs',
       content: 'Use standard calendar dates—they auto-convert into GS1 AI (17) YYMMDD format. Add net weight (AI 3102), price payable (AI 3922), and country origin with smart input masks.',
       position: 'top'
@@ -30,6 +43,8 @@
     {
       targetId: 'canvas-clearance',
       tabKey: 'tab-clearance',
+      titleKey: 'tour.step4_title',
+      contentKey: 'tour.step4_content',
       title: '4. 50mm Die-Line Clearance Inspector',
       content: 'Retail checkout lasers sweep at 40-70 items/minute. If 1D and 2D codes are closer than 50 mm, scanners trigger optical cross-talk. Drag codes or use "Snap to 50mm" to ensure 100% retail pass rates.',
       position: 'bottom'
@@ -37,6 +52,8 @@
     {
       targetId: 'prepress-bwr-slider',
       tabKey: 'tab-exports',
+      titleKey: 'tour.step5_title',
+      contentKey: 'tour.step5_content',
       title: '5. Prepress Bar Width Reduction (BWR)',
       content: 'Flexographic plates cause liquid ink spread on porous corrugated paper. Use the BWR slider (-40µm to -75µm) to shave bar widths proportionally and guarantee grade-A scans on press.',
       position: 'top'
@@ -44,6 +61,8 @@
     {
       targetId: 'btn-commit-cte',
       tabKey: 'tab-fsma',
+      titleKey: 'tour.step6_title',
+      contentKey: 'tour.step6_content',
       title: '6. FDA FSMA Rule 204 Traceability',
       content: 'Log Critical Tracking Events (Receiving, Transformation, Shipping) for Food Traceability List items. Export 24-hour FDA sortable spreadsheets, EPCIS 2.0 JSON-LD/XML, and signed PDF dossiers.',
       position: 'top'
@@ -79,7 +98,7 @@
       el.innerHTML = [
         '<div id="tour-card" style="background:var(--bg-card, #1e293b); color:var(--text-main, #f8fafc); border:2px solid var(--accent-cyan, #0284c7); border-radius:12px; padding:20px; max-width:440px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,0.5); font-family:var(--font-sans, sans-serif); text-align:left;">',
         '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;">',
-        '    <span id="tour-step-counter" style="font-size:11px; font-weight:bold; color:var(--accent-cyan, #38bdf8); text-transform:uppercase; letter-spacing:1px;">Step 1 of ' + TOUR_STEPS.length + '</span>',
+        '    <span id="tour-step-counter" style="font-size:11px; font-weight:bold; color:var(--accent-cyan, #38bdf8); letter-spacing:1px;">Step 1 of ' + TOUR_STEPS.length + '</span>',
         '    <button id="btn-tour-close" style="background:none; border:none; color:#94a3b8; font-size:18px; cursor:pointer; padding:2px 6px;">✕</button>',
         '  </div>',
         '  <h3 id="tour-title" style="margin:0 0 8px 0; font-size:16px; font-weight:700; color:#fff;"></h3>',
@@ -114,15 +133,21 @@
         if (tabBtn) tabBtn.click();
       }
 
-      document.getElementById('tour-step-counter').textContent = 'Step ' + (index + 1) + ' of ' + TOUR_STEPS.length;
-      document.getElementById('tour-title').textContent = step.title;
-      document.getElementById('tour-content').textContent = step.content;
+      var counterText = _t('tour.step_counter', 'Step ' + (index + 1) + ' of ' + TOUR_STEPS.length, { current: index + 1, total: TOUR_STEPS.length });
+      document.getElementById('tour-step-counter').textContent = counterText;
+      document.getElementById('tour-title').textContent = _t(step.titleKey, step.title);
+      document.getElementById('tour-content').textContent = _t(step.contentKey, step.content);
 
       // Update Back / Next buttons
       var prevBtn = document.getElementById('btn-tour-prev');
       var nextBtn = document.getElementById('btn-tour-next');
-      if (prevBtn) prevBtn.style.display = (index > 0) ? 'inline-block' : 'none';
-      if (nextBtn) nextBtn.textContent = (index === TOUR_STEPS.length - 1) ? 'Finish Tour ✓' : 'Next →';
+      if (prevBtn) {
+        prevBtn.style.display = (index > 0) ? 'inline-block' : 'none';
+        prevBtn.textContent = _t('tour.btn_back', 'Back');
+      }
+      if (nextBtn) {
+        nextBtn.textContent = (index === TOUR_STEPS.length - 1) ? _t('tour.btn_finish', 'Get Started 🚀') : _t('tour.btn_next', 'Next →');
+      }
 
       // Update dots
       var dotsWrap = document.getElementById('tour-dots');
@@ -173,7 +198,7 @@
         window.DualMarkAudio.successChime();
       }
       if (window.DualMarkApp && typeof window.DualMarkApp.showToast === 'function') {
-        window.DualMarkApp.showToast('Tour completed! Click ? anytime to review.');
+        window.DualMarkApp.showToast(_t('toast.tour_completed', 'Tour completed! Click ? anytime to review.'));
       }
     }
   };

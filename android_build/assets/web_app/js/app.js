@@ -556,7 +556,8 @@
     if (btnLegalConfirm && modalLegal) {
       btnLegalConfirm.addEventListener('click', function() {
         modalLegal.style.display = 'none';
-        showToast('Legal & Regulatory Disclaimers Acknowledged');
+        var legalMsg = (window.DualMarkI18n ? window.DualMarkI18n.t('toast.legal_ack') : 'Legal & Regulatory Disclaimers Acknowledged');
+        showToast(legalMsg);
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -570,7 +571,8 @@
         selectLang.addEventListener('change', function(e) {
           var chosen = e.target.value;
           window.DualMarkI18n.setLanguage(chosen);
-          showToast('Language updated: ' + chosen);
+          var langMsg = window.DualMarkI18n.t('toast.language_updated', { lang: chosen });
+          showToast(langMsg);
           if (window.DualMarkAudio) window.DualMarkAudio.click();
         });
       }
@@ -1254,11 +1256,13 @@
       var tab1Pill = document.getElementById('tab1-clearance-pill');
       if (metrics.impossibleFit) {
         statusBox.className = 'status-meter fail';
-        statusText.innerHTML = '<span>⚠</span> <span>IMPOSSIBLE FIT (PACKAGE TOO NARROW)</span>';
-        statusSub.textContent = 'Package width (' + (window.clearanceInspector.packageWidthMm) + 'mm) cannot fit 50mm clearance. Multi-panel layout recommended (place 1D on front, 2D on back/side).';
+        var headNarrow = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_violation_head') : 'IMPOSSIBLE FIT (PACKAGE TOO NARROW)');
+        var subNarrow = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_violation_sub') : 'Package width cannot fit 50mm clearance.');
+        statusText.innerHTML = '<span>⚠</span> <span>' + headNarrow + '</span>';
+        statusSub.textContent = subNarrow;
         if (tab1Pill) {
           tab1Pill.className = 'badge badge-danger';
-          tab1Pill.textContent = '⚠ Too Narrow (<50mm)';
+          tab1Pill.textContent = '⚠ <50mm';
         }
         if (lastComplianceState !== false) {
           window.DualMarkAudio.warningBuzz();
@@ -1266,8 +1270,10 @@
         lastComplianceState = false;
       } else if (metrics.isCompliant) {
         statusBox.className = 'status-meter pass';
-        statusText.innerHTML = '<span>✓</span> <span>COMPLIANT (≥ 50.0 mm)</span>';
-        statusSub.textContent = 'Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements (' + metrics.marginDeltaMm + ' mm safety margin).';
+        var headPass = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_compliant_head') : 'COMPLIANT (≥ 50.0 mm)');
+        var subPass = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_compliant_sub') : 'Edge-to-edge optical clearance satisfies Sunrise 2027 retail pass-rate requirements (' + metrics.marginDeltaMm + ' mm safety margin).');
+        statusText.innerHTML = '<span>✓</span> <span>' + headPass + '</span>';
+        statusSub.textContent = subPass;
         if (tab1Pill) {
           tab1Pill.className = 'badge badge-emerald';
           tab1Pill.textContent = '⚡ ' + metrics.edgeDistanceMm + ' mm (PASS: ≥ 50mm)';
@@ -1278,8 +1284,10 @@
         lastComplianceState = true;
       } else {
         statusBox.className = 'status-meter fail';
-        statusText.innerHTML = '<span>⚠</span> <span>VIOLATION (< 50.0 mm COLLISION RISK)</span>';
-        statusSub.textContent = 'Risk of POS scanner laser-grid cross-talk. Deficit: ' + Math.abs(metrics.marginDeltaMm) + ' mm below 50mm standard.';
+        var headFail = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_violation_head') : 'VIOLATION (< 50.0 mm COLLISION RISK)');
+        var subFail = (window.DualMarkI18n ? window.DualMarkI18n.t('clearance.status_violation_sub') : 'Risk of POS scanner laser-grid cross-talk. Deficit: ' + Math.abs(metrics.marginDeltaMm) + ' mm below 50mm standard.');
+        statusText.innerHTML = '<span>⚠</span> <span>' + headFail + '</span>';
+        statusSub.textContent = subFail;
         if (tab1Pill) {
           tab1Pill.className = 'badge badge-danger';
           tab1Pill.textContent = '⚠ ' + metrics.edgeDistanceMm + ' mm (VIOLATION < 50mm)';

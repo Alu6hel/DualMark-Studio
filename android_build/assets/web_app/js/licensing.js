@@ -236,12 +236,19 @@ const DualMarkLicensing = (() => {
     return false;
   }
 
+  function _t(key, fallback) {
+    if (typeof window !== 'undefined' && window.DualMarkI18n && typeof window.DualMarkI18n.t === 'function') {
+      return window.DualMarkI18n.t(key);
+    }
+    return fallback || key;
+  }
+
   function updateUiBadges() {
     if (typeof document === 'undefined') return;
     const currentTier = getCurrentTier();
     const badgeEl = document.getElementById('header-license-badge');
     if (badgeEl) {
-      badgeEl.textContent = TIERS[currentTier].badge;
+      badgeEl.textContent = _t('badge.' + currentTier, TIERS[currentTier].badge);
       badgeEl.className = 'brand-badge ' + (currentTier === 'enterprise' ? 'badge-enterprise' : (currentTier === 'pro' ? 'badge-pro' : 'badge-free'));
     }
   }
@@ -261,8 +268,8 @@ const DualMarkLicensing = (() => {
       <div class="modal-card" style="max-width: 820px; text-align: left;">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
           <div>
-            <span class="badge badge-cyan" style="font-size: 10px; font-weight: bold; letter-spacing: 1px;">COMMERCIAL LICENSING &amp; EDITIONS</span>
-            <h3 style="margin: 4px 0 0; font-size: 18px; font-weight: 800;">DualMark Studio Editions</h3>
+            <span class="badge badge-cyan" style="font-size: 10px; font-weight: bold; letter-spacing: 1px;">${_t('licensing.header_badge', 'COMMERCIAL LICENSING & EDITIONS')}</span>
+            <h3 style="margin: 4px 0 0; font-size: 18px; font-weight: 800;">${_t('licensing.header_title', 'DualMark Studio Editions')}</h3>
           </div>
           <button class="icon-btn" id="btn-close-licensing" style="font-size: 18px; line-height: 1;">✕</button>
         </div>
@@ -279,57 +286,72 @@ const DualMarkLicensing = (() => {
           <!-- Free Tier -->
           <div style="background: var(--bg-secondary); border: 1px solid ${currentTier === 'free' ? 'var(--accent-cyan)' : 'var(--border-color)'}; border-radius: 10px; padding: 16px; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h4 style="margin: 0; font-size: 15px;">Free Evaluator</h4>
-              <span class="badge badge-secondary">FREE</span>
+              <h4 style="margin: 0; font-size: 15px;">${_t('licensing.tier_free_title', 'Free Evaluator')}</h4>
+              <span class="badge badge-secondary">${_t('badge.free', 'FREE')}</span>
             </div>
             <div style="font-size: 20px; font-weight: 800; color: var(--text-primary); margin-bottom: 4px;">$0</div>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">Evaluation & Single Labels</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">${_t('licensing.tier_free_desc', 'Evaluation & Single Labels')}</div>
             <ul style="font-size: 11px; color: var(--text-secondary); padding-left: 18px; margin: 0 0 16px; flex-grow: 1; line-height: 1.6;">
-              ${TIERS.free.features.map(f => `<li>${f}</li>`).join('')}
+              <li>${_t('licensing.tier_free_feat1', '1D Barcode synthesis (UPC-A, EAN-13)')}</li>
+              <li>${_t('licensing.tier_free_feat2', 'Basic 2D QR Code generator')}</li>
+              <li>${_t('licensing.tier_free_feat3', 'Single-label 50mm die-line inspector preview')}</li>
+              <li>${_t('licensing.tier_free_feat4', 'Standard PNG / SVG download')}</li>
+              <li>${_t('licensing.tier_free_feat5', 'Air-gapped offline operation')}</li>
             </ul>
             <button class="btn ${currentTier === 'free' ? 'btn-secondary' : 'btn-outline'}" id="btn-select-free" ${currentTier === 'free' ? 'disabled' : ''}>
-              ${currentTier === 'free' ? '✓ Active Tier' : 'Switch to Free'}
+              ${currentTier === 'free' ? _t('licensing.tier_free_btn_active', '✓ Active Tier') : _t('licensing.tier_free_btn_switch', 'Switch to Free')}
             </button>
           </div>
 
           <!-- Pro Tier -->
           <div style="background: var(--bg-secondary); border: 2px solid ${currentTier === 'pro' ? 'var(--accent-emerald)' : 'var(--accent-cyan)'}; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; position: relative;">
-            <div style="position: absolute; top: -10px; right: 12px; background: var(--accent-cyan); color: #000; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">POPULAR</div>
+            <div style="position: absolute; top: -10px; right: 12px; background: var(--accent-cyan); color: #000; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">${_t('licensing.tier_pro_popular', 'POPULAR')}</div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h4 style="margin: 0; font-size: 15px; color: var(--accent-cyan);">Commercial Pro</h4>
-              <span class="badge badge-cyan">PRO</span>
+              <h4 style="margin: 0; font-size: 15px; color: var(--accent-cyan);">${_t('licensing.tier_pro_title', 'Commercial Pro')}</h4>
+              <span class="badge badge-cyan">${_t('badge.pro', 'PRO')}</span>
             </div>
             <div style="font-size: 20px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 4px;">$29.99 <span style="font-size: 12px; font-weight: 400; color: var(--text-secondary);">/ mo</span></div>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">Packaging &amp; FDA FSMA Production</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">${_t('licensing.tier_pro_desc', 'Packaging & FDA FSMA Production')}</div>
             <ul style="font-size: 11px; color: var(--text-secondary); padding-left: 18px; margin: 0 0 16px; flex-grow: 1; line-height: 1.6;">
-              ${TIERS.pro.features.map(f => `<li>${f}</li>`).join('')}
+              <li>${_t('licensing.tier_pro_feat1', 'Everything in Free Tier')}</li>
+              <li>${_t('licensing.tier_pro_feat2', 'GS1 Digital Link v1.2 Standard Syntax Parser')}</li>
+              <li>${_t('licensing.tier_pro_feat3', 'FDA FSMA Rule 204 CTE/KDE Logger with SHA-256 audit trail')}</li>
+              <li>${_t('licensing.tier_pro_feat4', 'Batch CSV packaging label synthesis')}</li>
+              <li>${_t('licensing.tier_pro_feat5', 'Offline SQLite dynamic redirect routing compiler')}</li>
+              <li>${_t('licensing.tier_pro_feat6', 'Barcode Width Reduction (BWR) flexo ink-gain compensation')}</li>
+              <li>${_t('licensing.tier_pro_feat7', 'Commercial packaging prepress production license')}</li>
             </ul>
             <button class="btn btn-primary" id="btn-select-pro">
-              ${currentTier === 'pro' ? '✓ Active Pro License' : 'Upgrade to Pro ($29.99)'}
+              ${currentTier === 'pro' ? _t('licensing.tier_pro_btn_active', '✓ Active Pro License') : _t('licensing.tier_pro_btn_upgrade', 'Upgrade to Pro ($29.99)')}
             </button>
           </div>
 
           <!-- Enterprise Tier -->
           <div style="background: var(--bg-secondary); border: 2px solid ${currentTier === 'enterprise' ? 'var(--accent-emerald)' : 'var(--border-color)'}; border-radius: 10px; padding: 16px; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h4 style="margin: 0; font-size: 15px; color: #a855f7;">Enterprise Perpetual</h4>
-              <span class="badge badge-purple">ENTERPRISE</span>
+              <h4 style="margin: 0; font-size: 15px; color: #a855f7;">${_t('licensing.tier_ent_title', 'Enterprise Perpetual')}</h4>
+              <span class="badge badge-purple">${_t('badge.enterprise', 'ENTERPRISE')}</span>
             </div>
             <div style="font-size: 20px; font-weight: 800; color: #a855f7; margin-bottom: 4px;">$899 <span style="font-size: 12px; font-weight: 400; color: var(--text-secondary);">/ seat</span></div>
-            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">Prepress CMYK &amp; Rugged Scanners</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 14px;">${_t('licensing.tier_ent_desc', 'Prepress CMYK & Rugged Scanners')}</div>
             <ul style="font-size: 11px; color: var(--text-secondary); padding-left: 18px; margin: 0 0 16px; flex-grow: 1; line-height: 1.6;">
-              ${TIERS.enterprise.features.map(f => `<li>${f}</li>`).join('')}
+              <li>${_t('licensing.tier_ent_feat1', 'Everything in Commercial Pro Tier')}</li>
+              <li>${_t('licensing.tier_ent_feat2', 'Industrial Vector CMYK EPS & 600/1200 DPI PDF Prepress Export')}</li>
+              <li>${_t('licensing.tier_ent_feat3', 'Edge Resolver Compilation (Cloudflare Workers, Nginx, AWS Lambda)')}</li>
+              <li>${_t('licensing.tier_ent_feat4', 'Rugged Barcode Handheld Scanner Wedge (Zebra, Honeywell, Datalogic)')}</li>
+              <li>${_t('licensing.tier_ent_feat5', 'GS1 GEPIR live company prefix validation')}</li>
+              <li>${_t('licensing.tier_ent_feat6', 'Priority SLA & custom die-line packaging templates')}</li>
             </ul>
             <button class="btn btn-emerald" id="btn-select-enterprise">
-              ${currentTier === 'enterprise' ? '✓ Active Enterprise' : 'Unlock Enterprise ($899)'}
+              ${currentTier === 'enterprise' ? _t('licensing.tier_ent_btn_active', '✓ Active Enterprise') : _t('licensing.tier_ent_btn_upgrade', 'Unlock Enterprise ($899)')}
             </button>
           </div>
 
         </div>
 
         <div style="border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-secondary);">
-          <span>100% Offline-Friendly • Google Play In-App Billing Compatible</span>
-          <button class="btn btn-secondary btn-sm" id="btn-restore-purchases">Restore Purchases</button>
+          <span>${_t('licensing.footer_note', '100% Offline-Friendly • Google Play In-App Billing Compatible')}</span>
+          <button class="btn btn-secondary btn-sm" id="btn-restore-purchases">${_t('licensing.btn_restore', 'Restore Purchases')}</button>
         </div>
       </div>
     `;
@@ -441,6 +463,15 @@ const DualMarkLicensing = (() => {
 
   function init() {
     updateUiBadges();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('dualmark:locale_changed', () => {
+        updateUiBadges();
+        const modal = document.getElementById('modal-licensing');
+        if (modal && modal.style.display === 'flex') {
+          showPaywallModal();
+        }
+      });
+    }
   }
 
   return {
