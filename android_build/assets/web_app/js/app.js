@@ -39,6 +39,14 @@
       .replace(/'/g, '&#039;');
   }
 
+  // Internationalization translation helper
+  function _t(key, params, fallback) {
+    if (typeof window !== 'undefined' && window.DualMarkI18n && typeof window.DualMarkI18n.t === 'function') {
+      return window.DualMarkI18n.t(key, params);
+    }
+    return fallback || key;
+  }
+
   // Helper to convert any content (string, Blob, ArrayBuffer, TypedArray) to base64 & Blob
   function processExportContent(content, mimeType, callback) {
     var mime = mimeType || 'application/octet-stream';
@@ -228,44 +236,44 @@
     if (sizeEl) sizeEl.textContent = '~' + sizeStr;
 
     // Determine document type description & icon
-    var formatDesc = 'Document File';
+    var formatDesc = _t('modal_export.format_generic', null, 'Document File');
     var icon = '💾';
     var lowerName = filename.toLowerCase();
     if (lowerName.endsWith('.pdf')) {
-      formatDesc = 'PDF/X-4 CMYK Vector Document (ISO 15930-7)';
+      formatDesc = _t('modal_export.format_pdf', null, 'PDF/X-4 CMYK Vector Document (ISO 15930-7)');
       icon = '📄';
     } else if (lowerName.endsWith('.eps')) {
-      formatDesc = 'Adobe PostScript Vector Plate (CMYK / Spot)';
+      formatDesc = _t('modal_export.format_eps', null, 'Adobe PostScript Vector Plate (CMYK / Spot)');
       icon = '🎨';
     } else if (lowerName.endsWith('.svg')) {
-      formatDesc = 'Scalable Vector Graphics (W3C Die-Line Proof)';
+      formatDesc = _t('modal_export.format_svg', null, 'Scalable Vector Graphics (W3C Die-Line Proof)');
       icon = '📐';
     } else if (lowerName.endsWith('.png')) {
-      formatDesc = 'Raster Graphic 300 DPI (Lossless PNG)';
+      formatDesc = _t('modal_export.format_png', null, 'Raster Graphic 300 DPI (Lossless PNG)');
       icon = '🖼️';
     } else if (lowerName.endsWith('.zpl')) {
-      formatDesc = 'Zebra ZPL II Industrial Thermal Code';
+      formatDesc = _t('modal_export.format_zpl', null, 'Zebra ZPL II Industrial Thermal Code');
       icon = '🖨️';
     } else if (lowerName.endsWith('.zip')) {
-      formatDesc = 'Master Multi-SKU Production Archive (.zip)';
+      formatDesc = _t('modal_export.format_zip', null, 'Master Multi-SKU Production Archive (.zip)');
       icon = '📦';
     } else if (lowerName.endsWith('.csv')) {
-      formatDesc = 'FDA FSMA 204 Sortable Spreadsheet (CSV)';
+      formatDesc = _t('modal_export.format_csv', null, 'FDA FSMA 204 Sortable Spreadsheet (CSV)');
       icon = '📊';
     } else if (lowerName.endsWith('.json') || lowerName.endsWith('.jsonld')) {
-      formatDesc = 'Structured Data / EPCIS JSON-LD';
+      formatDesc = _t('modal_export.format_json', null, 'Structured Data / EPCIS JSON-LD');
       icon = '🔗';
     } else if (lowerName.endsWith('.xml')) {
-      formatDesc = 'GS1 EPCIS 2.0 XML Audit Document';
+      formatDesc = _t('modal_export.format_xml', null, 'GS1 EPCIS 2.0 XML Audit Document');
       icon = '📑';
     } else if (lowerName.endsWith('.sql')) {
-      formatDesc = 'SQLite Edge Database Script';
+      formatDesc = _t('modal_export.format_sql', null, 'SQLite Edge Database Script');
       icon = '🗄️';
     } else if (lowerName.endsWith('.js')) {
-      formatDesc = 'Cloudflare Edge Worker Script';
+      formatDesc = _t('modal_export.format_js', null, 'Cloudflare Edge Worker Script');
       icon = '⚡';
     } else if (lowerName.endsWith('.conf')) {
-      formatDesc = 'Nginx Reverse Proxy Route Configuration';
+      formatDesc = _t('modal_export.format_conf', null, 'Nginx Reverse Proxy Route Configuration');
       icon = '🌐';
     }
 
@@ -281,24 +289,24 @@
         previewContainer.innerHTML = '<div style="background:#1e293b; border-radius:6px; padding:10px; text-align:center;"><img src="' + imgUrl + '" style="max-height:140px; max-width:100%; object-fit:contain; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,0.5);"></div>';
       } else if (lowerName.endsWith('.pdf')) {
         previewContainer.innerHTML = '<div style="color:var(--text-secondary); font-size:11px; line-height:1.5;">' +
-          '<div style="color:var(--cyan); font-weight:700; margin-bottom:4px;">✓ Prepress Verification Check Passed:</div>' +
-          '<div>• Format: ISO 15930-7 (PDF/X-4:2010 Prepress Master)</div>' +
-          '<div>• Color: CMYK Plates with FOGRA39 Characterization</div>' +
-          '<div>• Geometry: Vector Bézier Paths with Bar Width Reduction (BWR)</div>' +
-          '<div>• Output Target: ' + escapeHtml(filename) + ' (' + sizeStr + ')</div>' +
+          '<div style="color:var(--cyan); font-weight:700; margin-bottom:4px;">' + escapeHtml(_t('modal_export.prepress_check_passed', null, '✓ Prepress Verification Check Passed:')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.prepress_check_format', null, '• Format: ISO 15930-7 (PDF/X-4:2010 Prepress Master)')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.prepress_check_color', null, '• Color: CMYK Plates with FOGRA39 Characterization')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.prepress_check_geometry', null, '• Geometry: Vector Bézier Paths with Bar Width Reduction (BWR)')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.prepress_check_output', { filename: filename, size: sizeStr }, '• Output Target: ' + filename + ' (' + sizeStr + ')')) + '</div>' +
           '</div>';
       } else if (lowerName.endsWith('.zip')) {
         previewContainer.innerHTML = '<div style="color:var(--text-secondary); font-size:11px; line-height:1.5;">' +
-          '<div style="color:var(--emerald); font-weight:700; margin-bottom:4px;">📦 Multi-SKU Production Archive:</div>' +
-          '<div>• High-Throughput Batch Generation</div>' +
-          '<div>• Bundled: Individual Vector SVGs, Thermal Code &amp; Proof Sheets</div>' +
-          '<div>• Output Target: ' + escapeHtml(filename) + ' (' + sizeStr + ')</div>' +
+          '<div style="color:var(--emerald); font-weight:700; margin-bottom:4px;">' + escapeHtml(_t('modal_export.zip_title', null, '📦 Multi-SKU Production Archive:')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.zip_batch', null, '• High-Throughput Batch Generation')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.zip_bundled', null, '• Bundled: Individual Vector SVGs, Thermal Code & Proof Sheets')) + '</div>' +
+          '<div>' + escapeHtml(_t('modal_export.prepress_check_output', { filename: filename, size: sizeStr }, '• Output Target: ' + filename + ' (' + sizeStr + ')')) + '</div>' +
           '</div>';
       } else {
         var textSample = (typeof content === 'string') ? content : '';
         var excerpt = textSample.slice(0, 1200);
         if (textSample.length > 1200) {
-          excerpt += '\n\n... [' + (textSample.length - 1200) + ' more characters truncated for preview]';
+          excerpt += '\n\n' + _t('modal_export.chars_truncated', { count: textSample.length - 1200 }, '... [' + (textSample.length - 1200) + ' more characters truncated for preview]');
         }
         previewContainer.textContent = excerpt;
       }
@@ -428,7 +436,7 @@
       btnSound.addEventListener('click', function() {
         var muted = window.DualMarkAudio.toggleMute();
         updateSoundUi(muted);
-        showToast(muted ? 'Audio feedback muted' : 'Audio feedback enabled');
+        showToast(muted ? _t('toast.audio_muted', null, 'Audio feedback muted') : _t('toast.audio_enabled', null, 'Audio feedback enabled'));
       });
       updateSoundUi(window.DualMarkAudio.isMuted());
     }
@@ -517,7 +525,7 @@
       btnTheme.addEventListener('click', function() {
         var isLight = document.body.classList.contains('theme-light');
         applyTheme(isLight ? 'default' : 'theme-light');
-        showToast(!isLight ? 'Clean Room Light Theme' : 'Industrial Obsidian Theme');
+        showToast(!isLight ? _t('toast.theme_clean_room', null, 'Clean Room Light Theme') : _t('toast.theme_obsidian', null, 'Industrial Obsidian Theme'));
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
@@ -592,7 +600,7 @@
       btnOutdoor.addEventListener('click', function() {
         var isOutdoor = document.body.classList.contains('theme-outdoor');
         applyTheme(isOutdoor ? 'default' : 'theme-outdoor');
-        showToast(!isOutdoor ? 'High-Contrast Outdoor Theme' : 'Standard Dark Theme');
+        showToast(!isOutdoor ? _t('toast.theme_outdoor', null, 'High-Contrast Outdoor Theme') : _t('toast.theme_standard', null, 'Standard Dark Theme'));
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
     }
@@ -820,7 +828,7 @@
       btnCalcChk.addEventListener('click', function() {
         var raw = input1d.value.trim().replace(/\D/g, '');
         if (!raw) {
-          showToast('Please enter barcode digits first');
+          showToast(_t('synth.toast_enter_barcode', null, 'Please enter barcode digits first'));
           return;
         }
         var type = typeSelect.value;
@@ -861,7 +869,7 @@
           update2D();
         }
         update1D();
-        showToast('✓ Modulo-10 Check Digit Calculated: ' + chk);
+        showToast(_t('synth.toast_check_digit_calc', { digit: chk }, '✓ Modulo-10 Check Digit Calculated: ' + chk));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
         if (window.DualMarkRive && typeof window.DualMarkRive.triggerMascotCelebrate === 'function') {
           window.DualMarkRive.triggerMascotCelebrate();
@@ -1082,14 +1090,14 @@
         var res = window.DualMarkGS1.validateConformance(uri);
         conformanceResult.style.display = 'block';
         if (res.valid) {
-          conformanceResult.innerHTML = '<span style="color:var(--emerald); font-weight:bold;">✓ GS1 CONFORMANCE PASSED</span> (Score: ' + res.score + '/100)<br>' +
+          conformanceResult.innerHTML = '<span style="color:var(--emerald); font-weight:bold;">' + escapeHtml(_t('synth.gs1_conformance_passed', null, '✓ GS1 CONFORMANCE PASSED')) + '</span> (Score: ' + res.score + '/100)<br>' +
             '<span style="color:var(--text-secondary);">' + res.details.join(' | ') + '</span>';
-          showToast('✓ GS1 Digital Link Conformance Verified');
+          showToast(_t('synth.toast_conformance_ok', null, '✓ GS1 Digital Link Conformance Verified'));
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
         } else {
-          conformanceResult.innerHTML = '<span style="color:var(--rose); font-weight:bold;">✗ GS1 CONFORMANCE FAILED</span><br>' +
+          conformanceResult.innerHTML = '<span style="color:var(--rose); font-weight:bold;">' + escapeHtml(_t('synth.gs1_conformance_failed', null, '✗ GS1 CONFORMANCE FAILED')) + '</span><br>' +
             '<span style="color:var(--rose);">' + res.errors.join('<br>') + '</span>';
-          showToast('⚠ GS1 Conformance Issues Detected');
+          showToast(_t('synth.toast_conformance_issues', null, '⚠ GS1 Conformance Issues Detected'));
           if (window.DualMarkAudio) window.DualMarkAudio.warningBuzz();
         }
       });
@@ -1111,7 +1119,7 @@
           origin: origin2d ? origin2d.value.trim() : null
         });
         downloadBlob(JSON.stringify(pimData, null, 2), 'DualMark_PIM_Syndication_' + gtin + '.json', 'application/json');
-        showToast('📦 PIM / DAM Metadata Exported (Salsify, Syndigo, 1WorldSync)');
+        showToast(_t('synth.toast_pim_exported', null, '📦 PIM / DAM Metadata Exported (Salsify, Syndigo, 1WorldSync)'));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1133,16 +1141,16 @@
         if (gepirBadge) gepirBadge.textContent = res.memberOrg + ' (' + res.prefix + ')';
         if (gepirResultBox) {
           var chkStatus = res.checksumValid
-            ? '<strong style="color: var(--emerald);">VALID (Check Digit ' + res.expectedCheckDigit + ')</strong>'
-            : '<strong style="color: var(--rose);">CHECKSUM ERROR (Expected ' + res.expectedCheckDigit + ')</strong>';
-          gepirResultBox.innerHTML = 'Country / MO: <strong style="color: var(--cyan);">' + res.country + '</strong> | Checksum (Modulo 10): ' + chkStatus + ' | Status: Verified Local Registry';
+            ? '<strong style="color: var(--emerald);">' + escapeHtml(_t('synth.gepir_valid', { digit: res.expectedCheckDigit }, 'VALID (Check Digit ' + res.expectedCheckDigit + ')')) + '</strong>'
+            : '<strong style="color: var(--rose);">' + escapeHtml(_t('synth.gepir_checksum_error', { digit: res.expectedCheckDigit }, 'CHECKSUM ERROR (Expected ' + res.expectedCheckDigit + ')')) + '</strong>';
+          gepirResultBox.innerHTML = escapeHtml(_t('synth.gepir_country_mo', null, 'Country / MO:')) + ' <strong style="color: var(--cyan);">' + res.country + '</strong> | ' + escapeHtml(_t('synth.gepir_checksum', null, 'Checksum (Modulo 10):')) + ' ' + chkStatus + ' | ' + escapeHtml(_t('synth.gepir_status_verified', null, 'Status: Verified Local Registry'));
         }
         if (res.checksumValid) {
           if (window.DualMarkAudio) window.DualMarkAudio.successChime();
-          showToast('✓ GS1 Prefix & Checksum Verified: ' + res.memberOrg);
+          showToast(_t('synth.toast_gepir_verified', { org: res.memberOrg }, '✓ GS1 Prefix & Checksum Verified: ' + res.memberOrg));
         } else {
           if (window.DualMarkAudio) window.DualMarkAudio.warningBuzz();
-          showToast('⚠ Checksum Mismatch for ' + gtin);
+          showToast(_t('synth.toast_gepir_mismatch', { gtin: gtin }, '⚠ Checksum Mismatch for ' + gtin));
         }
       });
     }
@@ -1311,7 +1319,7 @@
           window.DualMarkRive.triggerMascotCelebrate();
         }
       }
-      showToast('⚡ Snapped to 52mm Safe Distance');
+      showToast(_t('clearance.toast_snap', null, '⚡ Snapped to 52mm Safe Distance'));
       window.DualMarkAudio.successChime();
     });
 
@@ -1329,7 +1337,7 @@
         segGeomCyl.classList.remove('active');
         wrapCylControls.style.display = 'none';
         window.clearanceInspector.setSurfaceType('flat');
-        showToast('📄 Flat Carton Mode Active');
+        showToast(_t('clearance.toast_carton', null, '📄 Flat Carton Mode Active'));
         if (window.DualMarkAudio) window.DualMarkAudio.click();
       });
 
@@ -1339,7 +1347,7 @@
         wrapCylControls.style.display = 'flex';
         var diam = sliderCylDiam ? parseFloat(sliderCylDiam.value) : 66;
         window.clearanceInspector.setSurfaceType('cylindrical', diam);
-        showToast('🥫 3D Cylindrical Packaging Mode (' + diam + ' mm Ø)');
+        showToast(_t('clearance.toast_cylindrical', { diam: diam }, '🥫 3D Cylindrical Packaging Mode (' + diam + ' mm Ø)'));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1382,22 +1390,31 @@
 
         if (isoResultsWrap) isoResultsWrap.style.display = 'block';
         if (isoGradeBadge) {
-          isoGradeBadge.textContent = 'GRADE ' + overallLetter + ' (' + overallNumeric + ' / 4.0)';
+          isoGradeBadge.textContent = _t('iso.grade_badge', { grade: overallLetter, score: overallNumeric }, 'GRADE ' + overallLetter + ' (' + overallNumeric + ' / 4.0)');
           isoGradeBadge.className = (overallLetter === 'A' || overallLetter === 'B') ? 'badge badge-green' : 'badge badge-rose';
         }
 
         if (isoMetricsWrap) {
           isoMetricsWrap.innerHTML = [
             '<table class="data-table" style="margin-top:8px;">',
-            '<thead><tr><th>Standard</th><th>Symbology</th><th>Rmin</th><th>Symbol Contrast</th><th>Modulation</th><th>Decodability / ANU</th><th>Defects</th><th>Grade</th></tr></thead>',
+            '<thead><tr>' +
+              '<th>' + escapeHtml(_t('iso.th_standard', null, 'Standard')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_symbology', null, 'Symbology')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_rmin', null, 'Rmin')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_contrast', null, 'Symbol Contrast')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_modulation', null, 'Modulation')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_decodability', null, 'Decodability / ANU')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_defects', null, 'Defects')) + '</th>' +
+              '<th>' + escapeHtml(_t('iso.th_grade', null, 'Grade')) + '</th>' +
+            '</tr></thead>',
             '<tbody>',
-            '<tr><td>ISO/IEC 15416</td><td>' + report1d.symbology + '</td><td>' + report1d.metrics.rmin + '</td><td>' + report1d.metrics.symbolContrast + '%</td><td>' + report1d.metrics.modulation + '</td><td>' + report1d.metrics.decodability + '</td><td>' + report1d.metrics.defects + '</td><td><strong>Grade ' + report1d.overallGrade.letter + '</strong></td></tr>',
-            '<tr><td>ISO/IEC 15415</td><td>' + report2d.symbology + '</td><td>' + report2d.metrics.rmin + '</td><td>' + report2d.metrics.symbolContrast + '%</td><td>' + report2d.metrics.modulation + '</td><td>' + report2d.metrics.axialNonUniformity + '</td><td>' + report2d.metrics.defects + '</td><td><strong>Grade ' + report2d.overallGrade.letter + '</strong></td></tr>',
+            '<tr><td>ISO/IEC 15416</td><td>' + report1d.symbology + '</td><td>' + report1d.metrics.rmin + '</td><td>' + report1d.metrics.symbolContrast + '%</td><td>' + report1d.metrics.modulation + '</td><td>' + report1d.metrics.decodability + '</td><td>' + report1d.metrics.defects + '</td><td><strong>' + escapeHtml(_t('iso.grade_row', { grade: report1d.overallGrade.letter }, 'Grade ' + report1d.overallGrade.letter)) + '</strong></td></tr>',
+            '<tr><td>ISO/IEC 15415</td><td>' + report2d.symbology + '</td><td>' + report2d.metrics.rmin + '</td><td>' + report2d.metrics.symbolContrast + '%</td><td>' + report2d.metrics.modulation + '</td><td>' + report2d.metrics.axialNonUniformity + '</td><td>' + report2d.metrics.defects + '</td><td><strong>' + escapeHtml(_t('iso.grade_row', { grade: report2d.overallGrade.letter }, 'Grade ' + report2d.overallGrade.letter)) + '</strong></td></tr>',
             '</tbody></table>'
           ].join('');
         }
 
-        showToast('✓ Optical Verification: ISO Grade ' + overallLetter + ' (' + overallNumeric + ')');
+        showToast(_t('iso.toast_verified', { grade: overallLetter, score: overallNumeric }, '✓ Optical Verification: ISO Grade ' + overallLetter + ' (' + overallNumeric + ')'));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1406,10 +1423,10 @@
       btnNistCal.addEventListener('click', function() {
         var cal = window.DualMarkIsoVerifier.performNistCalibration();
         if (isoComplianceBadge) {
-          isoComplianceBadge.textContent = 'NIST CALIBRATED (FACTOR ' + cal.calibrationFactor + ')';
+          isoComplianceBadge.textContent = _t('iso.nist_calibrated', { factor: cal.calibrationFactor }, 'NIST CALIBRATED (FACTOR ' + cal.calibrationFactor + ')');
           isoComplianceBadge.className = 'badge badge-green';
         }
-        showToast('⚖️ NIST Calibration Verified: ' + cal.certificateId + ' (Drift: ' + cal.sensorDrift + ')');
+        showToast(_t('iso.toast_nist', { id: cal.certificateId, drift: cal.sensorDrift }, '⚖️ NIST Calibration Verified: ' + cal.certificateId + ' (Drift: ' + cal.sensorDrift + ')'));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1422,7 +1439,7 @@
     if (btnZoomIn) {
       btnZoomIn.addEventListener('click', function() {
         var z = window.clearanceInspector.zoomIn();
-        showToast('🔍 Zoom: ' + Math.round(z * 100) + '%');
+        showToast(_t('clearance.toast_zoom', { percent: Math.round(z * 100) }, '🔍 Zoom: ' + Math.round(z * 100) + '%'));
       });
     }
     if (btnZoomOut) {
@@ -1434,7 +1451,7 @@
     if (btnZoomReset) {
       btnZoomReset.addEventListener('click', function() {
         window.clearanceInspector.resetZoom();
-        showToast('↺ Zoom Reset (100%)');
+        showToast(_t('clearance.toast_zoom_reset', null, '↺ Zoom Reset (100%)'));
       });
     }
 
@@ -1449,7 +1466,7 @@
           substrate: 'Coated SBS Folding Carton Board (18pt)'
         });
         downloadBlob(pdfStr, 'DualMark_ISO_Compliance_Certificate_' + gtin + '.pdf', 'application/pdf');
-        showToast('📄 Printable ISO 15415/15416 Certificate PDF Generated');
+        showToast(_t('iso.toast_cert_pdf', null, '📄 Printable ISO 15415/15416 Certificate PDF Generated'));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1474,14 +1491,24 @@
           ? r.geoRules.map(function(g) { return g.country; }).join(', ')
           : 'None';
 
+        var recallBadge = r.isRecalled
+          ? '<span class="badge badge-red">' + escapeHtml(_t('resolver.recall_active', null, '🚨 RECALL ACTIVE')) + '</span>'
+          : '<span class="badge badge-green">' + escapeHtml(_t('resolver.normal', null, 'NORMAL')) + '</span>';
+        var recallBtnText = r.isRecalled
+          ? escapeHtml(_t('resolver.btn_deactivate', null, 'Deactivate Recall'))
+          : escapeHtml(_t('resolver.btn_trigger', null, '🚨 Trigger Recall'));
+        var geoSummaryText = (r.geoRules && r.geoRules.length > 0)
+          ? r.geoRules.map(function(g) { return g.country; }).join(', ')
+          : escapeHtml(_t('resolver.geo_none', null, 'None'));
+
         tr.innerHTML = [
           '<td><strong>' + (r.itemTitle || 'Item') + '</strong></td>',
           '<td><span class="badge badge-cyan">' + r.gtin + '</span></td>',
           '<td>' + (r.lot || '*') + '</td>',
-          '<td>' + (r.isRecalled ? '<span class="badge badge-red">🚨 RECALL ACTIVE</span>' : '<span class="badge badge-green">NORMAL</span>') + '</td>',
-          '<td>' + geoSummary + '</td>',
+          '<td>' + recallBadge + '</td>',
+          '<td>' + geoSummaryText + '</td>',
           '<td>' +
-            '<button class="btn btn-secondary btn-sm recall-btn" data-id="' + r.id + '">' + (r.isRecalled ? 'Deactivate Recall' : '🚨 Trigger Recall') + '</button> ' +
+            '<button class="btn btn-secondary btn-sm recall-btn" data-id="' + r.id + '">' + recallBtnText + '</button> ' +
             '<button class="btn btn-danger btn-sm delete-btn" data-id="' + r.id + '">×</button>' +
           '</td>'
         ].join('');
@@ -1496,9 +1523,9 @@
           renderRulesTable();
           if (updated && updated.isRecalled) {
             window.DualMarkAudio.warningBuzz();
-            showToast('🚨 Recall Kill-Switch Activated for ' + updated.gtin);
+            showToast(_t('resolver.toast_recall_activated', { gtin: updated.gtin }, '🚨 Recall Kill-Switch Activated for ' + updated.gtin));
           } else {
-            showToast('Recall deactivated');
+            showToast(_t('resolver.toast_recall_deactivated', null, 'Recall deactivated'));
           }
         });
       });
@@ -1508,7 +1535,7 @@
           var id = this.getAttribute('data-id');
           window.DualMarkResolver.deleteRule(id);
           renderRulesTable();
-          showToast('Rule removed');
+          showToast(_t('resolver.toast_rule_removed', null, 'Rule removed'));
         });
       });
     }
@@ -1518,8 +1545,8 @@
       var country = testCountry.value;
       var result = window.DualMarkResolver.resolve(gtin, '', '', country);
       testOutput.innerHTML = [
-        'Resolution Status: <strong>' + result.status + '</strong>',
-        'Target Redirect URL: <span style="color:#10B981;">' + result.targetUrl + '</span>',
+        escapeHtml(_t('resolver.lbl_status', null, 'Resolution Status:')) + ' <strong>' + result.status + '</strong>',
+        escapeHtml(_t('resolver.lbl_target', null, 'Target Redirect URL:')) + ' <span style="color:#10B981;">' + result.targetUrl + '</span>',
         result.message ? '<span style="color:#EF4444; font-weight:bold;">' + result.message + '</span>' : ''
       ].filter(Boolean).join('<br>');
 
@@ -1585,7 +1612,7 @@
         };
         window.DualMarkResolver.addRule(newRule);
         renderRulesTable();
-        showToast('✓ Added Route Rule for ' + gtin);
+        showToast(_t('resolver.toast_rule_added', { gtin: gtin }, '✓ Added Route Rule for ' + gtin));
         if (window.DualMarkAudio) window.DualMarkAudio.successChime();
       });
     }
@@ -1607,7 +1634,7 @@
     window.scannerStudio = studio;
 
     function executeStartCamera() {
-      badgeState.textContent = 'CAMERA STREAMING';
+      badgeState.textContent = _t('scanner.camera_streaming', null, 'CAMERA STREAMING');
       badgeState.className = 'badge badge-green';
       btnStart.style.display = 'none';
       btnStop.style.display = 'inline-flex';
@@ -1617,9 +1644,9 @@
           window.DualMarkAudio.scanBeep();
           var first = detected[0];
           resultBlock.innerHTML = [
-            'Format: <strong>' + first.format + '</strong>',
-            'Decoded Value: <span style="color:#00F0FF;">' + first.rawValue + '</span>',
-            first.isGs1DigitalLink ? '<span style="color:#10B981;">[GS1 DIGITAL LINK VALIDATED] GTIN: ' + (first.gs1Data ? first.gs1Data.gtin : '') + '</span>' : ''
+            escapeHtml(_t('scanner.lbl_format', null, 'Format:')) + ' <strong>' + first.format + '</strong>',
+            escapeHtml(_t('scanner.lbl_decoded', null, 'Decoded Value:')) + ' <span style="color:#00F0FF;">' + first.rawValue + '</span>',
+            first.isGs1DigitalLink ? '<span style="color:#10B981;">' + escapeHtml(_t('scanner.gs1_validated', { gtin: first.gs1Data ? first.gs1Data.gtin : '' }, '[GS1 DIGITAL LINK VALIDATED] GTIN: ' + (first.gs1Data ? first.gs1Data.gtin : ''))) + '</span>' : ''
           ].join('<br>');
 
           if (window.DualMarkRive) {
@@ -1628,11 +1655,11 @@
           handleScannedForQuickCte(first);
         }
       }, function(err) {
-        badgeState.textContent = 'CAMERA UNAVAILABLE';
+        badgeState.textContent = _t('scanner.camera_unavailable', null, 'CAMERA UNAVAILABLE');
         badgeState.className = 'badge badge-red';
         btnStart.style.display = 'inline-flex';
         btnStop.style.display = 'none';
-        showToast('Camera access unavailable (Check permissions)');
+        showToast(_t('scanner.toast_camera_denied', null, 'Camera access unavailable (Check permissions)'));
       });
     }
 
@@ -1824,15 +1851,15 @@
             var first = res.results[0];
             if (window.DualMarkAudio) window.DualMarkAudio.scanBeep();
             if (badgeState) {
-              badgeState.textContent = 'BARCODE DETECTED';
+              badgeState.textContent = _t('scanner.barcode_detected', null, 'BARCODE DETECTED');
               badgeState.className = 'badge badge-green';
             }
             resultBlock.innerHTML = [
-              '<div style="margin-bottom:6px;"><strong>✓ Optical Scan Successful:</strong> <span class="badge badge-emerald">' + (first.format || 'UPC-A').toUpperCase() + '</span></div>',
+              '<div style="margin-bottom:6px;"><strong>' + escapeHtml(_t('scanner.scan_successful', null, '✓ Optical Scan Successful:')) + '</strong> <span class="badge badge-emerald">' + (first.format || 'UPC-A').toUpperCase() + '</span></div>',
               '<div style="font-size:18px; font-weight:800; color:#00F0FF; letter-spacing:1px; margin: 6px 0;">' + first.rawValue + '</div>',
-              '<div style="color:var(--text-secondary); font-size:11px; margin-bottom:10px;">Scanned packaging photo: ' + file.name + ' (' + res.image.width + 'x' + res.image.height + ')</div>',
+              '<div style="color:var(--text-secondary); font-size:11px; margin-bottom:10px;">' + escapeHtml(_t('scanner.scanned_photo', { name: file.name, width: res.image.width, height: res.image.height }, 'Scanned packaging photo: ' + file.name + ' (' + res.image.width + 'x' + res.image.height + ')')) + '</div>',
               '<div style="display:flex; gap:8px; flex-wrap:wrap;">',
-              '  <button id="btn-transfer-scanned-to-synth" class="btn btn-primary btn-sm" style="font-weight:700;">⚡ Transfer ' + first.rawValue + ' to Tab 1 (Dual-Code Synth)</button>',
+              '  <button id="btn-transfer-scanned-to-synth" class="btn btn-primary btn-sm" style="font-weight:700;">' + escapeHtml(_t('scanner.btn_transfer', { value: first.rawValue }, '⚡ Transfer ' + first.rawValue + ' to Tab 1 (Dual-Code Synth)')) + '</button>',
               '</div>'
             ].join('');
 
@@ -1845,7 +1872,7 @@
                 var synthTabBtn = document.querySelector('.bottom-nav-item[data-tab="tab-synth"]');
                 if (synthTabBtn) synthTabBtn.click();
                 else if (typeof window.switchTab === 'function') window.switchTab('tab-synth');
-                showToast('⚡ Barcode ' + first.rawValue + ' transferred to Dual-Code Synthesizer!');
+                showToast(_t('scanner.toast_transferred', { value: first.rawValue }, '⚡ Barcode ' + first.rawValue + ' transferred to Dual-Code Synthesizer!'));
                 if (window.DualMarkAudio) window.DualMarkAudio.successChime();
               });
             }
@@ -1990,7 +2017,7 @@
         var sig = rec.part11Signature || rec.signature;
         var sigBadge = sig
           ? '<span class="badge badge-green" title="' + (sig.auditorName || sig.signerName || 'Signed') + '">✓ ECDSA P-256</span>'
-          : '<span class="badge badge-cyan" style="opacity:0.6;">Unsigned</span>';
+          : '<span class="badge badge-cyan" style="opacity:0.6;">' + escapeHtml(_t('fsma.badge_unsigned', null, 'Unsigned')) + '</span>';
 
         tr.innerHTML = [
           '<td><strong>' + rec.id + '</strong></td>',
@@ -2002,8 +2029,8 @@
           '<td><small style="font-family:monospace; color:#38BDF8;">' + (rec.sha256 ? rec.sha256.substring(0, 16) : '') + '...</small></td>',
           '<td>' + sigBadge + '</td>',
           '<td>' +
-            '<button class="btn btn-secondary btn-sm pdf-btn" data-id="' + rec.id + '">📄 PDF Dossier</button> ' +
-            '<button class="btn btn-secondary btn-sm share-btn" data-id="' + rec.id + '">📤 Share</button> ' +
+            '<button class="btn btn-secondary btn-sm pdf-btn" data-id="' + rec.id + '">' + escapeHtml(_t('fsma.btn_pdf', null, '📄 PDF Dossier')) + '</button> ' +
+            '<button class="btn btn-secondary btn-sm share-btn" data-id="' + rec.id + '">' + escapeHtml(_t('fsma.btn_share', null, '📤 Share')) + '</button> ' +
             '<button class="btn btn-danger btn-sm del-btn" data-id="' + rec.id + '">×</button>' +
           '</td>'
         ].join('');
