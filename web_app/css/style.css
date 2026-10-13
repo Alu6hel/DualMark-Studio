@@ -1,4 +1,11 @@
 /* DualMark Studio — Industrial Prepress & Mobile Field Auditor Design System */
+html {
+  background-color: #070B14 !important;
+  color: #F8FAFC;
+  min-height: 100%;
+  height: 100%;
+}
+
 :root {
   --bg-primary: #070B14;
   --bg-secondary: #0D1527;
@@ -219,6 +226,7 @@ body.theme-mascot-cyber .presets-glow-dot {
 }
 
 body {
+  background-color: #070B14;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans);

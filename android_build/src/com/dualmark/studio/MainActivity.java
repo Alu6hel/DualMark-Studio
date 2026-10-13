@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.graphics.drawable.ColorDrawable;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
@@ -27,9 +28,12 @@ import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import android.hardware.camera2.CameraCharacteristics;
@@ -62,6 +66,8 @@ import com.dualmark.studio.billing.BillingManagerContract;
 
 public class MainActivity extends Activity {
     private static final String TAG = "DUALMARK_STUDIO";
+    private static final int BACKGROUND_COLOR = 0xFF0A0F1D;
+    private FrameLayout rootLayout;
     private WebView webView;
     private ValueCallback<Uri[]> filePathCallback;
     private BroadcastReceiver enterpriseScannerReceiver;
@@ -84,23 +90,51 @@ public class MainActivity extends Activity {
             finishAffinity();
         });
 
+        // Dark window background and status/nav bars
+        getWindow().setBackgroundDrawable(new ColorDrawable(BACKGROUND_COLOR));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(BACKGROUND_COLOR);
+            getWindow().setNavigationBarColor(BACKGROUND_COLOR);
+        }
+
         // Immersive UI
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         );
 
-        webView = new WebView(this);
-        setContentView(webView);
+        rootLayout = new FrameLayout(this);
+        rootLayout.setBackgroundColor(BACKGROUND_COLOR);
+        setContentView(rootLayout);
 
-        configureWebView();
+        initAndAttachWebView();
         checkPermissions();
         registerEnterpriseScannerReceiver();
+    }
 
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState);
-        } else {
-            webView.loadUrl("file:///android_asset/web_app/index.html");
+    private void initAndAttachWebView() {
+        if (webView != null) {
+            try {
+                if (rootLayout != null) {
+                    rootLayout.removeView(webView);
+                }
+                webView.loadUrl("about:blank");
+                webView.stopLoading();
+                webView.clearHistory();
+                webView.destroy();
+            } catch (Exception ignored) {}
+            webView = null;
         }
+
+        webView = new WebView(this);
+        webView.setBackgroundColor(BACKGROUND_COLOR);
+
+        rootLayout.addView(webView, 0, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+
+        configureWebView();
+        webView.loadUrl("file:///android_asset/web_app/index.html");
     }
 
     private void configureWebView() {
@@ -111,9 +145,15 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
 
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         DualMarkBridge bridge = new DualMarkBridge();
@@ -140,12 +180,47 @@ public class MainActivity extends Activity {
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
-            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                if (view != null) {
-                    try { view.destroy(); } catch (Exception ignored) {}
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (request != null && request.getUrl() != null) {
+                    return handleUrl(request.getUrl().toString());
                 }
-                recreate();
+                return false;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleUrl(url);
+            }
+
+            private boolean handleUrl(String url) {
+                if (url == null) return false;
+                if (url.startsWith("file:///android_asset/")) {
+                    return false;
+                }
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                    return true;
+                } catch (Exception e) {
+                    Log.e(TAG, "External intent failed for: " + url, e);
+                    return true;
+                }
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                Log.w(TAG, "WebView render process gone. Recreating in-place.");
+                runOnUiThread(() -> initAndAttachWebView());
                 return true;
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request != null && request.isForMainFrame()) {
+                    Log.w(TAG, "WebView main frame error: " + (error != null ? error.getDescription() : "unknown"));
+                    view.post(() -> view.loadUrl("file:///android_asset/web_app/index.html"));
+                }
             }
         });
 
@@ -1220,15 +1295,37 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         if (enterpriseScannerReceiver != null) {
             try { unregisterReceiver(enterpriseScannerReceiver); } catch (Exception ignored) {}
             enterpriseScannerReceiver = null;
         }
         if (webView != null) {
-            webView.loadUrl("about:blank");
-            webView.stopLoading();
-            webView.destroy();
+            try {
+                if (rootLayout != null) {
+                    rootLayout.removeView(webView);
+                }
+                webView.loadUrl("about:blank");
+                webView.stopLoading();
+                webView.clearHistory();
+                webView.destroy();
+            } catch (Exception ignored) {}
             webView = null;
         }
         super.onDestroy();

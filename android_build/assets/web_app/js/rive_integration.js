@@ -1503,29 +1503,42 @@
 
     startLoop: function() {
       var self = this;
+      if (self.animFrame) {
+        cancelAnimationFrame(self.animFrame);
+        self.animFrame = null;
+      }
       function tick(now) {
-        if (!self.isPaused) {
-          var dt = (now - self.lastTime) / 1000;
-          if (dt > 0.1) dt = 0.1;
-          self.update(dt);
-          self.render();
-          self.lastTime = now;
+        if (self.isPaused) {
+          self.animFrame = null;
+          return;
         }
+        var dt = (now - self.lastTime) / 1000;
+        if (dt > 0.1) dt = 0.1;
+        self.update(dt);
+        self.render();
+        self.lastTime = now;
         self.animFrame = requestAnimationFrame(tick);
       }
-      if (typeof requestAnimationFrame !== 'undefined') {
+      if (typeof requestAnimationFrame !== 'undefined' && !this.isPaused) {
         this.animFrame = requestAnimationFrame(tick);
       }
     },
 
     pause: function() {
       this.isPaused = true;
+      if (this.animFrame) {
+        cancelAnimationFrame(this.animFrame);
+        this.animFrame = null;
+      }
     },
 
     resume: function() {
       if (this.isPaused) {
         this.isPaused = false;
         this.lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (!this.animFrame) {
+          this.startLoop();
+        }
       }
     },
 
